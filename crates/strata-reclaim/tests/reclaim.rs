@@ -56,6 +56,8 @@ fn tree(root: &str, folders: &[(&str, u64)]) -> ScanTree {
     ScanTree { dirs, files: Vec::new(), errors: Vec::new(), stats: Default::default() }
 }
 
+// Unix only: the hand-built tree spells macOS paths with `/`.
+#[cfg(unix)]
 #[test]
 fn suggests_caches_and_developer_folders_once_each_and_only_removable_ones() {
     let t = tree(
@@ -130,14 +132,18 @@ struct Home {
     policy: Policy,
 }
 
+/// A pretend home folder in the build folder. Not the system temp folder:
+/// everything under a folder named `tmp` counts as cache. It is checked with
+/// the rules of whatever system the tests run on.
 fn home() -> Home {
-    let tmp = tempfile::tempdir().unwrap();
-    let home = tmp.path().join("home/sam");
+    let build = Path::new(env!("CARGO_TARGET_TMPDIR")).parent().unwrap();
+    let tmp = tempfile::tempdir_in(build).unwrap();
+    let home = tmp.path().join("people/sam");
     fs::create_dir_all(&home).unwrap();
     let text = home.to_string_lossy().into_owned();
     Home {
-        env: Env { os: Os::Linux, home: text.clone(), system_drive: String::new() },
-        policy: Policy::new(Platform::Linux, &[&text]).unwrap(),
+        env: Env { os: Os::current(), home: text.clone(), system_drive: String::new() },
+        policy: Policy::new(Platform::current(), &[&text]).unwrap(),
         home,
         _tmp: tmp,
     }
@@ -228,34 +234,34 @@ fn write_pattern(path: &Path, len: usize, seed: u8, flip_at: Option<usize>) {
 fn finds_identical_files_and_only_those() {
     let h = home();
     let len = 400_000;
-    write_pattern(&h.home.join("a.bin"), len, 1, None);
-    write_pattern(&h.home.join("deep/er/copy-of-a.bin"), len, 1, None);
-    write_pattern(&h.home.join("zz/another-copy.bin"), len, 1, None);
+    write_pattern(&h.home.join("a.mov"), len, 1, None);
+    write_pattern(&h.home.join("deep/er/copy-of-a.mov"), len, 1, None);
+    write_pattern(&h.home.join("zz/another-copy.mov"), len, 1, None);
     // Same length, same first and last 64 KiB, one byte different in the middle.
-    write_pattern(&h.home.join("almost.bin"), len, 1, Some(len / 2));
+    write_pattern(&h.home.join("almost.mov"), len, 1, Some(len / 2));
     // Same length, different throughout.
-    write_pattern(&h.home.join("different.bin"), len, 2, None);
-    write_pattern(&h.home.join("other-size.bin"), len + 1, 1, None);
+    write_pattern(&h.home.join("different.mov"), len, 2, None);
+    write_pattern(&h.home.join("other-size.mov"), len + 1, 1, None);
     // A second, smaller pair that fits inside the sampled ends.
-    write_pattern(&h.home.join("small1.bin"), 100_000, 7, None);
-    write_pattern(&h.home.join("small2.bin"), 100_000, 7, None);
-    write_pattern(&h.home.join("small-almost.bin"), 100_000, 7, Some(50_000));
+    write_pattern(&h.home.join("small1.mov"), 100_000, 7, None);
+    write_pattern(&h.home.join("small2.mov"), 100_000, 7, None);
+    write_pattern(&h.home.join("small-almost.mov"), 100_000, 7, Some(50_000));
     #[cfg(unix)]
-    fs::hard_link(h.home.join("a.bin"), h.home.join("hard-link-to-a.bin")).unwrap();
+    fs::hard_link(h.home.join("a.mov"), h.home.join("hard-link-to-a.mov")).unwrap();
 
     let t = scan_small(&h.home);
     let ctl = DuplicateControl::new();
     let groups = find_duplicates(&t, &h.policy, &ctl);
-    let names = |g: &strata_reclaim::DuplicateGroup| -> Vec<String> {
-        g.files.iter().map(|f| f.path.strip_prefix(&h.home).unwrap().display().to_string()).collect()
+    let names = |g: &strata_reclaim::DuplicateGroup| -> Vec<PathBuf> {
+        g.files.iter().map(|f| f.path.strip_prefix(&h.home).unwrap().to_path_buf()).collect()
     };
     assert_eq!(groups.len(), 2, "{groups:?}");
     let big = names(&groups[0]);
     assert_eq!(big.len(), 3, "{big:?}");
-    assert!(big[0] == "a.bin" || big[0] == "hard-link-to-a.bin", "shortest path is the one to keep: {big:?}");
-    assert_eq!(&big[1..], ["zz/another-copy.bin", "deep/er/copy-of-a.bin"]);
+    assert_eq!(big[0], Path::new("a.mov"), "shortest path is the one to keep");
+    assert_eq!(&big[1..], [Path::new("zz/another-copy.mov"), Path::new("deep/er/copy-of-a.mov")]);
     assert_eq!(groups[0].reclaimable_bytes(), 2 * groups[0].alloc_bytes);
-    assert_eq!(names(&groups[1]), ["small1.bin", "small2.bin"]);
+    assert_eq!(names(&groups[1]), [Path::new("small1.mov"), Path::new("small2.mov")]);
     assert!(groups.iter().all(|g| g.files.iter().all(|f| f.removable)));
     assert!(ctl.bytes_read() > 0);
 }
@@ -263,17 +269,17 @@ fn finds_identical_files_and_only_those() {
 #[test]
 fn a_protected_copy_is_kept_and_never_offered() {
     let mut h = home();
-    write_pattern(&h.home.join("vault/original.bin"), 300_000, 5, None);
-    write_pattern(&h.home.join("Downloads/copy.bin"), 300_000, 5, None);
-    write_pattern(&h.home.join("vault2/x.bin"), 200_000, 9, None);
-    write_pattern(&h.home.join("vault/y.bin"), 200_000, 9, None);
+    write_pattern(&h.home.join("vault/original.mov"), 300_000, 5, None);
+    write_pattern(&h.home.join("Downloads/copy.mov"), 300_000, 5, None);
+    write_pattern(&h.home.join("vault2/x.mov"), 200_000, 9, None);
+    write_pattern(&h.home.join("vault/y.mov"), 200_000, 9, None);
     h.policy.protect(&h.home.join("vault").to_string_lossy()).unwrap();
     h.policy.protect(&h.home.join("vault2").to_string_lossy()).unwrap();
 
     let groups = find_duplicates(&scan_small(&h.home), &h.policy, &DuplicateControl::new());
     assert_eq!(groups.len(), 1, "a pair whose copies are both protected is not reported");
     let g = &groups[0];
-    assert_eq!(g.files[0].path, h.home.join("vault/original.bin"));
+    assert_eq!(g.files[0].path, h.home.join("vault/original.mov"));
     assert!(!g.files[0].removable && g.files[1].removable);
     assert_eq!(g.reclaimable_bytes(), g.alloc_bytes);
 }
@@ -281,8 +287,8 @@ fn a_protected_copy_is_kept_and_never_offered() {
 #[test]
 fn identical_files_inside_tools_and_apps_are_not_duplicates_to_clean() {
     let h = home();
-    write_pattern(&h.home.join("proj/node_modules/a/lib.bin"), 300_000, 6, None);
-    write_pattern(&h.home.join("proj/node_modules/b/lib.bin"), 300_000, 6, None);
+    write_pattern(&h.home.join("proj/node_modules/a/demo.mov"), 300_000, 6, None);
+    write_pattern(&h.home.join("proj/node_modules/b/demo.mov"), 300_000, 6, None);
     write_pattern(&h.home.join("tools/engine.dll"), 300_000, 8, None);
     write_pattern(&h.home.join("tools/copy/engine.dll"), 300_000, 8, None);
     assert!(find_duplicates(&scan_small(&h.home), &h.policy, &DuplicateControl::new()).is_empty());
@@ -291,20 +297,20 @@ fn identical_files_inside_tools_and_apps_are_not_duplicates_to_clean() {
 #[test]
 fn files_that_changed_after_the_scan_are_left_out() {
     let h = home();
-    write_pattern(&h.home.join("one.bin"), 300_000, 4, None);
-    write_pattern(&h.home.join("two.bin"), 300_000, 4, None);
-    write_pattern(&h.home.join("three.bin"), 300_000, 4, None);
+    write_pattern(&h.home.join("one.mov"), 300_000, 4, None);
+    write_pattern(&h.home.join("two.mov"), 300_000, 4, None);
+    write_pattern(&h.home.join("three.mov"), 300_000, 4, None);
     let t = scan_small(&h.home);
-    fs::write(h.home.join("two.bin"), b"now something else").unwrap();
-    fs::remove_file(h.home.join("three.bin")).unwrap();
+    fs::write(h.home.join("two.mov"), b"now something else").unwrap();
+    fs::remove_file(h.home.join("three.mov")).unwrap();
     assert!(find_duplicates(&t, &h.policy, &DuplicateControl::new()).is_empty());
 }
 
 #[test]
 fn a_cancelled_search_reports_nothing() {
     let h = home();
-    write_pattern(&h.home.join("one.bin"), 300_000, 4, None);
-    write_pattern(&h.home.join("two.bin"), 300_000, 4, None);
+    write_pattern(&h.home.join("one.mov"), 300_000, 4, None);
+    write_pattern(&h.home.join("two.mov"), 300_000, 4, None);
     let ctl = DuplicateControl::new();
     ctl.cancel();
     assert!(find_duplicates(&scan_small(&h.home), &h.policy, &ctl).is_empty());
