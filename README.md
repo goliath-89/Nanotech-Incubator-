@@ -9,16 +9,39 @@ of file, by folder, and by the application that owns it.
 - What gets built each day: [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md)
 - What needs you: [docs/BACKLOG.md](docs/BACKLOG.md)
 
-## Try the scanner
+## What is here
+
+| Crate | Does |
+| --- | --- |
+| `strata-core` | Walks a folder tree in parallel and totals space on disk |
+| `strata-mft` | Scans a whole NTFS volume from its file table (Windows fast scan) |
+| `strata-classify` | Kinds of files, and which app each folder belongs to (`rules/*.toml`) |
+| `strata-store` | Saves scans in SQLite; growth between scans |
+| `strata-safety` | Decides what may be moved to the Trash, and moves it |
+| `strata-reclaim` | Cleanup suggestions and duplicate finder (read-only) |
+| `strata-cli` | The `strata` command, for testing all of the above |
+
+The desktop app (Tauri shell and Svelte UI) starts on Day 11.
+
+## Try it
 
 ```
 cargo run --release -p strata-cli -- scan /path/to/folder
 ```
 
-Prints the space used on disk, the largest folders and files, anything it
-could not read, and how the total compares with the operating system's own
-figure for the volume. `--json` prints one line for scripts. `--save history.sqlite`
-keeps the result; `strata history` and `strata growth` read it back.
+Prints the space used on disk, usage by kind and by app, the largest folders
+and files, and how the total compares with the operating system's figure.
+
+| Add | To |
+| --- | --- |
+| `--reclaim` | list what could be cleaned up (nothing is removed) |
+| `--duplicates` | list identical large files |
+| `--errors` | list what could not be read |
+| `--save history.sqlite` | keep the result; `strata history` and `strata growth` read it back |
+| `--fast` | read the NTFS file table: `strata scan C: --fast` as administrator on Windows |
+| `--json` | one line for scripts |
+
+`strata make-tree <folder> <files>` and `strata bench <folder>` measure speed.
 
 ## Develop
 
