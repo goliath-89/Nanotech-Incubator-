@@ -1,0 +1,162 @@
+# Strata build plan
+
+One row per working day (about 5 hours), 5 days a week, 18 weeks. Start each
+day by opening a session in this repo and saying **"Day N"**; the row tells
+Claude what to build and tells you what only you can do.
+
+- **Model** is the one to select for that day. Fable days are the
+  correctness-critical ones and are packed into the first two weeks. If Fable
+  stops being available, run those days on Opus at the highest effort and say
+  so at the start of the session, so the work gets an extra review pass.
+- **You** lists what needs a person: running builds on your real Mac and
+  Windows PC (Claude's cloud machine is Linux), paying for accounts, and
+  decisions. A dash means nothing is needed from you that day.
+- A gate is a pass/fail test. Do not start the next phase until it passes;
+  if it fails, the next day is spent on the failure and later days shift.
+
+Status: **Day 1 done.** Next: Day 2.
+
+## Sprint 1 · weeks 1–2 · scanner and the risky engines
+
+| Day | Model | Claude builds | You |
+| --- | --- | --- | --- |
+| 1 ✅ | Fable | Workspace, scanner core (parallel walk, size on disk, hard links, cloud files, unreadable folders, cancel, progress), `strata scan` command, 16 tests, CI for 3 platforms, architecture contract | — |
+| 2 | Fable | `strata-store`: SQLite schema, save / load / children / diff, crash-safe writes, tests | Download the `strata` builds from the CI run. Run `strata scan / --errors` on your Mac and `strata scan C:\ --errors` on Windows. Paste both outputs. |
+| 3 | Fable | Fix what Day 2's real runs show. macOS: Data volume and firmlinks, snapshots, purgeable space, clone gap. Windows: cluster and small-file rules. Windows test suite | Rerun both scans, paste outputs. Note the used space Finder and Explorer show. |
+| 4 | Fable | `strata-safety`: protected paths for both systems, move to Trash / Recycle Bin, property tests that no input can reach a protected path | — |
+| 5 | Fable | `strata-mft` part 1: read NTFS file records, sizes, names, hard links by file id, build the same `ScanTree` | — |
+| 6 | Fable | `strata-mft` part 2: admin elevation on demand, fallback to the plain walk, shadow copies shown under System | Run the fast scan on Windows as administrator; paste output next to the plain scan. |
+| 7 | Fable | `strata-classify`: extension table (about 600), rule format and loader, attribution engine, rule test fixtures | — |
+| 8 | Fable | Benchmark tool: generates 500k / 2M / 4M-file trees, measures time and memory; tune thread count and macOS bulk attribute reads | Run the 2M benchmark on both machines (about 10 minutes each), paste results. |
+| 9 | Fable | Duplicate finder engine (size, partial hash, full hash) and the cleanup suggestion engine, on top of safety rules | — |
+| 10 | Fable | Review of everything so far against the architecture contract; fix findings. **Gate A check** | **Gate A:** 2M-file scan under 60 s and total within 2% of the OS figure on both machines. |
+
+## Sprint 2 · weeks 3–4 · app shell
+
+| Day | Model | Claude builds | You |
+| --- | --- | --- | --- |
+| 11 | Opus | Tauri 2 app skeleton, bridge commands `list_volumes`, `start_scan`, `cancel_scan`, progress events | Install Node and Rust on both machines if you want to run the app locally (CI also attaches app builds). |
+| 12 | Opus | Design tokens, light and dark themes, type scale, window chrome for Mac and Windows 11 | — |
+| 13 | Opus | Sidebar: drives with capacity bars, cloud folders, empty states | Open the app on both machines; screenshot anything that looks off. |
+| 14 | Opus | Scanning screen: live counters, cancel, error states; saves each scan to the store | — |
+| 15 | Opus | `get_dir`, `largest_files` commands; reopen last scan in under 2 s | — |
+| 16 | Opus | macOS Full Disk Access detection and the guided setup screen | Try the setup screen on your Mac. |
+| 17 | Opus | App packaging in CI: `.dmg` and `.msi` attached to each run (unsigned for now) | Install from the packages on both machines. |
+| 18 | Opus | Nightly CI: accuracy and benchmark jobs that fail on a 10% slowdown | — |
+| 19 | Opus | UI test setup (Playwright) and tests for everything built this sprint | — |
+| 20 | Fable or Opus | Review of the bridge and shell; fix findings | Decide: keep the name "Strata"? Check the domain and a trademark search. |
+
+## Sprint 3 · weeks 5–6 · the ring
+
+| Day | Model | Claude builds | You |
+| --- | --- | --- | --- |
+| 21 | Opus | Ring drawn on Canvas from a saved scan; category colours | — |
+| 22 | Opus | Ring fills in live during a scan (`scan://partial`) | — |
+| 23 | Opus | Legend with sizes and percentages; centre label | — |
+| 24 | Opus | Hover tooltips; selection shared with the legend | Use it on your real drive for 10 minutes; list what confuses you. |
+| 25 | Opus | Fixes from your notes; 60 fps check with 100k segments | — |
+| 26 | Opus | Units setting (GB / GiB), number formatting by system locale | — |
+| 27 | Opus | Keyboard navigation of the ring and legend | — |
+| 28 | Opus | "Not scanned" and cloud-only items shown as their own segments | — |
+| 29 | Opus | UI tests for the ring | — |
+| 30 | Opus | Buffer day: open bugs | — |
+
+## Sprint 4 · weeks 7–8 · drill-down and lists
+
+| Day | Model | Claude builds | You |
+| --- | --- | --- | --- |
+| 31 | Opus | Click to drill in, with the spring animation; Esc and breadcrumb to go back | — |
+| 32 | Opus | Largest items list under the ring: sort, filter by kind | — |
+| 33 | Opus | Reveal in Finder / Explorer; Quick Look on Mac, preview on Windows | — |
+| 34 | Opus | Right-click menu: Reveal, Preview, Copy Path, Exclude | — |
+| 35 | Opus | Exclusions in Settings; theme setting | — |
+| 36 | Opus | Reduce Motion and high-contrast support | — |
+| 37 | Opus | UI tests for drill-down and lists | Recruit 5 people for a 15-minute test next day. |
+| 38 | Opus | Usability test script and a build for testers | Run the 5 tests; write down clicks to find the largest folder. |
+| 39 | Opus | Fixes from the tests | — |
+| 40 | Fable or Opus | Review; **Gate B check** | **Gate B:** testers find their largest folder in 3 clicks or fewer on both systems. |
+
+## Sprint 5 · weeks 9–10 · kinds and app rules
+
+| Day | Model | Claude builds | You |
+| --- | --- | --- | --- |
+| 41 | Opus | Wire the classifier into scans; By Kind totals in the ring | — |
+| 42 | Opus | Bundles as single items (`.app`, `.photoslibrary`, `.fcpbundle`, game folders) | — |
+| 43 | Opus | File-signature check for the largest unknown files | — |
+| 44 | Opus | App rules 1–25 for macOS with fixtures | — |
+| 45 | Opus | App rules 26–50 for macOS | Scan your Mac; paste the 20 largest "Other" folders. |
+| 46 | Opus | App rules 1–25 for Windows | — |
+| 47 | Opus | App rules 26–50 for Windows | Scan your PC; paste the 20 largest "Other" folders. |
+| 48 | Opus | Rules for whatever your "Other" lists showed | — |
+| 49 | Opus | Installed-app discovery (LaunchServices, uninstall registry, Store packages) | — |
+| 50 | Fable or Opus | Review of attribution: nothing guessed, every rule has a fixture | — |
+
+## Sprint 6 · weeks 11–12 · By App and Map
+
+| Day | Model | Claude builds | You |
+| --- | --- | --- | --- |
+| 51 | Opus | App rules 51–100 for macOS | — |
+| 52 | Opus | App rules 51–100 for Windows | — |
+| 53 | Opus | Game libraries: Steam, Epic, GOG, Xbox, Battle.net | — |
+| 54 | Opus | By App view: app / data / cache bars, expand to paths | — |
+| 55 | Opus | Treemap layout and drawing | — |
+| 56 | Opus | Treemap hover, zoom, shared selection with the ring | — |
+| 57 | Opus | Search by name across results | — |
+| 58 | Opus | UI tests for By App, Map, search | Ask 10 people to run a scan and send the "Other" percentage (the build shows it). |
+| 59 | Opus | Rules for the gaps the 10 drives showed | — |
+| 60 | Fable or Opus | Review; **Gate C check** | **Gate C:** under 10% of used space is "Other" on the 10 drives. |
+
+## Sprint 7 · weeks 13–14 · Reclaim
+
+| Day | Model | Claude builds | You |
+| --- | --- | --- | --- |
+| 61 | Opus | `suggestions` and `trash` commands wired to the Day 4 and Day 9 engines | — |
+| 62 | Opus | Reclaim view: groups, totals, per-item explanation | — |
+| 63 | Opus | Review sheet and Move to Trash / Recycle Bin, with the refused list | — |
+| 64 | Opus | Duplicates group in Reclaim | — |
+| 65 | Fable or Opus | Safety audit: try to make the UI and bridge trash a protected path; fuzz the `trash` command | — |
+| 66 | Opus | Fixes from the audit; Sidebar "Reclaim N GB" entry | Use Reclaim on a test folder, then on real caches. Check the Trash has what you expect. |
+| 67 | Opus | Pricing gate: free vs Pro features; licence key check | Decide: one-time $29 or subscription. Open a Paddle or Lemon Squeezy account. |
+| 68 | Opus | Landing page with waitlist form and screenshots | Buy the domain; publish the page. |
+| 69 | Opus | Opt-in anonymous counts and crash reports | Decide the telemetry provider, or none. |
+| 70 | Opus | Buffer day: open bugs | — |
+
+## Sprint 8 · weeks 15–16 · Growth, fast scan, beta
+
+| Day | Model | Claude builds | You |
+| --- | --- | --- | --- |
+| 71 | Opus | Snapshots saved after each scan; `growth` command | — |
+| 72 | Opus | Growth view: top growers and shrinkers, sparklines | — |
+| 73 | Opus | Fast scan switch on Windows with the elevation prompt | Test the fast scan in the app on Windows. |
+| 74 | Opus | Auto-update through Tauri's updater | Enrol in the Apple Developer Program ($99 / year). Order Windows code signing. |
+| 75 | Opus | Signing and notarization in CI | Add the signing secrets to the repository settings (Claude lists exactly which). |
+| 76 | Opus | Beta build, feedback link, known-issues page | Invite 20 testers from the waitlist. |
+| 77 | Opus | Triage and fix beta reports | Forward tester reports. |
+| 78 | Opus | Triage and fix beta reports | Forward tester reports. |
+| 79 | Opus | Triage and fix beta reports | Forward tester reports. |
+| 80 | Fable or Opus | Review; **Gate D check** | **Gate D:** no tester reports a cleanup removing something needed. |
+
+## Sprint 9 · weeks 17–18 · polish and release
+
+| Day | Model | Claude builds | You |
+| --- | --- | --- | --- |
+| 81 | Opus | Accessibility pass: VoiceOver and Narrator labels, contrast, focus order | Try VoiceOver or Narrator for 10 minutes. |
+| 82 | Opus | Fix every P0 and P1 bug from the beta | — |
+| 83 | Opus | Fix every P0 and P1 bug from the beta | — |
+| 84 | Opus | Microsoft Store package; Homebrew cask and winget manifest | Create the Microsoft Store listing. |
+| 85 | Opus | Final website: screenshots, pricing, download buttons, privacy page | Review the copy. |
+| 86 | Opus | Clean-install tests on fresh virtual machines; installer fixes | Install on one clean Mac and one clean PC. |
+| 87 | Fable or Opus | Release review of the whole codebase | — |
+| 88 | Opus | Fixes from the review; release candidate | Use the release candidate for a day. |
+| 89 | Opus | Launch posts drafted (Product Hunt, Show HN, r/macapps, r/Windows11) | **Gate E:** installs with no security warnings; crash-free 99.5% in the last beta week. |
+| 90 | Opus | Tag v1.0, publish builds | Post the launch. |
+
+## Decisions that will be asked of you
+
+| When | Decision |
+| --- | --- |
+| Day 20 | Final product name |
+| Day 67 | One-time price or subscription |
+| Day 69 | Telemetry provider, or none |
+| Day 74 | Pay for Apple Developer Program and Windows signing |
+| After v1.0 | Whether to ship a Mac App Store version |
