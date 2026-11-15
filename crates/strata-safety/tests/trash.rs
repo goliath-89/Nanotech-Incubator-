@@ -14,8 +14,12 @@ struct Scratch {
 }
 
 fn scratch() -> Scratch {
-    let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).expect("a home folder");
-    let dir = tempfile::Builder::new().prefix(".strata-test-").tempdir_in(home).unwrap();
+    let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+        .expect("a home folder");
+    let dir = tempfile::Builder::new()
+        .prefix(".strata-test-")
+        .tempdir_in(home)
+        .unwrap();
     let root = dir.path().join("scanned");
     fs::create_dir(&root).unwrap();
     Scratch {
@@ -42,11 +46,17 @@ fn refusal(result: Result<PathBuf, VetError>) -> Reason {
 fn moves_files_and_folders_to_the_trash() {
     let s = scratch();
     let a = file(&s.root.join("old-installer.dmg"));
-    let b = file(&s.root.join("cache/blob.bin")).parent().unwrap().to_path_buf();
+    let b = file(&s.root.join("cache/blob.bin"))
+        .parent()
+        .unwrap()
+        .to_path_buf();
     let keep = file(&s.root.join("keep.txt"));
 
     let report = trash(&s.policy, &s.root, &[a.clone(), b.clone()]);
-    assert!(report.refused.is_empty() && report.failed.is_empty(), "{report:?}");
+    assert!(
+        report.refused.is_empty() && report.failed.is_empty(),
+        "{report:?}"
+    );
     assert_eq!(report.moved, [a.clone(), b.clone()]);
     assert!(!a.exists() && !b.exists());
     assert!(keep.exists());
@@ -58,7 +68,10 @@ fn a_folder_and_something_inside_it_are_one_move() {
     let inner = file(&s.root.join("build/output/app.bin"));
     let folder = s.root.join("build");
     let report = trash(&s.policy, &s.root, &[inner.clone(), folder.clone()]);
-    assert!(report.failed.is_empty() && report.refused.is_empty(), "{report:?}");
+    assert!(
+        report.failed.is_empty() && report.refused.is_empty(),
+        "{report:?}"
+    );
     assert_eq!(report.moved.len(), 2);
     assert!(!folder.exists());
 }
@@ -69,19 +82,35 @@ fn refuses_the_scan_root_and_anything_outside_it() {
     let outside = file(&s.root.parent().unwrap().join("not-scanned/file.txt"));
     let inside = file(&s.root.join("ok.txt"));
 
-    assert_eq!(refusal(vet(&s.policy, &s.root, &s.root)), Reason::OutsideScan);
-    assert_eq!(refusal(vet(&s.policy, &s.root, &outside)), Reason::OutsideScan);
+    assert_eq!(
+        refusal(vet(&s.policy, &s.root, &s.root)),
+        Reason::OutsideScan
+    );
+    assert_eq!(
+        refusal(vet(&s.policy, &s.root, &outside)),
+        Reason::OutsideScan
+    );
 
-    let report = trash(&s.policy, &s.root, &[outside.clone(), s.root.clone(), inside.clone()]);
+    let report = trash(
+        &s.policy,
+        &s.root,
+        &[outside.clone(), s.root.clone(), inside.clone()],
+    );
     assert_eq!(report.refused.len(), 2);
-    assert_eq!(report.moved, std::slice::from_ref(&inside), "a refusal does not stop the allowed items");
+    assert_eq!(
+        report.moved,
+        std::slice::from_ref(&inside),
+        "a refusal does not stop the allowed items"
+    );
     assert!(outside.exists() && s.root.exists() && !inside.exists());
 }
 
 #[test]
 fn refuses_protected_places_even_when_asked_to_scan_them() {
     let s = scratch();
-    let home = PathBuf::from(std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).unwrap());
+    let home = PathBuf::from(
+        std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).unwrap(),
+    );
     // Pretend the whole home folder was scanned and its top-level folders picked.
     for name in ["Documents", "Desktop", ".ssh"] {
         let target = home.join(name);
@@ -134,7 +163,10 @@ mod links {
 
         // As text, this path is inside the scanned folder.
         let disguised = s.root.join("innocent/precious.txt");
-        assert_eq!(refusal(vet(&s.policy, &s.root, &disguised)), Reason::OutsideScan);
+        assert_eq!(
+            refusal(vet(&s.policy, &s.root, &disguised)),
+            Reason::OutsideScan
+        );
         let report = trash(&s.policy, &s.root, &[disguised]);
         assert!(report.moved.is_empty());
         assert!(victim.exists());
@@ -150,7 +182,10 @@ mod links {
         symlink(&vault, s.root.join("cache")).unwrap();
 
         let disguised = s.root.join("cache/keys.db");
-        assert_eq!(refusal(vet(&s.policy, &s.root, &disguised)), Reason::Protected);
+        assert_eq!(
+            refusal(vet(&s.policy, &s.root, &disguised)),
+            Reason::Protected
+        );
         let report = trash(&s.policy, &s.root, &[disguised, vault.clone()]);
         assert_eq!(report.refused.len(), 2);
         assert!(victim.exists());
@@ -163,7 +198,10 @@ mod links {
         symlink(&s.root, &alias).unwrap();
         let item = file(&s.root.join("junk.tmp"));
         let report = trash(&s.policy, &alias, &[alias.join("junk.tmp")]);
-        assert!(report.refused.is_empty() && report.failed.is_empty(), "{report:?}");
+        assert!(
+            report.refused.is_empty() && report.failed.is_empty(),
+            "{report:?}"
+        );
         assert!(!item.exists());
     }
 }

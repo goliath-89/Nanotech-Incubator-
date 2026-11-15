@@ -82,24 +82,74 @@ struct Junk {
 }
 
 const JUNK: &[Junk] = &[
-    Junk { name: "node_modules", needs: None, reason: "Installed JavaScript packages. Running the project's install command restores them." },
-    Junk { name: "target", needs: Some("Cargo.toml"), reason: "Rust build output. The next build recreates it." },
-    Junk { name: "Pods", needs: Some("Podfile"), reason: "Installed CocoaPods. Running pod install restores them." },
-    Junk { name: ".next", needs: Some("package.json"), reason: "Next.js build output. The next build recreates it." },
-    Junk { name: ".turbo", needs: None, reason: "Turborepo cache. It is rebuilt as needed." },
-    Junk { name: ".parcel-cache", needs: None, reason: "Parcel build cache. It is rebuilt as needed." },
-    Junk { name: ".gradle", needs: Some("build.gradle"), reason: "Gradle project cache. The next build recreates it." },
+    Junk {
+        name: "node_modules",
+        needs: None,
+        reason:
+            "Installed JavaScript packages. Running the project's install command restores them.",
+    },
+    Junk {
+        name: "target",
+        needs: Some("Cargo.toml"),
+        reason: "Rust build output. The next build recreates it.",
+    },
+    Junk {
+        name: "Pods",
+        needs: Some("Podfile"),
+        reason: "Installed CocoaPods. Running pod install restores them.",
+    },
+    Junk {
+        name: ".next",
+        needs: Some("package.json"),
+        reason: "Next.js build output. The next build recreates it.",
+    },
+    Junk {
+        name: ".turbo",
+        needs: None,
+        reason: "Turborepo cache. It is rebuilt as needed.",
+    },
+    Junk {
+        name: ".parcel-cache",
+        needs: None,
+        reason: "Parcel build cache. It is rebuilt as needed.",
+    },
+    Junk {
+        name: ".gradle",
+        needs: Some("build.gradle"),
+        reason: "Gradle project cache. The next build recreates it.",
+    },
 ];
 
 /// Tool caches at fixed places in the home folder: (pattern, reason).
 const TOOL_CACHES: &[(&str, &str)] = &[
-    ("~/.gradle/caches", "Gradle's download cache. Builds fetch what they need again."),
-    ("~/.cargo/registry", "Rust's package cache. Builds fetch what they need again."),
-    ("~/.m2/repository", "Maven's package cache. Builds fetch what they need again."),
-    ("~/.npm/_cacache", "npm's download cache. Installs fetch what they need again."),
-    ("~/.nuget/packages", "NuGet's package cache. Builds fetch what they need again."),
-    ("~/.pub-cache", "Dart's package cache. Builds fetch what they need again."),
-    ("~/.cocoapods/repos", "CocoaPods' spec cache. It is downloaded again when needed."),
+    (
+        "~/.gradle/caches",
+        "Gradle's download cache. Builds fetch what they need again.",
+    ),
+    (
+        "~/.cargo/registry",
+        "Rust's package cache. Builds fetch what they need again.",
+    ),
+    (
+        "~/.m2/repository",
+        "Maven's package cache. Builds fetch what they need again.",
+    ),
+    (
+        "~/.npm/_cacache",
+        "npm's download cache. Installs fetch what they need again.",
+    ),
+    (
+        "~/.nuget/packages",
+        "NuGet's package cache. Builds fetch what they need again.",
+    ),
+    (
+        "~/.pub-cache",
+        "Dart's package cache. Builds fetch what they need again.",
+    ),
+    (
+        "~/.cocoapods/repos",
+        "CocoaPods' spec cache. It is downloaded again when needed.",
+    ),
 ];
 
 /// Folders whose every child is a cache or log of some app.
@@ -111,11 +161,30 @@ fn cache_roots(os: Os) -> &'static [&'static str] {
     }
 }
 
-const INSTALLER_EXTENSIONS: &[&str] = &["dmg", "pkg", "mpkg", "exe", "msi", "msix", "msixbundle", "appx", "iso", "deb", "rpm", "appimage"];
+const INSTALLER_EXTENSIONS: &[&str] = &[
+    "dmg",
+    "pkg",
+    "mpkg",
+    "exe",
+    "msi",
+    "msix",
+    "msixbundle",
+    "appx",
+    "iso",
+    "deb",
+    "rpm",
+    "appimage",
+];
 
 /// Name what could be cleaned up. Reads the scan result, plus a handful of
 /// file dates and marker files from disk. Removes nothing.
-pub fn suggest(tree: &ScanTree, attribution: &Attribution, env: &Env, policy: &Policy, opts: &Options) -> Vec<Suggestion> {
+pub fn suggest(
+    tree: &ScanTree,
+    attribution: &Attribution,
+    env: &Env,
+    policy: &Policy,
+    opts: &Options,
+) -> Vec<Suggestion> {
     let mut out: Vec<Suggestion> = Vec::new();
     // Folders already covered, so nothing is offered twice or counted twice.
     let mut taken: Vec<u32> = Vec::new();
@@ -129,7 +198,8 @@ pub fn suggest(tree: &ScanTree, attribution: &Attribution, env: &Env, policy: &P
             None => return false,
         }
     };
-    let overlaps = |taken: &[u32], dir: u32| taken.iter().any(|&t| is_under(dir, t) || is_under(t, dir));
+    let overlaps =
+        |taken: &[u32], dir: u32| taken.iter().any(|&t| is_under(dir, t) || is_under(t, dir));
     // The policy must allow what would actually be moved: the folder for an
     // item, something inside the folder for its contents.
     let allowed = |target: &Target| match target {
@@ -144,13 +214,21 @@ pub fn suggest(tree: &ScanTree, attribution: &Attribution, env: &Env, policy: &P
         if bytes < opts.min_bytes || overlaps(&taken, dir) || !allowed(&target) {
             continue;
         }
-        let app = attribution.owners[dir as usize].map(|o| attribution.apps[o.app as usize].name.clone());
+        let app =
+            attribution.owners[dir as usize].map(|o| attribution.apps[o.app as usize].name.clone());
         let reason = match &app {
             Some(name) => format!("Cache kept by {name}. It rebuilds what it needs."),
             None => "App cache. It is rebuilt as needed.".to_string(),
         };
         taken.push(dir);
-        out.push(Suggestion { group: Group::AppCache, target, bytes, app, rebuildable: true, reason });
+        out.push(Suggestion {
+            group: Group::AppCache,
+            target,
+            bytes,
+            app,
+            rebuildable: true,
+            reason,
+        });
     }
 
     // 2. Tool caches at known places.
@@ -180,7 +258,9 @@ pub fn suggest(tree: &ScanTree, attribution: &Attribution, env: &Env, policy: &P
         if dir.alloc_bytes < opts.min_bytes || dir.flags.not_scanned() {
             continue;
         }
-        let Some(junk) = JUNK.iter().find(|j| dir.name == j.name) else { continue };
+        let Some(junk) = JUNK.iter().find(|j| dir.name == j.name) else {
+            continue;
+        };
         if overlaps(&taken, id) {
             continue;
         }
@@ -236,15 +316,23 @@ pub fn suggest(tree: &ScanTree, attribution: &Attribution, env: &Env, policy: &P
         }
         let path = tree.file_path(file);
         // Age comes from the file as it is now; one that is gone is skipped.
-        let Some(age_days) = age_in_days(&path, opts.now) else { continue };
-        let extension = path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
+        let Some(age_days) = age_in_days(&path, opts.now) else {
+            continue;
+        };
+        let extension = path
+            .extension()
+            .map(|e| e.to_string_lossy().to_lowercase())
+            .unwrap_or_default();
         let (group, reason) = if INSTALLER_EXTENSIONS.contains(&extension.as_str()) {
             if age_days < opts.installer_age_days {
                 continue;
             }
             (Group::OldInstaller, format!("Installer downloaded {age_days} days ago. Not needed once the app is installed."))
         } else if age_days >= opts.download_age_days {
-            (Group::OldDownload, format!("In Downloads, unchanged for {age_days} days."))
+            (
+                Group::OldDownload,
+                format!("In Downloads, unchanged for {age_days} days."),
+            )
         } else {
             continue;
         };
@@ -252,7 +340,14 @@ pub fn suggest(tree: &ScanTree, attribution: &Attribution, env: &Env, policy: &P
         if !allowed(&target) {
             continue;
         }
-        out.push(Suggestion { group, target, bytes: file.alloc_bytes, app: None, rebuildable: false, reason });
+        out.push(Suggestion {
+            group,
+            target,
+            bytes: file.alloc_bytes,
+            app: None,
+            rebuildable: false,
+            reason,
+        });
     }
 
     out.sort_by(|a, b| {

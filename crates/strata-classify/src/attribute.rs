@@ -23,9 +23,18 @@ impl Env {
     /// The machine this program is running on.
     pub fn current() -> Option<Env> {
         let os = Os::current();
-        let home = std::env::var(if os == Os::Windows { "USERPROFILE" } else { "HOME" }).ok()?;
+        let home = std::env::var(if os == Os::Windows {
+            "USERPROFILE"
+        } else {
+            "HOME"
+        })
+        .ok()?;
         let system_drive = std::env::var("SystemDrive").unwrap_or_else(|_| "C:".into());
-        Some(Env { os, home, system_drive })
+        Some(Env {
+            os,
+            home,
+            system_drive,
+        })
     }
 }
 
@@ -76,7 +85,13 @@ struct Matcher {
 impl Matcher {
     /// `pattern` is a literal name, `Start*`, `*end` or `*`.
     fn eq(&self, pattern: &str, name: &str) -> bool {
-        let fold = |s: &str| if self.ignore_case { s.to_lowercase() } else { s.to_string() };
+        let fold = |s: &str| {
+            if self.ignore_case {
+                s.to_lowercase()
+            } else {
+                s.to_string()
+            }
+        };
         let (pattern, name) = (fold(pattern), fold(name));
         if let Some(prefix) = pattern.strip_suffix('*') {
             name.starts_with(prefix)
@@ -97,7 +112,11 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
     let home_parts = split_path(&env.home);
 
     // Names once, as text, for matching.
-    let names: Vec<String> = tree.dirs.iter().map(|d| d.name.to_string_lossy().into_owned()).collect();
+    let names: Vec<String> = tree
+        .dirs
+        .iter()
+        .map(|d| d.name.to_string_lossy().into_owned())
+        .collect();
 
     // (folder, owner, how many path parts the rule had)
     let mut direct: Vec<Option<(Owner, usize)>> = vec![None; tree.dirs.len()];
@@ -117,7 +136,15 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
 
     for (app_index, app) in rules.apps.iter().enumerate() {
         for (pattern, role) in &app.paths {
-            let (hits, depth) = locate(tree, &names, &matcher, &root_parts, &home_parts, env, pattern);
+            let (hits, depth) = locate(
+                tree,
+                &names,
+                &matcher,
+                &root_parts,
+                &home_parts,
+                env,
+                pattern,
+            );
             let owner = Owner {
                 app: app_index as u32,
                 role: *role,
@@ -152,7 +179,11 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
         let name = &names[i];
         let display = match env.os {
             Os::MacOs => match name.len().checked_sub(4) {
-                Some(cut) if name.is_char_boundary(cut) && name[cut..].eq_ignore_ascii_case(".app") => &name[..cut],
+                Some(cut)
+                    if name.is_char_boundary(cut) && name[cut..].eq_ignore_ascii_case(".app") =>
+                {
+                    &name[..cut]
+                }
                 _ => continue, // loose folders in /Applications are not apps
             },
             _ => name.as_str(),
@@ -166,7 +197,13 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
             data_bytes: 0,
             cache_bytes: 0,
         });
-        direct[i] = Some((Owner { app, role: Role::App }, usize::MAX));
+        direct[i] = Some((
+            Owner {
+                app,
+                role: Role::App,
+            },
+            usize::MAX,
+        ));
     }
 
     // Hand owners down the tree (parents come before children) and add up
@@ -179,7 +216,11 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
         };
         owners.push(owner);
         if let Some(owner) = owner {
-            let below: u64 = dir.children.iter().map(|&c| tree.dirs[c as usize].alloc_bytes).sum();
+            let below: u64 = dir
+                .children
+                .iter()
+                .map(|&c| tree.dirs[c as usize].alloc_bytes)
+                .sum();
             let own = dir.alloc_bytes - below;
             let usage = &mut usages[owner.app as usize];
             match owner.role {
@@ -191,9 +232,14 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
     }
 
     // Report apps largest first; re-point the owners at the new order.
-    let mut order: Vec<usize> = (0..usages.len()).filter(|&i| usages[i].total_bytes() > 0).collect();
+    let mut order: Vec<usize> = (0..usages.len())
+        .filter(|&i| usages[i].total_bytes() > 0)
+        .collect();
     order.sort_by(|&a, &b| {
-        usages[b].total_bytes().cmp(&usages[a].total_bytes()).then_with(|| usages[a].name.cmp(&usages[b].name))
+        usages[b]
+            .total_bytes()
+            .cmp(&usages[a].total_bytes())
+            .then_with(|| usages[a].name.cmp(&usages[b].name))
     });
     let mut new_index = vec![u32::MAX; usages.len()];
     for (new, &old) in order.iter().enumerate() {
@@ -261,11 +307,31 @@ pub fn find_dirs(tree: &ScanTree, env: &Env, pattern: &str) -> Vec<u32> {
         ignore_case: env.os != Os::Linux,
     };
     let root_text = tree.root().name.to_string_lossy().into_owned();
-    let names: Vec<String> = tree.dirs.iter().map(|d| d.name.to_string_lossy().into_owned()).collect();
-    locate(tree, &names, &matcher, &split_path(&root_text), &split_path(&env.home), env, pattern).0
+    let names: Vec<String> = tree
+        .dirs
+        .iter()
+        .map(|d| d.name.to_string_lossy().into_owned())
+        .collect();
+    locate(
+        tree,
+        &names,
+        &matcher,
+        &split_path(&root_text),
+        &split_path(&env.home),
+        env,
+        pattern,
+    )
+    .0
 }
 
-fn descend(tree: &ScanTree, names: &[String], matcher: &Matcher, dir: u32, rest: &[&str], hits: &mut Vec<u32>) {
+fn descend(
+    tree: &ScanTree,
+    names: &[String],
+    matcher: &Matcher,
+    dir: u32,
+    rest: &[&str],
+    hits: &mut Vec<u32>,
+) {
     let Some((first, rest)) = rest.split_first() else {
         hits.push(dir);
         return;
@@ -282,7 +348,8 @@ fn is_programs_folder(path: &Path, env: &Env, matcher: &Matcher) -> bool {
     let parts = split_path(&text);
     let home = split_path(&env.home);
     let is = |candidate: &[&str]| {
-        candidate.len() == parts.len() && candidate.iter().zip(&parts).all(|(c, p)| matcher.eq(c, p))
+        candidate.len() == parts.len()
+            && candidate.iter().zip(&parts).all(|(c, p)| matcher.eq(c, p))
     };
     match env.os {
         Os::MacOs => {
@@ -294,7 +361,9 @@ fn is_programs_folder(path: &Path, env: &Env, matcher: &Matcher) -> bool {
             let drive = env.system_drive.as_str();
             let mut user_programs = home.clone();
             user_programs.extend(["AppData", "Local", "Programs"]);
-            is(&[drive, "Program Files"]) || is(&[drive, "Program Files (x86)"]) || is(&user_programs)
+            is(&[drive, "Program Files"])
+                || is(&[drive, "Program Files (x86)"])
+                || is(&user_programs)
         }
         Os::Linux => false,
     }

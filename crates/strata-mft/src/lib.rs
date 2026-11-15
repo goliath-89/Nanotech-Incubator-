@@ -62,7 +62,9 @@ impl std::fmt::Display for MftError {
             MftError::Io(e) => write!(f, "could not read the volume: {e}"),
             MftError::NotNtfs => write!(f, "the volume is not NTFS"),
             MftError::Damaged(what) => write!(f, "the volume's file table is damaged: {what}"),
-            MftError::NeedsAdministrator => write!(f, "reading the volume directly needs administrator rights"),
+            MftError::NeedsAdministrator => {
+                write!(f, "reading the volume directly needs administrator rights")
+            }
             MftError::Cancelled => write!(f, "the scan was cancelled"),
         }
     }
@@ -166,7 +168,9 @@ pub fn scan_volume<R: Read + Seek>(
         let (mut files, mut dirs, mut on_disk) = (0u64, 0u64, 0u64);
         for (i, raw) in bytes.chunks_exact_mut(boot.record_size).enumerate() {
             let number = (next + i as u64) as u32;
-            let Some(parsed) = parse_record(raw, number, &boot, &mut links) else { continue };
+            let Some(parsed) = parse_record(raw, number, &boot, &mut links) else {
+                continue;
+            };
             on_disk += parsed.record.on_disk;
             match parsed.base {
                 Some(base) => overflow.push((base, parsed.record.on_disk, parsed.record.length)),
@@ -217,7 +221,12 @@ struct ParsedRecord {
 }
 
 /// Decode one file record. Names found are appended to `links`.
-fn parse_record(raw: &mut [u8], number: u32, boot: &Boot, links: &mut Vec<Link>) -> Option<ParsedRecord> {
+fn parse_record(
+    raw: &mut [u8],
+    number: u32,
+    boot: &Boot,
+    links: &mut Vec<Link>,
+) -> Option<ParsedRecord> {
     if !parse::apply_fixups(raw) {
         return None; // never used, or not intact
     }
@@ -260,11 +269,20 @@ fn parse_record(raw: &mut [u8], number: u32, boot: &Boot, links: &mut Vec<Link>)
                 // Contents stored inside the record: a length, but no clusters.
                 record.length += value.len() as u64;
             }
-            (Body::NonResident { first_vcn, runs, length }, kind) => {
+            (
+                Body::NonResident {
+                    first_vcn,
+                    runs,
+                    length,
+                },
+                kind,
+            ) => {
                 // Every stream that owns clusters counts towards space on
                 // disk, piece by piece. A run list that claims more than
                 // the volume holds is damage, and counts as nothing.
-                let clusters = parse::clusters_in_runs(runs).filter(|c| *c <= boot.total_clusters).unwrap_or(0);
+                let clusters = parse::clusters_in_runs(runs)
+                    .filter(|c| *c <= boot.total_clusters)
+                    .unwrap_or(0);
                 record.on_disk = record.on_disk.saturating_add(clusters * boot.cluster_size);
                 // Only the main contents count towards the length, and the
                 // length is written on the stream's first piece.
@@ -286,14 +304,24 @@ struct Table {
 
 impl Table {
     /// Read `out.len()` bytes of the table starting at byte `offset` of it.
-    fn read<R: Read + Seek>(&self, volume: &mut R, boot: &Boot, offset: u64, out: &mut [u8]) -> Result<(), MftError> {
+    fn read<R: Read + Seek>(
+        &self,
+        volume: &mut R,
+        boot: &Boot,
+        offset: u64,
+        out: &mut [u8],
+    ) -> Result<(), MftError> {
         let mut done = 0usize;
         while done < out.len() {
             let position = offset + done as u64;
             let vcn = position / boot.cluster_size;
             // Runs are sorted by position in the table.
             let index = self.runs.partition_point(|r| r.vcn + r.len <= vcn);
-            let run = self.runs.get(index).filter(|r| r.vcn <= vcn).ok_or(MftError::Damaged("the file table has a gap"))?;
+            let run = self
+                .runs
+                .get(index)
+                .filter(|r| r.vcn <= vcn)
+                .ok_or(MftError::Damaged("the file table has a gap"))?;
             let within = position - run.vcn * boot.cluster_size;
             let available = run.len * boot.cluster_size - within;
             let take = (out.len() - done).min(available.min(usize::MAX as u64) as usize);
@@ -301,7 +329,9 @@ impl Table {
                 .lcn
                 .checked_mul(boot.cluster_size)
                 .and_then(|o| o.checked_add(within))
-                .ok_or(MftError::Damaged("the file table points outside the volume"))?;
+                .ok_or(MftError::Damaged(
+                    "the file table points outside the volume",
+                ))?;
             volume.seek(SeekFrom::Start(disk_offset))?;
             volume.read_exact(&mut out[done..done + take])?;
             done += take;
@@ -315,18 +345,32 @@ impl Table {
 /// which sit in pieces already known.
 fn locate_table<R: Read + Seek>(volume: &mut R, boot: &Boot) -> Result<Table, MftError> {
     let mut first = vec![0u8; boot.record_size];
-    let start = boot.mft_lcn.checked_mul(boot.cluster_size).ok_or(MftError::NotNtfs)?;
+    let start = boot
+        .mft_lcn
+        .checked_mul(boot.cluster_size)
+        .ok_or(MftError::NotNtfs)?;
     volume.seek(SeekFrom::Start(start))?;
     volume.read_exact(&mut first)?;
     if !parse::apply_fixups(&mut first) {
         return Err(MftError::Damaged("the first record is not intact"));
     }
 
-    let mut table = Table { runs: Vec::new(), length: 0 };
+    let mut table = Table {
+        runs: Vec::new(),
+        length: 0,
+    };
     let mut list: Option<Vec<u8>> = None;
     for attribute in attributes(&first) {
         match (attribute.kind, &attribute.body) {
-            (parse::ATTR_DATA, Body::NonResident { first_vcn: 0, runs, length, .. }) if !attribute.named => {
+            (
+                parse::ATTR_DATA,
+                Body::NonResident {
+                    first_vcn: 0,
+                    runs,
+                    length,
+                    ..
+                },
+            ) if !attribute.named => {
                 table.runs = parse_runs(runs, 0).ok_or(MftError::Damaged("unreadable run list"))?;
                 table.length = *length;
             }
@@ -351,16 +395,29 @@ fn locate_table<R: Read + Seek>(volume: &mut R, boot: &Boot) -> Result<Table, Mf
         let mut record = vec![0u8; boot.record_size];
         for piece in pieces {
             // Each further piece is described in a record inside the pieces found so far.
-            table.read(volume, boot, piece.record * boot.record_size as u64, &mut record)?;
+            table.read(
+                volume,
+                boot,
+                piece.record * boot.record_size as u64,
+                &mut record,
+            )?;
             if !parse::apply_fixups(&mut record) {
-                return Err(MftError::Damaged("an overflow record of the file table is not intact"));
+                return Err(MftError::Damaged(
+                    "an overflow record of the file table is not intact",
+                ));
             }
             for attribute in attributes(&record) {
-                if let (parse::ATTR_DATA, false, Body::NonResident { first_vcn, runs, .. }) =
-                    (attribute.kind, attribute.named, &attribute.body)
+                if let (
+                    parse::ATTR_DATA,
+                    false,
+                    Body::NonResident {
+                        first_vcn, runs, ..
+                    },
+                ) = (attribute.kind, attribute.named, &attribute.body)
                 {
                     if *first_vcn == piece.first_vcn {
-                        let more = parse_runs(runs, *first_vcn).ok_or(MftError::Damaged("unreadable run list"))?;
+                        let more = parse_runs(runs, *first_vcn)
+                            .ok_or(MftError::Damaged("unreadable run list"))?;
                         table.runs.extend(more);
                     }
                 }
@@ -369,17 +426,31 @@ fn locate_table<R: Read + Seek>(volume: &mut R, boot: &Boot) -> Result<Table, Mf
         }
     }
     // Refuse anything that points past the end of the volume.
-    if table.runs.iter().any(|r| r.lcn.checked_add(r.len).is_none_or(|end| end > boot.total_clusters + 1)) {
-        return Err(MftError::Damaged("the file table points outside the volume"));
+    if table.runs.iter().any(|r| {
+        r.lcn
+            .checked_add(r.len)
+            .is_none_or(|end| end > boot.total_clusters + 1)
+    }) {
+        return Err(MftError::Damaged(
+            "the file table points outside the volume",
+        ));
     }
     Ok(table)
 }
 
-fn read_stream<R: Read + Seek>(volume: &mut R, boot: &Boot, runs: &[Run], length: u64) -> Result<Vec<u8>, MftError> {
+fn read_stream<R: Read + Seek>(
+    volume: &mut R,
+    boot: &Boot,
+    runs: &[Run],
+    length: u64,
+) -> Result<Vec<u8>, MftError> {
     if length > 64 * 1024 * 1024 {
         return Err(MftError::Damaged("implausibly large attribute list"));
     }
-    let stream = Table { runs: runs.to_vec(), length };
+    let stream = Table {
+        runs: runs.to_vec(),
+        length,
+    };
     let mut out = vec![0u8; length as usize];
     stream.read(volume, boot, 0, &mut out)?;
     Ok(out)
@@ -419,7 +490,13 @@ fn assemble(
         min_file_bytes,
     };
     let root_path = PathBuf::from(&root_name);
-    state.folder(ROOT_RECORD as u32, root_name, &root_path, false, &mut visited)
+    state.folder(
+        ROOT_RECORD as u32,
+        root_name,
+        &root_path,
+        false,
+        &mut visited,
+    )
 }
 
 struct Assemble<'a> {
@@ -431,13 +508,27 @@ struct Assemble<'a> {
 }
 
 impl Assemble<'_> {
-    fn folder(&self, number: u32, name: OsString, path: &Path, system: bool, visited: &mut [bool]) -> RawDir {
+    fn folder(
+        &self,
+        number: u32,
+        name: OsString,
+        path: &Path,
+        system: bool,
+        visited: &mut [bool],
+    ) -> RawDir {
         visited[number as usize] = true;
         let mut dir = RawDir::new(name, self.records[number as usize].on_disk);
-        let folder_kind = if system { Some(Kind::System) } else { self.classify.folder_kind(path) };
+        let folder_kind = if system {
+            Some(Kind::System)
+        } else {
+            self.classify.folder_kind(path)
+        };
 
         let first = self.links.partition_point(|l| l.parent < number);
-        for link in self.links[first..].iter().take_while(|l| l.parent == number) {
+        for link in self.links[first..]
+            .iter()
+            .take_while(|l| l.parent == number)
+        {
             let child = self.records[link.child as usize];
             let child_name = OsString::from(&*link.name);
             if child.is_dir {
@@ -448,7 +539,13 @@ impl Assemble<'_> {
                 }
                 let child_path = path.join(&child_name);
                 let child_system = system || u64::from(link.child) == EXTEND_RECORD;
-                dir.children.push(self.folder(link.child, child_name, &child_path, child_system, visited));
+                dir.children.push(self.folder(
+                    link.child,
+                    child_name,
+                    &child_path,
+                    child_system,
+                    visited,
+                ));
                 continue;
             }
             // NTFS's own files (`$MFT`, `$LogFile`, the change journal) are system.
@@ -482,7 +579,13 @@ impl Assemble<'_> {
 #[cfg(windows)]
 pub fn open_drive(letter: char) -> Result<std::fs::File, MftError> {
     if !letter.is_ascii_alphabetic() {
-        return Err(MftError::Io(io::Error::new(io::ErrorKind::InvalidInput, "not a drive letter")));
+        return Err(MftError::Io(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "not a drive letter",
+        )));
     }
-    Ok(std::fs::File::open(format!(r"\\.\{}:", letter.to_ascii_uppercase()))?)
+    Ok(std::fs::File::open(format!(
+        r"\\.\{}:",
+        letter.to_ascii_uppercase()
+    ))?)
 }

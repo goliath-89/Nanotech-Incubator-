@@ -14,9 +14,15 @@ use strata_mft::{is_ntfs, scan_volume, MftError, MftOptions};
 const ROOT: &str = "/vol";
 
 fn image() -> Vec<u8> {
-    let gz = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/small.img.gz")).unwrap();
+    let gz = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/small.img.gz"
+    ))
+    .unwrap();
     let mut img = Vec::new();
-    flate2::read::GzDecoder::new(&gz[..]).read_to_end(&mut img).unwrap();
+    flate2::read::GzDecoder::new(&gz[..])
+        .read_to_end(&mut img)
+        .unwrap();
     img
 }
 
@@ -34,7 +40,11 @@ struct Expected {
 }
 
 fn expected() -> Expected {
-    let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/small.expected.tsv")).unwrap();
+    let text = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/small.expected.tsv"
+    ))
+    .unwrap();
     let mut entries = Vec::new();
     let mut used = 0;
     for line in text.lines() {
@@ -59,7 +69,13 @@ fn scan_all() -> ScanTree {
     let mut opts = MftOptions::new(ROOT);
     opts.min_file_bytes = 1;
     opts.max_files = usize::MAX;
-    scan_volume(Cursor::new(image()), &opts, &KindClassifier, &ScanControl::new()).unwrap()
+    scan_volume(
+        Cursor::new(image()),
+        &opts,
+        &KindClassifier,
+        &ScanControl::new(),
+    )
+    .unwrap()
 }
 
 fn relative(tree: &ScanTree, dir: u32) -> PathBuf {
@@ -68,39 +84,62 @@ fn relative(tree: &ScanTree, dir: u32) -> PathBuf {
 
 /// NTFS keeps its own files at the top of the volume, all named `$...`.
 fn is_ntfs_own(path: &Path) -> bool {
-    path.components().next().is_some_and(|c| c.as_os_str().to_string_lossy().starts_with('$'))
+    path.components()
+        .next()
+        .is_some_and(|c| c.as_os_str().to_string_lossy().starts_with('$'))
 }
 
 #[test]
 fn total_matches_the_volumes_own_count_of_used_space() {
     let tree = scan_all();
-    assert_eq!(tree.root().alloc_bytes, expected().used, "every used cluster is accounted for, and none twice");
+    assert_eq!(
+        tree.root().alloc_bytes,
+        expected().used,
+        "every used cluster is accounted for, and none twice"
+    );
 }
 
 #[test]
 fn folders_match_the_mounted_volume() {
     let tree = scan_all();
     let want = expected();
-    let found: BTreeSet<PathBuf> =
-        (1..tree.dirs.len() as u32).map(|d| relative(&tree, d)).filter(|p| !is_ntfs_own(p)).collect();
-    let listed: BTreeSet<PathBuf> = want.entries.iter().filter(|e| e.is_dir).map(|e| e.path.clone()).collect();
+    let found: BTreeSet<PathBuf> = (1..tree.dirs.len() as u32)
+        .map(|d| relative(&tree, d))
+        .filter(|p| !is_ntfs_own(p))
+        .collect();
+    let listed: BTreeSet<PathBuf> = want
+        .entries
+        .iter()
+        .filter(|e| e.is_dir)
+        .map(|e| e.path.clone())
+        .collect();
     assert_eq!(found, listed);
 
     // Entries directly in each folder, hard-link names included.
     let mut per_folder: HashMap<PathBuf, u64> = HashMap::new();
     for e in want.entries.iter().filter(|e| !e.is_dir) {
-        *per_folder.entry(e.path.parent().unwrap().to_path_buf()).or_default() += 1;
+        *per_folder
+            .entry(e.path.parent().unwrap().to_path_buf())
+            .or_default() += 1;
     }
     for d in 1..tree.dirs.len() as u32 {
         let path = relative(&tree, d);
         if !is_ntfs_own(&path) {
             let want = per_folder.get(&path).copied().unwrap_or(0);
-            assert_eq!(tree.dirs[d as usize].own_file_count, want, "{}", path.display());
+            assert_eq!(
+                tree.dirs[d as usize].own_file_count,
+                want,
+                "{}",
+                path.display()
+            );
         }
     }
     // The root also holds NTFS's own files ($MFT, $LogFile, ...).
     let root_files = tree.root().own_file_count;
-    assert!((10..=12).contains(&(root_files - per_folder[Path::new("")])), "root has {root_files} files");
+    assert!(
+        (10..=12).contains(&(root_files - per_folder[Path::new("")])),
+        "root has {root_files} files"
+    );
 }
 
 #[test]
@@ -110,7 +149,12 @@ fn every_file_has_the_right_length_and_space_on_disk() {
     let found: BTreeMap<PathBuf, (u64, u64)> = tree
         .files
         .iter()
-        .map(|f| (tree.file_path(f).strip_prefix(ROOT).unwrap().to_path_buf(), (f.logical_bytes, f.alloc_bytes)))
+        .map(|f| {
+            (
+                tree.file_path(f).strip_prefix(ROOT).unwrap().to_path_buf(),
+                (f.logical_bytes, f.alloc_bytes),
+            )
+        })
         .collect();
     let mut checked = 0;
     let mut seen_inodes = BTreeSet::new();
@@ -118,7 +162,11 @@ fn every_file_has_the_right_length_and_space_on_disk() {
         // A file small enough to live inside its record owns no clusters;
         // the mounted volume reports such files as one block or none.
         if e.blocks <= 1 {
-            assert!(!found.contains_key(&e.path), "{} should take no clusters", e.path.display());
+            assert!(
+                !found.contains_key(&e.path),
+                "{} should take no clusters",
+                e.path.display()
+            );
             continue;
         }
         if !seen_inodes.insert(e.inode) {
@@ -131,7 +179,12 @@ fn every_file_has_the_right_length_and_space_on_disk() {
             .unwrap_or_else(|| panic!("{} is missing", e.path.display()));
         assert_eq!(*length, e.size, "length of {}", e.path.display());
         // The mounted volume rounds to 512-byte blocks; clusters here are 4096.
-        assert_eq!(*on_disk, e.blocks * 512, "space on disk of {}", e.path.display());
+        assert_eq!(
+            *on_disk,
+            e.blocks * 512,
+            "space on disk of {}",
+            e.path.display()
+        );
         checked += 1;
     }
     assert_eq!(checked, 9, "every file that owns clusters was compared");
@@ -164,7 +217,11 @@ fn awkward_cases() {
     assert_eq!(many.own_file_count, 1500);
     assert_eq!(many.own_files_alloc, 0);
     assert_eq!(many.logical_bytes, 1500 * 5);
-    assert!(many.alloc_bytes > 100_000, "the folder's own index takes clusters: {}", many.alloc_bytes);
+    assert!(
+        many.alloc_bytes > 100_000,
+        "the folder's own index takes clusters: {}",
+        many.alloc_bytes
+    );
 
     // Names that are not ASCII, and a deep chain.
     assert_eq!(dir("Ünïcödé 日本語").own_file_count, 1);
@@ -174,33 +231,73 @@ fn awkward_cases() {
 
     // Kinds: by folder, by name, and NTFS's own files as System.
     let kinds = tree.root().kind_bytes;
-    assert_eq!(dir("node_modules").kind_bytes[Kind::Developer as usize], 73_728);
+    assert_eq!(
+        dir("node_modules").kind_bytes[Kind::Developer as usize],
+        73_728
+    );
     assert_eq!(dir("Program Files").kind_bytes[Kind::Apps as usize], 90_112);
     assert_eq!(dir("big").kind_bytes[Kind::Videos as usize], 2_502_656);
-    assert!(kinds[Kind::System as usize] >= 4_000_000, "$MFT, $LogFile and friends: {}", kinds[Kind::System as usize]);
+    assert!(
+        kinds[Kind::System as usize] >= 4_000_000,
+        "$MFT, $LogFile and friends: {}",
+        kinds[Kind::System as usize]
+    );
     let bad_clusters = tree.files.iter().find(|f| f.name == "$BadClus");
-    assert!(bad_clusters.is_none(), "the bad-cluster map spans the volume but owns none of it");
+    assert!(
+        bad_clusters.is_none(),
+        "the bad-cluster map spans the volume but owns none of it"
+    );
 }
 
 #[test]
 fn default_options_keep_only_large_files() {
-    let tree = scan_volume(Cursor::new(image()), &MftOptions::new(ROOT), &NoClassify, &ScanControl::new()).unwrap();
-    let names: Vec<String> = tree.files.iter().map(|f| f.name.to_string_lossy().into_owned()).collect();
+    let tree = scan_volume(
+        Cursor::new(image()),
+        &MftOptions::new(ROOT),
+        &NoClassify,
+        &ScanControl::new(),
+    )
+    .unwrap();
+    let names: Vec<String> = tree
+        .files
+        .iter()
+        .map(|f| f.name.to_string_lossy().into_owned())
+        .collect();
     assert_eq!(names, ["movie.mp4", "$LogFile", "$MFT"]);
-    assert_eq!(tree.root().alloc_bytes, expected().used, "what is kept never changes the totals");
+    assert_eq!(
+        tree.root().alloc_bytes,
+        expected().used,
+        "what is kept never changes the totals"
+    );
 }
 
 #[test]
 fn progress_and_cancel() {
     let ctl = ScanControl::new();
-    let tree = scan_volume(Cursor::new(image()), &MftOptions::new(ROOT), &NoClassify, &ctl).unwrap();
-    assert!(ctl.files() >= tree.root().file_count - 2, "{} vs {}", ctl.files(), tree.root().file_count);
+    let tree = scan_volume(
+        Cursor::new(image()),
+        &MftOptions::new(ROOT),
+        &NoClassify,
+        &ctl,
+    )
+    .unwrap();
+    assert!(
+        ctl.files() >= tree.root().file_count - 2,
+        "{} vs {}",
+        ctl.files(),
+        tree.root().file_count
+    );
     assert!(ctl.dirs() >= tree.root().dir_count);
 
     let ctl = ScanControl::new();
     ctl.cancel();
     assert!(matches!(
-        scan_volume(Cursor::new(image()), &MftOptions::new(ROOT), &NoClassify, &ctl),
+        scan_volume(
+            Cursor::new(image()),
+            &MftOptions::new(ROOT),
+            &NoClassify,
+            &ctl
+        ),
         Err(MftError::Cancelled)
     ));
 }
@@ -211,11 +308,22 @@ fn not_ntfs_is_reported_as_such() {
     let zeros = vec![0u8; 1 << 20];
     assert!(!is_ntfs(&mut Cursor::new(zeros.clone())));
     assert!(matches!(
-        scan_volume(Cursor::new(zeros), &MftOptions::new(ROOT), &NoClassify, &ScanControl::new()),
+        scan_volume(
+            Cursor::new(zeros),
+            &MftOptions::new(ROOT),
+            &NoClassify,
+            &ScanControl::new()
+        ),
         Err(MftError::NotNtfs)
     ));
     let tiny = vec![0u8; 100];
-    assert!(scan_volume(Cursor::new(tiny), &MftOptions::new(ROOT), &NoClassify, &ScanControl::new()).is_err());
+    assert!(scan_volume(
+        Cursor::new(tiny),
+        &MftOptions::new(ROOT),
+        &NoClassify,
+        &ScanControl::new()
+    )
+    .is_err());
 }
 
 /// Damage must never crash the reader or make it read out of bounds. Flip
@@ -245,7 +353,12 @@ fn damaged_volumes_never_panic() {
                 img[at] = next() as u8;
             }
         }
-        match scan_volume(Cursor::new(img), &MftOptions::new(ROOT), &NoClassify, &ScanControl::new()) {
+        match scan_volume(
+            Cursor::new(img),
+            &MftOptions::new(ROOT),
+            &NoClassify,
+            &ScanControl::new(),
+        ) {
             Ok(tree) => {
                 // Whatever was salvaged is still a consistent tree.
                 for d in &tree.dirs[1..] {
@@ -256,7 +369,10 @@ fn damaged_volumes_never_panic() {
             Err(_) => failed += 1,
         }
     }
-    assert!(ok > 50 && failed > 5, "ok {ok}, failed {failed}: the damage should produce both outcomes");
+    assert!(
+        ok > 50 && failed > 5,
+        "ok {ok}, failed {failed}: the damage should produce both outcomes"
+    );
 }
 
 /// A larger image is too big to keep in the repository. Build one with
@@ -264,18 +380,46 @@ fn damaged_volumes_never_panic() {
 /// `STRATA_NTFS_FIXTURE` at the prefix to run this.
 #[test]
 fn large_image_total_and_file_count_match() {
-    let Ok(prefix) = std::env::var("STRATA_NTFS_FIXTURE") else { return };
+    let Ok(prefix) = std::env::var("STRATA_NTFS_FIXTURE") else {
+        return;
+    };
     let listing = std::fs::read_to_string(format!("{prefix}.expected.tsv")).unwrap();
-    let used: u64 = listing.lines().last().unwrap().split('\t').nth(1).unwrap().parse().unwrap();
+    let used: u64 = listing
+        .lines()
+        .last()
+        .unwrap()
+        .split('\t')
+        .nth(1)
+        .unwrap()
+        .parse()
+        .unwrap();
     let files = listing.lines().filter(|l| l.starts_with("f\t")).count() as u64;
     let dirs = listing.lines().filter(|l| l.starts_with("d\t")).count() as u64;
 
     let volume = std::fs::File::open(format!("{prefix}.img")).unwrap();
     let started = std::time::Instant::now();
-    let tree = scan_volume(volume, &MftOptions::new(ROOT), &KindClassifier, &ScanControl::new()).unwrap();
-    eprintln!("{} files in {:?}", tree.root().file_count, started.elapsed());
+    let tree = scan_volume(
+        volume,
+        &MftOptions::new(ROOT),
+        &KindClassifier,
+        &ScanControl::new(),
+    )
+    .unwrap();
+    eprintln!(
+        "{} files in {:?}",
+        tree.root().file_count,
+        started.elapsed()
+    );
     assert_eq!(tree.root().alloc_bytes, used);
     // Everything listed, plus NTFS's own dozen or so files and its $Extend folder.
-    assert!((10..=16).contains(&(tree.root().file_count - files)), "{} vs {files}", tree.root().file_count);
-    assert!((1..=4).contains(&(tree.root().dir_count - dirs)), "{} vs {dirs}", tree.root().dir_count);
+    assert!(
+        (10..=16).contains(&(tree.root().file_count - files)),
+        "{} vs {files}",
+        tree.root().file_count
+    );
+    assert!(
+        (1..=4).contains(&(tree.root().dir_count - dirs)),
+        "{} vs {dirs}",
+        tree.root().dir_count
+    );
 }

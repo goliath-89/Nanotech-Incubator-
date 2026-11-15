@@ -30,7 +30,10 @@ pub enum StoreError {
     /// The scan's folders were pruned; only its totals and snapshot remain.
     TreePruned,
     /// The file was written by a newer version of Strata.
-    NewerSchema { found: i64, supported: i64 },
+    NewerSchema {
+        found: i64,
+        supported: i64,
+    },
     /// The database holds something this version cannot make sense of.
     Corrupt(String),
 }
@@ -318,14 +321,22 @@ impl Store {
         while let Some(row) = rows.next()? {
             let d = dir_from_row(row)?;
             if d.id as usize != dirs.len() {
-                return Err(StoreError::Corrupt(format!("folder {} is missing", dirs.len())));
+                return Err(StoreError::Corrupt(format!(
+                    "folder {} is missing",
+                    dirs.len()
+                )));
             }
             match d.parent {
                 // Ids were handed out parent-first with children in name
                 // order, so appending in id order restores that order.
                 Some(p) if (p as usize) < dirs.len() => dirs[p as usize].children.push(d.id),
                 None if d.id == 0 => {}
-                _ => return Err(StoreError::Corrupt(format!("folder {} has a bad parent", d.id))),
+                _ => {
+                    return Err(StoreError::Corrupt(format!(
+                        "folder {} has a bad parent",
+                        d.id
+                    )))
+                }
             }
             dirs.push(DirNode {
                 parent: d.parent,
@@ -437,14 +448,23 @@ impl Store {
     }
 
     /// The largest files of a scan, optionally of one kind, largest first.
-    pub fn largest_files(&self, scan: ScanId, kind: Option<Kind>, limit: usize) -> Result<Vec<FileRow>> {
+    pub fn largest_files(
+        &self,
+        scan: ScanId,
+        kind: Option<Kind>,
+        limit: usize,
+    ) -> Result<Vec<FileRow>> {
         self.require_tree(scan)?;
         let mut stmt = self.conn.prepare_cached(&format!(
             "SELECT {FILE_COLUMNS} FROM files
              WHERE scan_id = ?1 AND (?2 IS NULL OR kind = ?2) ORDER BY rank LIMIT ?3"
         ))?;
         let rows = stmt.query_map(
-            params![scan, kind.map(|k| k as u8), limit.min(i64::MAX as usize) as i64],
+            params![
+                scan,
+                kind.map(|k| k as u8),
+                limit.min(i64::MAX as usize) as i64
+            ],
             file_from_row,
         )?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
@@ -452,9 +472,9 @@ impl Store {
 
     /// What could not be read during a scan.
     pub fn errors(&self, scan: ScanId) -> Result<Vec<ScanError>> {
-        let mut stmt = self
-            .conn
-            .prepare_cached("SELECT path, kind, message FROM scan_errors WHERE scan_id = ?1 ORDER BY seq")?;
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT path, kind, message FROM scan_errors WHERE scan_id = ?1 ORDER BY seq",
+        )?;
         let rows = stmt.query_map(params![scan], |r| {
             Ok(ScanError {
                 path: PathBuf::from(names::decode(r.get(0)?)),
@@ -505,7 +525,10 @@ impl Store {
     /// Remove a scan completely, snapshot included.
     pub fn delete(&mut self, scan: ScanId) -> Result<()> {
         // Child rows go with it (ON DELETE CASCADE).
-        match self.conn.execute("DELETE FROM scans WHERE id = ?1", params![scan])? {
+        match self
+            .conn
+            .execute("DELETE FROM scans WHERE id = ?1", params![scan])?
+        {
             0 => Err(StoreError::NotFound),
             _ => Ok(()),
         }
@@ -526,7 +549,10 @@ impl Store {
         };
         for id in &old {
             for table in ["dirs", "files", "scan_errors", "suggestions"] {
-                tx.execute(&format!("DELETE FROM {table} WHERE scan_id = ?1"), params![id])?;
+                tx.execute(
+                    &format!("DELETE FROM {table} WHERE scan_id = ?1"),
+                    params![id],
+                )?;
             }
             tx.execute("UPDATE scans SET has_tree = 0 WHERE id = ?1", params![id])?;
         }
@@ -552,7 +578,8 @@ impl Store {
     }
 }
 
-const DIR_COLUMNS: &str = "id, parent_id, name, alloc_bytes, logical_bytes, file_count, dir_count, \
+const DIR_COLUMNS: &str =
+    "id, parent_id, name, alloc_bytes, logical_bytes, file_count, dir_count, \
                            kind_bytes, cloud_only_bytes, own_files_alloc, own_file_count, flags";
 const FILE_COLUMNS: &str = "dir_id, name, alloc_bytes, logical_bytes, kind";
 
@@ -635,7 +662,10 @@ fn kinds_from_blob(blob: &[u8]) -> Option<[u64; KIND_COUNT]> {
 }
 
 fn flags_to_bits(f: DirFlags) -> u32 {
-    (f.unreadable as u32) | (f.other_filesystem as u32) << 1 | (f.excluded as u32) << 2 | (f.cancelled as u32) << 3
+    (f.unreadable as u32)
+        | (f.other_filesystem as u32) << 1
+        | (f.excluded as u32) << 2
+        | (f.cancelled as u32) << 3
 }
 
 fn flags_from_bits(bits: u32) -> DirFlags {

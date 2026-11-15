@@ -78,16 +78,22 @@ pub(crate) fn apply_fixups(record: &mut [u8]) -> bool {
     if record.get(..4) != Some(b"FILE") {
         return false;
     }
-    let (Some(offset), Some(count)) = (u16_at(record, 4), u16_at(record, 6)) else { return false };
+    let (Some(offset), Some(count)) = (u16_at(record, 4), u16_at(record, 6)) else {
+        return false;
+    };
     let (offset, count) = (offset as usize, count as usize);
     if count == 0 || (count - 1) * sector_size > record.len() {
         return false;
     }
-    let Some(check) = record.get(offset..offset + 2).map(|c| [c[0], c[1]]) else { return false };
+    let Some(check) = record.get(offset..offset + 2).map(|c| [c[0], c[1]]) else {
+        return false;
+    };
     for i in 1..count {
         let saved = offset + 2 * i;
         let end = i * sector_size;
-        let Some(original) = record.get(saved..saved + 2).map(|c| [c[0], c[1]]) else { return false };
+        let Some(original) = record.get(saved..saved + 2).map(|c| [c[0], c[1]]) else {
+            return false;
+        };
         if record[end - 2..end] != check {
             return false;
         }
@@ -138,7 +144,11 @@ pub(crate) fn parse_runs(mut bytes: &[u8], first_vcn: u64) -> Option<Vec<Run>> {
             if lcn < 0 {
                 return None;
             }
-            runs.push(Run { vcn, lcn: lcn as u64, len });
+            runs.push(Run {
+                vcn,
+                lcn: lcn as u64,
+                len,
+            });
         }
         vcn = vcn.checked_add(len)?;
         bytes = &bytes[1 + len_size + off_size..];
@@ -178,7 +188,10 @@ pub(crate) enum Body<'a> {
 pub(crate) fn attributes(record: &[u8]) -> impl Iterator<Item = Attribute<'_>> {
     let mut at = u16_at(record, 0x14).map(usize::from).unwrap_or(usize::MAX);
     // The record says how many of its bytes are in use; never read past that.
-    let used = u32_at(record, 0x18).map(|u| u as usize).unwrap_or(0).min(record.len());
+    let used = u32_at(record, 0x18)
+        .map(|u| u as usize)
+        .unwrap_or(0)
+        .min(record.len());
     std::iter::from_fn(move || {
         let header = record.get(..used)?.get(at..)?;
         let kind = u32_at(header, 0)?;
@@ -225,7 +238,10 @@ pub(crate) fn parse_file_name(value: &[u8]) -> Option<FileName> {
     let chars = *value.get(0x40)? as usize;
     let namespace = *value.get(0x41)?;
     let raw = value.get(0x42..0x42 + 2 * chars)?;
-    let units: Vec<u16> = raw.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect();
+    let units: Vec<u16> = raw
+        .chunks_exact(2)
+        .map(|c| u16::from_le_bytes([c[0], c[1]]))
+        .collect();
     Some(FileName {
         parent,
         parent_sequence,
@@ -249,7 +265,9 @@ pub(crate) fn parse_attribute_list(mut value: &[u8]) -> Vec<ListEntry> {
         if len < 0x1A || len > value.len() {
             break;
         }
-        let (Some(first_vcn), Some(reference)) = (u64_at(value, 8), u64_at(value, 0x10)) else { break };
+        let (Some(first_vcn), Some(reference)) = (u64_at(value, 8), u64_at(value, 0x10)) else {
+            break;
+        };
         entries.push(ListEntry {
             kind,
             named: value[6] != 0,
@@ -266,5 +284,7 @@ pub(crate) fn parse_attribute_list(mut value: &[u8]) -> Vec<ListEntry> {
 /// compressed, and it is zero for NTFS's map of bad clusters, whose stream
 /// spans the whole volume without owning any of it.
 pub(crate) fn clusters_in_runs(bytes: &[u8]) -> Option<u64> {
-    parse_runs(bytes, 0)?.iter().try_fold(0u64, |sum, run| sum.checked_add(run.len))
+    parse_runs(bytes, 0)?
+        .iter()
+        .try_fold(0u64, |sum, run| sum.checked_add(run.len))
 }

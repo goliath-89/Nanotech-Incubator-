@@ -106,7 +106,10 @@ fn macos_allows_ordinary_files_and_known_caches() {
 #[test]
 fn macos_programs_and_package_internals_are_off_limits_everywhere() {
     let p = mac();
-    assert_eq!(reason(&p, "/Users/sam/Downloads/Tool.app"), Some(Reason::InsideApplication));
+    assert_eq!(
+        reason(&p, "/Users/sam/Downloads/Tool.app"),
+        Some(Reason::InsideApplication)
+    );
     assert_eq!(
         reason(&p, "/Users/sam/Downloads/Tool.app/Contents/MacOS/tool"),
         Some(Reason::InsideApplication)
@@ -116,14 +119,20 @@ fn macos_programs_and_package_internals_are_off_limits_everywhere() {
         Some(Reason::InsideApplication)
     );
     assert_eq!(
-        reason(&p, "/Users/sam/Pictures/Photos Library.photoslibrary/originals/0/a.heic"),
+        reason(
+            &p,
+            "/Users/sam/Pictures/Photos Library.photoslibrary/originals/0/a.heic"
+        ),
         Some(Reason::InsidePackage)
     );
     assert_eq!(
         reason(&p, "/Users/sam/Movies/Trip.fcpbundle/Original Media"),
         Some(Reason::InsidePackage)
     );
-    assert_eq!(reason(&p, "/Users/sam/Downloads/TOOL.APP"), Some(Reason::InsideApplication));
+    assert_eq!(
+        reason(&p, "/Users/sam/Downloads/TOOL.APP"),
+        Some(Reason::InsideApplication)
+    );
 }
 
 #[test]
@@ -134,10 +143,10 @@ fn macos_ignores_case_and_lookalike_letters() {
             "/SYSTEM/Library",
             "/users/SAM/documents",
             "/Users/sam/LIBRARY/Preferences/x",
-            "/U\u{17F}ers/sam",               // long s
-            "/Users/sam/Des\u{212A}top",      // Kelvin sign
+            "/U\u{17F}ers/sam",          // long s
+            "/Users/sam/Des\u{212A}top", // Kelvin sign
             "/\u{FB01}le-is-not-here/../System",
-            "/Sy\u{FB06}em/Library",          // st ligature
+            "/Sy\u{FB06}em/Library", // st ligature
         ],
     );
 }
@@ -218,11 +227,17 @@ fn windows_refuses_every_spelling_trick() {
         (r"\\?\C:\Windows\System32", Reason::Protected),
         (r"C:\Windows.\System32", Reason::UnusualPath),
         (r"C:\Windows \System32", Reason::UnusualPath),
-        (r"C:\Users\sam\Downloads\..\..\..\Windows", Reason::UnusualPath),
+        (
+            r"C:\Users\sam\Downloads\..\..\..\Windows",
+            Reason::UnusualPath,
+        ),
         (r"C:\Users\sam\Downloads\.\x", Reason::UnusualPath),
         (r"C:\PROGRA~1\Git", Reason::UnusualPath),
         (r"C:\Users\sam\DOCUME~1", Reason::UnusualPath),
-        (r"C:\Users\sam\Downloads\file.txt:stream", Reason::UnusualPath),
+        (
+            r"C:\Users\sam\Downloads\file.txt:stream",
+            Reason::UnusualPath,
+        ),
         (r"C:\Users\sam\Downloads\a*b", Reason::UnusualPath),
         (r"C:Windows", Reason::NotAbsolute),
         (r"C:", Reason::NotAbsolute),
@@ -231,7 +246,10 @@ fn windows_refuses_every_spelling_trick() {
         (r"\\server\share\folder", Reason::NetworkPath),
         (r"\\?\UNC\server\share\folder", Reason::NetworkPath),
         (r"\\.\PhysicalDrive0", Reason::NetworkPath),
-        (r"\\?\Volume{b75e2c83-0000-0000-0000-602f00000000}\Windows", Reason::NotAbsolute),
+        (
+            r"\\?\Volume{b75e2c83-0000-0000-0000-602f00000000}\Windows",
+            Reason::NotAbsolute,
+        ),
         (r"C:\Users", Reason::ContainsProtected),
         (r"C:\", Reason::VolumeRoot),
         ("", Reason::NotAbsolute),
@@ -245,29 +263,93 @@ fn windows_refuses_every_spelling_trick() {
 #[test]
 fn unix_refuses_relative_and_dotted_paths() {
     for p in [mac(), linux()] {
-        for path in ["", "Users/sam/x", "./x", "~/Downloads/x", "/Users/sam/../../System", "/Users/sam/./x", "/a/b/..", "/x\0/y"] {
+        for path in [
+            "",
+            "Users/sam/x",
+            "./x",
+            "~/Downloads/x",
+            "/Users/sam/../../System",
+            "/Users/sam/./x",
+            "/a/b/..",
+            "/x\0/y",
+        ] {
             assert!(p.check_str(path).is_err(), "{path:?}");
         }
     }
-    assert_eq!(reason(&linux(), "/home/sam//Downloads///x"), None, "doubled slashes are harmless");
+    assert_eq!(
+        reason(&linux(), "/home/sam//Downloads///x"),
+        None,
+        "doubled slashes are harmless"
+    );
 }
 
 #[test]
 fn linux_is_case_sensitive_but_still_protects_its_system() {
     let p = linux();
-    refused(&p, &["/usr/bin/env", "/etc/passwd", "/home", "/home/sam", "/home/sam/.bashrc", "/root", "/root/.ssh/x", "/tmp", "/data"]);
-    allowed(&p, &["/home/sam/Downloads/x", "/home/sam/.cache/pip", "/tmp/build-123", "/home/sam/USR", "/mnt/disk/old", "/var/tmp/x"]);
+    refused(
+        &p,
+        &[
+            "/usr/bin/env",
+            "/etc/passwd",
+            "/home",
+            "/home/sam",
+            "/home/sam/.bashrc",
+            "/root",
+            "/root/.ssh/x",
+            "/tmp",
+            "/data",
+        ],
+    );
+    allowed(
+        &p,
+        &[
+            "/home/sam/Downloads/x",
+            "/home/sam/.cache/pip",
+            "/tmp/build-123",
+            "/home/sam/USR",
+            "/mnt/disk/old",
+            "/var/tmp/x",
+        ],
+    );
 }
 
 #[test]
 fn a_home_folder_in_an_unusual_place_is_protected_like_any_other() {
     let mac = Policy::new(Platform::MacOs, &["/Volumes/Data/Homes/sam"]).unwrap();
-    refused(&mac, &["/Volumes/Data/Homes/sam", "/Volumes/Data/Homes/sam/Documents", "/Volumes/Data/Homes/sam/Library/Preferences/x", "/Volumes/Data/Homes"]);
-    allowed(&mac, &["/Volumes/Data/Homes/sam/Downloads/x", "/Volumes/Data/Homes/sam/Library/Caches/x"]);
+    refused(
+        &mac,
+        &[
+            "/Volumes/Data/Homes/sam",
+            "/Volumes/Data/Homes/sam/Documents",
+            "/Volumes/Data/Homes/sam/Library/Preferences/x",
+            "/Volumes/Data/Homes",
+        ],
+    );
+    allowed(
+        &mac,
+        &[
+            "/Volumes/Data/Homes/sam/Downloads/x",
+            "/Volumes/Data/Homes/sam/Library/Caches/x",
+        ],
+    );
 
     let win = Policy::new(Platform::Windows, &[r"D:\Profiles\sam"]).unwrap();
-    refused(&win, &[r"D:\Profiles\sam", r"D:\Profiles\sam\AppData\Roaming\x", r"D:\Profiles\sam\Documents", r"D:\Profiles"]);
-    allowed(&win, &[r"D:\Profiles\sam\Downloads\x", r"D:\Profiles\sam\AppData\Local\Temp\x"]);
+    refused(
+        &win,
+        &[
+            r"D:\Profiles\sam",
+            r"D:\Profiles\sam\AppData\Roaming\x",
+            r"D:\Profiles\sam\Documents",
+            r"D:\Profiles",
+        ],
+    );
+    allowed(
+        &win,
+        &[
+            r"D:\Profiles\sam\Downloads\x",
+            r"D:\Profiles\sam\AppData\Local\Temp\x",
+        ],
+    );
 
     assert!(Policy::new(Platform::MacOs, &["relative/home"]).is_err());
     assert!(Policy::new(Platform::Windows, &[r"C:\"]).is_err());
@@ -278,14 +360,23 @@ fn protect_adds_a_folder_and_nothing_can_remove_one() {
     let mut p = linux();
     assert!(p.check_str("/home/sam/apps/strata/history.sqlite").is_ok());
     p.protect("/home/sam/apps/strata").unwrap();
-    refused(&p, &["/home/sam/apps/strata", "/home/sam/apps/strata/history.sqlite", "/home/sam/apps"]);
+    refused(
+        &p,
+        &[
+            "/home/sam/apps/strata",
+            "/home/sam/apps/strata/history.sqlite",
+            "/home/sam/apps",
+        ],
+    );
     assert_eq!(p.protect("/"), Err(Reason::VolumeRoot));
     assert_eq!(p.protect("not/absolute"), Err(Reason::NotAbsolute));
 }
 
 #[test]
 fn refusals_explain_themselves() {
-    let r = mac().check_str("/Users/sam/Library/Preferences/x").unwrap_err();
+    let r = mac()
+        .check_str("/Users/sam/Library/Preferences/x")
+        .unwrap_err();
     assert_eq!(r.rule.as_deref(), Some("/Users/*/Library"));
     assert!(r.to_string().contains("needed by the system"));
 }
@@ -314,7 +405,13 @@ fn patterns(platform: Platform) -> Vec<(Vec<String>, Kind)> {
             None => vec![pattern.to_string()],
         };
         for e in expanded {
-            out.push((e.split('/').filter(|s| !s.is_empty()).map(String::from).collect(), *kind));
+            out.push((
+                e.split('/')
+                    .filter(|s| !s.is_empty())
+                    .map(String::from)
+                    .collect(),
+                *kind,
+            ));
         }
     }
     out
@@ -358,17 +455,31 @@ fn inside_an_open_rule(path_parts: &[String], platform: Platform) -> bool {
     patterns(platform).iter().any(|(parts, kind)| {
         *kind == Kind::Open
             && parts.len() < path_parts.len()
-            && parts.iter().zip(path_parts).all(|(p, n)| pattern_part_matches(p, n, platform))
+            && parts
+                .iter()
+                .zip(path_parts)
+                .all(|(p, n)| pattern_part_matches(p, n, platform))
     })
 }
 
 fn split(path: &str, platform: Platform) -> Vec<String> {
-    let seps: &[char] = if platform == Platform::Windows { &['\\', '/'] } else { &['/'] };
-    path.split(seps).filter(|s| !s.is_empty()).map(String::from).collect()
+    let seps: &[char] = if platform == Platform::Windows {
+        &['\\', '/']
+    } else {
+        &['/']
+    };
+    path.split(seps)
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect()
 }
 
 fn any_platform() -> impl Strategy<Value = Platform> {
-    prop_oneof![Just(Platform::MacOs), Just(Platform::Windows), Just(Platform::Linux)]
+    prop_oneof![
+        Just(Platform::MacOs),
+        Just(Platform::Windows),
+        Just(Platform::Linux)
+    ]
 }
 
 /// Names a file could plausibly have, weighted towards troublesome ones.

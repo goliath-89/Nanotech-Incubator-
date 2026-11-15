@@ -223,11 +223,19 @@ impl Policy {
     /// list, their home folder wherever it is, and Strata's own files.
     pub fn for_current_user() -> Result<Policy, Reason> {
         let platform = Platform::current();
-        let home = std::env::var_os(if platform == Platform::Windows { "USERPROFILE" } else { "HOME" });
+        let home = std::env::var_os(if platform == Platform::Windows {
+            "USERPROFILE"
+        } else {
+            "HOME"
+        });
         let home = home.map(|h| h.to_string_lossy().into_owned());
         let extra: Vec<&str> = home.iter().map(String::as_str).collect();
         let mut policy = Policy::new(platform, &extra)?;
-        if let Some(folder) = std::env::current_exe().ok().as_deref().and_then(Path::parent) {
+        if let Some(folder) = std::env::current_exe()
+            .ok()
+            .as_deref()
+            .and_then(Path::parent)
+        {
             // Strata must never remove itself. A build run from an odd place
             // (a volume root, say) is covered by the other rules.
             let _ = policy.protect(&folder.to_string_lossy());
@@ -312,10 +320,17 @@ impl Policy {
         if self.platform == Platform::MacOs {
             let last = path.parts.len() - 1;
             for (i, part) in path.parts.iter().enumerate() {
-                if rules::MACOS_PROGRAM_SUFFIXES.iter().any(|s| part.ends_with(s)) {
+                if rules::MACOS_PROGRAM_SUFFIXES
+                    .iter()
+                    .any(|s| part.ends_with(s))
+                {
                     return Err(Reason::InsideApplication.into());
                 }
-                if i < last && rules::MACOS_PACKAGE_SUFFIXES.iter().any(|s| part.ends_with(s)) {
+                if i < last
+                    && rules::MACOS_PACKAGE_SUFFIXES
+                        .iter()
+                        .any(|s| part.ends_with(s))
+                {
                     return Err(Reason::InsidePackage.into());
                 }
             }
@@ -335,10 +350,17 @@ fn parse_pattern(pattern: &str, platform: Platform) -> (char, Vec<String>) {
     let mut pieces = pattern.split('/');
     let first = pieces.next().unwrap_or("");
     let root = match first.strip_suffix(':') {
-        Some(drive) => drive.chars().next().map(|c| c.to_ascii_lowercase()).unwrap_or('*'),
+        Some(drive) => drive
+            .chars()
+            .next()
+            .map(|c| c.to_ascii_lowercase())
+            .unwrap_or('*'),
         None => '/',
     };
-    let parts = pieces.filter(|p| !p.is_empty()).map(|p| fold(p, platform)).collect();
+    let parts = pieces
+        .filter(|p| !p.is_empty())
+        .map(|p| fold(p, platform))
+        .collect();
     (root, parts)
 }
 

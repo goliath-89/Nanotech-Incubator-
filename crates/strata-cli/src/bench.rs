@@ -15,20 +15,31 @@ pub fn make_tree(root: &Path, files: u64) -> std::io::Result<()> {
         return Err(std::io::Error::other("the folder exists and is not empty"));
     }
     fs::create_dir_all(root)?;
-    let workers = std::thread::available_parallelism().map(|n| n.get() as u64).unwrap_or(4).min(16);
+    let workers = std::thread::available_parallelism()
+        .map(|n| n.get() as u64)
+        .unwrap_or(4)
+        .min(16);
     let started = Instant::now();
     std::thread::scope(|scope| {
         let handles: Vec<_> = (0..workers)
             .map(|w| scope.spawn(move || make_share(root, files, w, workers)))
             .collect();
-        handles.into_iter().try_for_each(|h| h.join().expect("worker panicked"))
+        handles
+            .into_iter()
+            .try_for_each(|h| h.join().expect("worker panicked"))
     })?;
-    println!("Created {files} files under {} in {:.1} s", root.display(), started.elapsed().as_secs_f64());
+    println!(
+        "Created {files} files under {} in {:.1} s",
+        root.display(),
+        started.elapsed().as_secs_f64()
+    );
     Ok(())
 }
 
 fn make_share(root: &Path, files: u64, worker: u64, workers: u64) -> std::io::Result<()> {
-    const EXTENSIONS: [&str; 12] = ["jpg", "mp4", "txt", "pdf", "js", "json", "png", "dll", "log", "bin", "mov", "db"];
+    const EXTENSIONS: [&str; 12] = [
+        "jpg", "mp4", "txt", "pdf", "js", "json", "png", "dll", "log", "bin", "mov", "db",
+    ];
     let page = [0x5Au8; 4096];
     let mut current_dir = PathBuf::new();
     let mut i = worker;
@@ -48,7 +59,7 @@ fn make_share(root: &Path, files: u64, worker: u64, workers: u64) -> std::io::Re
         let path = current_dir.join(format!("f{i}.{}", EXTENSIONS[(mix % 12) as usize]));
         let mut file = fs::File::create(&path)?;
         match mix % 100 {
-            0..=59 => {}                                  // empty
+            0..=59 => {}                                                // empty
             60..=94 => file.write_all(&page[..(mix % 4096) as usize])?, // under one block
             95..=98 => file.write_all(&page)?,
             _ => file.set_len(2 * 1024 * 1024 + mix % 65_536)?, // large, sparse where supported
@@ -63,9 +74,17 @@ pub fn bench(root: &Path, runs: usize) -> std::io::Result<()> {
     let mut times: Vec<f64> = Vec::new();
     let mut summary = (0u64, 0u64, 0u64);
     for run in 1..=runs.max(1) {
-        let tree = scan(&ScanOptions::new(root), &KindClassifier, &ScanControl::new())?;
+        let tree = scan(
+            &ScanOptions::new(root),
+            &KindClassifier,
+            &ScanControl::new(),
+        )?;
         let secs = tree.stats.elapsed_ms as f64 / 1000.0;
-        summary = (tree.root().file_count, tree.root().dir_count, tree.root().alloc_bytes);
+        summary = (
+            tree.root().file_count,
+            tree.root().dir_count,
+            tree.root().alloc_bytes,
+        );
         println!("run {run}: {secs:.2} s");
         times.push(secs);
     }
@@ -73,8 +92,14 @@ pub fn bench(root: &Path, runs: usize) -> std::io::Result<()> {
     let best = times[0];
     let median = times[times.len() / 2];
     let (files, dirs, bytes) = summary;
-    println!("{files} files, {dirs} folders, {:.1} GB on disk", bytes as f64 / 1e9);
-    println!("best {best:.2} s, median {median:.2} s, {:.0} files/s at best", files as f64 / best.max(0.001));
+    println!(
+        "{files} files, {dirs} folders, {:.1} GB on disk",
+        bytes as f64 / 1e9
+    );
+    println!(
+        "best {best:.2} s, median {median:.2} s, {:.0} files/s at best",
+        files as f64 / best.max(0.001)
+    );
     match peak_memory_mb() {
         Some(mb) => println!("peak memory {mb:.0} MB"),
         None => println!("peak memory: not measured on this system"),
@@ -83,7 +108,9 @@ pub fn bench(root: &Path, runs: usize) -> std::io::Result<()> {
     println!(
         "RESULT os={} files={files} dirs={dirs} best_s={best:.2} median_s={median:.2} peak_mb={}",
         std::env::consts::OS,
-        peak_memory_mb().map(|m| format!("{m:.0}")).unwrap_or_else(|| "na".into())
+        peak_memory_mb()
+            .map(|m| format!("{m:.0}"))
+            .unwrap_or_else(|| "na".into())
     );
     Ok(())
 }

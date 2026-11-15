@@ -98,9 +98,14 @@ impl RuleSet {
                 ),
             };
             let mut paths = Vec::new();
-            for (list, role) in [(&a.app, Role::App), (&a.data, Role::Data), (&a.cache, Role::Cache)] {
+            for (list, role) in [
+                (&a.app, Role::App),
+                (&a.data, Role::Data),
+                (&a.cache, Role::Cache),
+            ] {
                 for pattern in list {
-                    validate_pattern(pattern).map_err(|why| format!("{}: {pattern:?} {why}", a.name))?;
+                    validate_pattern(pattern)
+                        .map_err(|why| format!("{}: {pattern:?} {why}", a.name))?;
                     paths.push((pattern.clone(), role));
                 }
             }
@@ -146,7 +151,9 @@ fn validate_pattern(pattern: &str) -> Result<(), &'static str> {
         return Err("must not contain . or ..");
     }
     // `Name*`, `*.ext` or `*`: one star, at one end.
-    if parts.iter().any(|p| p.matches('*').count() > 1 || (p.contains('*') && !p.starts_with('*') && !p.ends_with('*'))) {
+    if parts.iter().any(|p| {
+        p.matches('*').count() > 1 || (p.contains('*') && !p.starts_with('*') && !p.ends_with('*'))
+    }) {
         return Err("may only use one * per folder name, at its start or end");
     }
     // A rule must name something specific: at least two real folder names

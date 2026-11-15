@@ -123,7 +123,10 @@ fn parse_windows(text: &str) -> Result<Parsed, Reason> {
             return Err(Reason::UnusualPath);
         }
         // A colon selects an alternate data stream; the rest are never legal in names.
-        if part.chars().any(|c| matches!(c, ':' | '<' | '>' | '"' | '|' | '?' | '*') || c.is_control()) {
+        if part
+            .chars()
+            .any(|c| matches!(c, ':' | '<' | '>' | '"' | '|' | '?' | '*') || c.is_control())
+        {
             return Err(Reason::UnusualPath);
         }
         // `PROGRA~1` is another name for `Program Files`. The real name cannot
@@ -141,5 +144,7 @@ fn parse_windows(text: &str) -> Result<Parsed, Reason> {
 
 fn looks_like_short_name(part: &str) -> bool {
     let bytes = part.as_bytes();
-    bytes.windows(2).any(|w| w[0] == b'~' && w[1].is_ascii_digit())
+    bytes
+        .windows(2)
+        .any(|w| w[0] == b'~' && w[1].is_ascii_digit())
 }

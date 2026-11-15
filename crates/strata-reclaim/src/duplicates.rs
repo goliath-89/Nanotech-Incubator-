@@ -74,13 +74,20 @@ struct Candidate {
 /// 64 KiB, then by a hash of everything. Only the last step proves equality,
 /// and only files that survive the cheaper steps pay for it. A file that
 /// changed since the scan, or cannot be read, is left out.
-pub fn find_duplicates(tree: &ScanTree, policy: &Policy, ctl: &DuplicateControl) -> Vec<DuplicateGroup> {
+pub fn find_duplicates(
+    tree: &ScanTree,
+    policy: &Policy,
+    ctl: &DuplicateControl,
+) -> Vec<DuplicateGroup> {
     let mut by_len: HashMap<u64, Vec<Candidate>> = HashMap::new();
     for f in &tree.files {
         // Only the user's own material. Identical files inside apps, games,
         // developer tools, caches and the system are there on purpose, and
         // removing one "spare" would break whatever installed it.
-        let personal = matches!(f.kind, Kind::Videos | Kind::Photos | Kind::Music | Kind::Documents | Kind::Other);
+        let personal = matches!(
+            f.kind,
+            Kind::Videos | Kind::Photos | Kind::Music | Kind::Documents | Kind::Other
+        );
         if f.logical_bytes == 0 || !personal {
             continue;
         }
@@ -121,14 +128,20 @@ pub fn find_duplicates(tree: &ScanTree, policy: &Policy, ctl: &DuplicateControl)
                 })
                 .collect();
             files.sort_by(|a, b| {
-                (a.removable, a.path.components().count(), &a.path).cmp(&(b.removable, b.path.components().count(), &b.path))
+                (a.removable, a.path.components().count(), &a.path).cmp(&(
+                    b.removable,
+                    b.path.components().count(),
+                    &b.path,
+                ))
             });
             let group = DuplicateGroup { alloc_bytes, files };
             (group.reclaimable_bytes() > 0).then_some(group)
         })
         .collect();
     groups.sort_by(|a, b| {
-        b.reclaimable_bytes().cmp(&a.reclaimable_bytes()).then_with(|| a.files[0].path.cmp(&b.files[0].path))
+        b.reclaimable_bytes()
+            .cmp(&a.reclaimable_bytes())
+            .then_with(|| a.files[0].path.cmp(&b.files[0].path))
     });
     groups
 }

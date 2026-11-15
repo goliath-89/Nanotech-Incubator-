@@ -138,12 +138,27 @@ fn folder_totals_are_consistent() {
         if let Some(p) = d.parent {
             assert!((p as usize) < i, "parents come before children");
         }
-        let below: u64 = d.children.iter().map(|&c| tree.dirs[c as usize].alloc_bytes).sum();
+        let below: u64 = d
+            .children
+            .iter()
+            .map(|&c| tree.dirs[c as usize].alloc_bytes)
+            .sum();
         assert!(d.alloc_bytes >= below + d.own_files_alloc);
-        let files_below: u64 = d.children.iter().map(|&c| tree.dirs[c as usize].file_count).sum();
+        let files_below: u64 = d
+            .children
+            .iter()
+            .map(|&c| tree.dirs[c as usize].file_count)
+            .sum();
         assert_eq!(d.file_count, files_below + d.own_file_count);
-        let names: Vec<_> = d.children.iter().map(|&c| &tree.dirs[c as usize].name).collect();
-        assert!(names.windows(2).all(|w| w[0] < w[1]), "children sorted by name");
+        let names: Vec<_> = d
+            .children
+            .iter()
+            .map(|&c| &tree.dirs[c as usize].name)
+            .collect();
+        assert!(
+            names.windows(2).all(|w| w[0] < w[1]),
+            "children sorted by name"
+        );
     }
     // Every file byte is in exactly one kind bucket.
     let own_files: u64 = tree.dirs.iter().map(|d| d.own_files_alloc).sum();
@@ -158,9 +173,22 @@ fn results_are_identical_across_runs_and_thread_counts() {
         let mut opts = ScanOptions::new(tmp.path());
         opts.threads = threads;
         let t = scan(&opts, &NoClassify, &ScanControl::new()).unwrap();
-        let dirs: Vec<_> = t.dirs.iter().map(|d| (d.name.clone(), d.alloc_bytes, d.file_count)).collect();
-        let files: Vec<_> = t.files.iter().map(|f| (f.dir, f.name.clone(), f.alloc_bytes)).collect();
-        (dirs, files, t.stats.hardlink_duplicates, t.stats.hardlink_saved_bytes)
+        let dirs: Vec<_> = t
+            .dirs
+            .iter()
+            .map(|d| (d.name.clone(), d.alloc_bytes, d.file_count))
+            .collect();
+        let files: Vec<_> = t
+            .files
+            .iter()
+            .map(|f| (f.dir, f.name.clone(), f.alloc_bytes))
+            .collect();
+        (
+            dirs,
+            files,
+            t.stats.hardlink_duplicates,
+            t.stats.hardlink_saved_bytes,
+        )
     };
     let first = fingerprint(1);
     for threads in [2, 8, 8, 8] {
@@ -181,15 +209,31 @@ fn hard_linked_file_is_counted_once_in_the_first_folder() {
     let size = fs::metadata(&original).unwrap().blocks() * 512;
 
     let tree = run(tmp.path());
-    let dir = |name: &str| tree.dirs.iter().find(|d| d.name == OsStr::new(name)).unwrap();
-    assert_eq!(dir("a").own_files_alloc, size, "first folder in tree order owns the bytes");
+    let dir = |name: &str| {
+        tree.dirs
+            .iter()
+            .find(|d| d.name == OsStr::new(name))
+            .unwrap()
+    };
+    assert_eq!(
+        dir("a").own_files_alloc,
+        size,
+        "first folder in tree order owns the bytes"
+    );
     assert_eq!(dir("b").own_files_alloc, 0);
     assert_eq!(dir("c").own_files_alloc, 0);
-    assert_eq!(tree.root().file_count, 3, "every link is still listed as an entry");
+    assert_eq!(
+        tree.root().file_count,
+        3,
+        "every link is still listed as an entry"
+    );
     assert_eq!(tree.stats.hardlink_duplicates, 2);
     assert_eq!(tree.stats.hardlink_saved_bytes, 2 * size);
     assert_eq!(tree.files.len(), 1, "listed once among the largest files");
-    assert_eq!(tree.file_path(&tree.files[0]), tmp.path().join("a/z-link.bin"));
+    assert_eq!(
+        tree.file_path(&tree.files[0]),
+        tmp.path().join("a/z-link.bin")
+    );
     assert_eq!(scanned(&tree), reference(tmp.path()));
 }
 
@@ -206,7 +250,11 @@ fn symbolic_links_are_not_followed() {
 
     let tree = run(tmp.path());
     assert_eq!(tree.root().dir_count, 1);
-    assert_eq!(tree.root().file_count, 3, "links count as entries, not as their targets");
+    assert_eq!(
+        tree.root().file_count,
+        3,
+        "links count as entries, not as their targets"
+    );
     assert!(tree.root().alloc_bytes < 1_000_000);
     assert_eq!(tree.stats.error_count, 0);
 }
@@ -217,7 +265,10 @@ fn sparse_file_counts_what_is_on_disk() {
     let f = File::create(tmp.path().join("sparse.img")).unwrap();
     f.set_len(200 * 1024 * 1024).unwrap();
     drop(f);
-    let on_disk = fs::metadata(tmp.path().join("sparse.img")).unwrap().blocks() * 512;
+    let on_disk = fs::metadata(tmp.path().join("sparse.img"))
+        .unwrap()
+        .blocks()
+        * 512;
     if on_disk >= 200 * 1024 * 1024 {
         return; // this file system does not do sparse files
     }
@@ -246,7 +297,10 @@ fn odd_names_survive() {
     let tree = run(tmp.path());
     assert_eq!(scanned(&tree), reference(tmp.path()));
     for f in &tree.files {
-        assert!(tree.file_path(f).exists(), "rebuilt path points at the real file");
+        assert!(
+            tree.file_path(f).exists(),
+            "rebuilt path points at the real file"
+        );
     }
 }
 
@@ -283,31 +337,61 @@ fn unreadable_folder_is_reported_not_dropped() {
     if !blocked {
         return;
     }
-    let d = tree.dirs.iter().find(|d| d.name == OsStr::new("locked")).unwrap();
+    let d = tree
+        .dirs
+        .iter()
+        .find(|d| d.name == OsStr::new("locked"))
+        .unwrap();
     assert!(d.flags.unreadable && d.flags.not_scanned());
     assert_eq!(tree.stats.error_count, 1);
     assert_eq!(tree.errors[0].path, locked);
-    assert_eq!(tree.errors[0].kind, strata_core::ScanErrorKind::PermissionDenied);
-    assert_eq!(tree.root().file_count, 1, "the readable file is still counted");
+    assert_eq!(
+        tree.errors[0].kind,
+        strata_core::ScanErrorKind::PermissionDenied
+    );
+    assert_eq!(
+        tree.root().file_count,
+        1,
+        "the readable file is still counted"
+    );
 }
 
 #[test]
 fn largest_files_list_respects_threshold_and_cap() {
     let tmp = tempfile::tempdir().unwrap();
-    for (i, size) in [5_000_000, 3_000_000, 4_000_000, 2_000_000, 10_000].iter().enumerate() {
+    for (i, size) in [5_000_000, 3_000_000, 4_000_000, 2_000_000, 10_000]
+        .iter()
+        .enumerate()
+    {
         write(&tmp.path().join(format!("f{i}")), *size);
     }
     let mut opts = ScanOptions::new(tmp.path());
     opts.min_file_bytes = 1_000_000;
     let tree = scan(&opts, &NoClassify, &ScanControl::new()).unwrap();
-    let names: Vec<_> = tree.files.iter().map(|f| f.name.to_str().unwrap()).collect();
-    assert_eq!(names, ["f0", "f2", "f1", "f3"], "biggest first, small file left out");
+    let names: Vec<_> = tree
+        .files
+        .iter()
+        .map(|f| f.name.to_str().unwrap())
+        .collect();
+    assert_eq!(
+        names,
+        ["f0", "f2", "f1", "f3"],
+        "biggest first, small file left out"
+    );
 
     opts.max_files = 2;
     let tree = scan(&opts, &NoClassify, &ScanControl::new()).unwrap();
-    let names: Vec<_> = tree.files.iter().map(|f| f.name.to_str().unwrap()).collect();
+    let names: Vec<_> = tree
+        .files
+        .iter()
+        .map(|f| f.name.to_str().unwrap())
+        .collect();
     assert_eq!(names, ["f0", "f2"]);
-    assert_eq!(tree.root().file_count, 5, "the cap never changes the totals");
+    assert_eq!(
+        tree.root().file_count,
+        5,
+        "the cap never changes the totals"
+    );
 }
 
 #[test]
@@ -321,7 +405,11 @@ fn excluded_folder_is_not_entered() {
     opts.excludes = vec![tmp.path().join("skip")];
     let tree = scan(&opts, &NoClassify, &ScanControl::new()).unwrap();
     assert_eq!(tree.root().file_count, 1);
-    let skip = tree.dirs.iter().find(|d| d.name == OsStr::new("skip")).unwrap();
+    let skip = tree
+        .dirs
+        .iter()
+        .find(|d| d.name == OsStr::new("skip"))
+        .unwrap();
     assert!(skip.flags.excluded && skip.children.is_empty());
 }
 
@@ -373,12 +461,24 @@ fn classifier_decides_kind_totals() {
     write(&tmp.path().join("Caches/thumb.jpg"), 40_000);
     let on_disk = |p: &str| fs::metadata(tmp.path().join(p)).unwrap().blocks() * 512;
 
-    let tree = scan(&ScanOptions::new(tmp.path()), &ByExtension, &ScanControl::new()).unwrap();
+    let tree = scan(
+        &ScanOptions::new(tmp.path()),
+        &ByExtension,
+        &ScanControl::new(),
+    )
+    .unwrap();
     let kinds = tree.root().kind_bytes;
-    assert_eq!(kinds[Kind::Videos as usize], on_disk("a.mp4") + on_disk("sub/b.mp4"));
+    assert_eq!(
+        kinds[Kind::Videos as usize],
+        on_disk("a.mp4") + on_disk("sub/b.mp4")
+    );
     assert_eq!(kinds[Kind::Photos as usize], on_disk("sub/c.jpg"));
     assert_eq!(kinds[Kind::Other as usize], on_disk("notes.txt"));
-    assert_eq!(kinds[Kind::Caches as usize], on_disk("Caches/thumb.jpg"), "the folder's kind wins over the name");
+    assert_eq!(
+        kinds[Kind::Caches as usize],
+        on_disk("Caches/thumb.jpg"),
+        "the folder's kind wins over the name"
+    );
     assert_eq!(tree.files.len(), 0);
 }
 

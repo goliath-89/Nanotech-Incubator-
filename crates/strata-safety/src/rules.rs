@@ -157,7 +157,10 @@ pub(crate) const WINDOWS: &[(&str, Kind)] = &[
     ("~/AppData/Local/Google/Chrome/User Data/*/Cache", Open),
     ("~/AppData/Local/Google/Chrome/User Data/*/Code Cache", Open),
     ("~/AppData/Local/Microsoft/Edge/User Data/*/Cache", Open),
-    ("~/AppData/Local/Microsoft/Edge/User Data/*/Code Cache", Open),
+    (
+        "~/AppData/Local/Microsoft/Edge/User Data/*/Code Cache",
+        Open,
+    ),
     ("~/AppData/Local/Mozilla/Firefox/Profiles/*/cache2", Open),
     ("~/AppData/Local/npm-cache", Open),
     ("~/AppData/Local/pip/Cache", Open),
@@ -224,14 +227,39 @@ pub(crate) const LINUX_HOMES: &[&str] = &["/home/*", "/root"];
 /// macOS folders that are really programs. Neither they nor anything inside
 /// them may be moved, wherever they are.
 pub(crate) const MACOS_PROGRAM_SUFFIXES: &[&str] = &[
-    ".app", ".framework", ".kext", ".appex", ".xpc", ".bundle", ".plugin", ".prefpane",
-    ".systemextension", ".dext",
+    ".app",
+    ".framework",
+    ".kext",
+    ".appex",
+    ".xpc",
+    ".bundle",
+    ".plugin",
+    ".prefpane",
+    ".systemextension",
+    ".dext",
 ];
 
 /// macOS folders that are really one document or library. The whole thing is
 /// the user's to move; pulling pieces out of it would corrupt it.
 pub(crate) const MACOS_PACKAGE_SUFFIXES: &[&str] = &[
-    ".photoslibrary", ".fcpbundle", ".musiclibrary", ".tvlibrary", ".imovielibrary", ".aplibrary",
-    ".sparsebundle", ".logicx", ".band", ".photolibrary", ".lrdata", ".xcodeproj", ".xcworkspace",
-    ".rtfd", ".pages", ".numbers", ".key", ".vmwarevm", ".pvm", ".utm",
+    ".photoslibrary",
+    ".fcpbundle",
+    ".musiclibrary",
+    ".tvlibrary",
+    ".imovielibrary",
+    ".aplibrary",
+    ".sparsebundle",
+    ".logicx",
+    ".band",
+    ".photolibrary",
+    ".lrdata",
+    ".xcodeproj",
+    ".xcworkspace",
+    ".rtfd",
+    ".pages",
+    ".numbers",
+    ".key",
+    ".vmwarevm",
+    ".pvm",
+    ".utm",
 ];

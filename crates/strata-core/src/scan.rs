@@ -123,7 +123,11 @@ impl Ctx<'_> {
 ///
 /// Fails only when the root itself cannot be read. Problems further down are
 /// recorded in the result and the scan carries on.
-pub fn scan(opts: &ScanOptions, classify: &dyn Classify, ctl: &ScanControl) -> io::Result<ScanTree> {
+pub fn scan(
+    opts: &ScanOptions,
+    classify: &dyn Classify,
+    ctl: &ScanControl,
+) -> io::Result<ScanTree> {
     let started = Instant::now();
     let root = platform::root_ctx(&opts.root)?;
     // Listing the root must work, or there is nothing to show.
@@ -208,7 +212,11 @@ fn scan_dir(ctx: &Ctx, path: PathBuf, name: OsString, dir_alloc: u64) -> RawDir 
                 flags.excluded = true;
             }
             // A folder on another file system takes no space on this one.
-            let own = if flags.other_filesystem { 0 } else { info.alloc };
+            let own = if flags.other_filesystem {
+                0
+            } else {
+                info.alloc
+            };
             bytes_here += own;
             subdirs.push((sub_path, entry_name, own, flags));
             continue;

@@ -98,7 +98,10 @@ fn main() -> ExitCode {
         (Some("history"), Some(file)) => report(history(&PathBuf::from(file))),
         (Some("growth"), Some(file)) => report(growth(&PathBuf::from(file))),
         (Some("make-tree"), Some(folder)) => {
-            let files = argv.next().and_then(|n| n.to_str().and_then(|s| s.replace(['_', ','], "").parse().ok()));
+            let files = argv.next().and_then(|n| {
+                n.to_str()
+                    .and_then(|s| s.replace(['_', ','], "").parse().ok())
+            });
             match files {
                 Some(files) => report_io(bench::make_tree(&PathBuf::from(folder), files)),
                 None => {
@@ -108,7 +111,10 @@ fn main() -> ExitCode {
             }
         }
         (Some("bench"), Some(folder)) => {
-            let runs = argv.next().and_then(|n| n.to_str().and_then(|s| s.parse().ok())).unwrap_or(3);
+            let runs = argv
+                .next()
+                .and_then(|n| n.to_str().and_then(|s| s.parse().ok()))
+                .unwrap_or(3);
             report_io(bench::bench(&PathBuf::from(folder), runs))
         }
         _ => {
@@ -160,8 +166,15 @@ fn growth(file: &std::path::Path) -> Result<(), strata_store::StoreError> {
         println!("No scans saved yet.");
         return Ok(());
     };
-    let Some(previous) = scans.iter().skip(1).find(|s| s.volume_id == newest.volume_id) else {
-        println!("Only one scan of {} so far; scan again later to see changes.", newest.root.display());
+    let Some(previous) = scans
+        .iter()
+        .skip(1)
+        .find(|s| s.volume_id == newest.volume_id)
+    else {
+        println!(
+            "Only one scan of {} so far; scan again later to see changes.",
+            newest.root.display()
+        );
         return Ok(());
     };
     println!(
@@ -174,7 +187,11 @@ fn growth(file: &std::path::Path) -> Result<(), strata_store::StoreError> {
     );
     for row in store.diff(previous.id, newest.id, 20)? {
         let sign = if row.delta() >= 0 { '+' } else { '-' };
-        let name = if row.path.is_empty() { "(whole scan)" } else { &row.path };
+        let name = if row.path.is_empty() {
+            "(whole scan)"
+        } else {
+            &row.path
+        };
         println!("{sign}{:>10}  {}", human(row.delta().unsigned_abs()), name);
     }
     Ok(())
@@ -265,7 +282,10 @@ fn run_scan() -> ExitCode {
 }
 
 /// Scan a whole NTFS volume from its file table.
-fn fast_scan(volume: &std::path::Path, ctl: &ScanControl) -> Result<ScanTree, strata_mft::MftError> {
+fn fast_scan(
+    volume: &std::path::Path,
+    ctl: &ScanControl,
+) -> Result<ScanTree, strata_mft::MftError> {
     #[cfg(windows)]
     {
         // `C:` or `C:\` names a drive; anything else is taken as an image file.
@@ -274,17 +294,31 @@ fn fast_scan(volume: &std::path::Path, ctl: &ScanControl) -> Result<ScanTree, st
         if let (Some(letter), Some(':'), true) = (chars.next(), chars.next(), text.len() <= 3) {
             let drive = strata_mft::open_drive(letter)?;
             let name = format!("{}:\\", letter.to_ascii_uppercase());
-            return strata_mft::scan_volume(drive, &strata_mft::MftOptions::new(name), &KindClassifier, ctl);
+            return strata_mft::scan_volume(
+                drive,
+                &strata_mft::MftOptions::new(name),
+                &KindClassifier,
+                ctl,
+            );
         }
     }
     let file = std::fs::File::open(volume)?;
-    strata_mft::scan_volume(file, &strata_mft::MftOptions::new(volume.as_os_str()), &KindClassifier, ctl)
+    strata_mft::scan_volume(
+        file,
+        &strata_mft::MftOptions::new(volume.as_os_str()),
+        &KindClassifier,
+        ctl,
+    )
 }
 
 fn print_report(args: &Args, tree: &ScanTree) {
     let root = tree.root();
     let secs = tree.stats.elapsed_ms as f64 / 1000.0;
-    let rate = if secs > 0.0 { root.file_count as f64 / secs } else { 0.0 };
+    let rate = if secs > 0.0 {
+        root.file_count as f64 / secs
+    } else {
+        0.0
+    };
     println!(
         "Scanned {} in {:.2} s: {} files, {} folders ({} files/s)",
         args.root.display(),
@@ -299,7 +333,10 @@ fn print_report(args: &Args, tree: &ScanTree) {
         human(root.logical_bytes)
     );
     if root.cloud_only_bytes > 0 {
-        println!("Cloud-only, not on this disk: {}", human(root.cloud_only_bytes));
+        println!(
+            "Cloud-only, not on this disk: {}",
+            human(root.cloud_only_bytes)
+        );
     }
     if tree.stats.hardlink_duplicates > 0 {
         println!(
@@ -321,7 +358,11 @@ fn print_report(args: &Args, tree: &ScanTree) {
         println!(
             "Not scanned: {} items could not be read{}",
             group(tree.stats.error_count),
-            if args.errors { "" } else { " (--errors lists them)" }
+            if args.errors {
+                ""
+            } else {
+                " (--errors lists them)"
+            }
         );
     }
     if tree.stats.cancelled {
@@ -329,7 +370,11 @@ fn print_report(args: &Args, tree: &ScanTree) {
     }
     if let Ok(v) = volume_usage(&args.root) {
         let used = v.used_bytes();
-        let share = if used > 0 { root.alloc_bytes as f64 / used as f64 * 100.0 } else { 0.0 };
+        let share = if used > 0 {
+            root.alloc_bytes as f64 / used as f64 * 100.0
+        } else {
+            0.0
+        };
         println!(
             "Volume: {} used of {}; this scan covers {:.1}% of the used space",
             human(used),
@@ -338,12 +383,20 @@ fn print_report(args: &Args, tree: &ScanTree) {
         );
     }
 
-    let mut kinds: Vec<(Kind, u64)> = Kind::ALL.iter().map(|&k| (k, root.kind_bytes[k as usize])).collect();
+    let mut kinds: Vec<(Kind, u64)> = Kind::ALL
+        .iter()
+        .map(|&k| (k, root.kind_bytes[k as usize]))
+        .collect();
     kinds.sort_by_key(|&(_, bytes)| std::cmp::Reverse(bytes));
     let file_bytes: u64 = kinds.iter().map(|&(_, b)| b).sum();
     println!("\nBy kind");
     for (kind, bytes) in kinds.into_iter().filter(|&(_, b)| b > 0) {
-        println!("{:>10}  {:>5.1}%  {}", human(bytes), percent(bytes, file_bytes), kind.name());
+        println!(
+            "{:>10}  {:>5.1}%  {}",
+            human(bytes),
+            percent(bytes, file_bytes),
+            kind.name()
+        );
     }
 
     if let Some(env) = Env::current() {
@@ -398,7 +451,11 @@ fn print_report(args: &Args, tree: &ScanTree) {
     if !tree.files.is_empty() {
         println!("\nLargest files");
         for f in tree.files.iter().take(args.top) {
-            println!("{:>10}  {}", human(f.alloc_bytes), tree.file_path(f).display());
+            println!(
+                "{:>10}  {}",
+                human(f.alloc_bytes),
+                tree.file_path(f).display()
+            );
         }
     }
 
@@ -411,7 +468,10 @@ fn print_report(args: &Args, tree: &ScanTree) {
         for e in &tree.errors {
             println!("  {}: {}", e.path.display(), e.message);
         }
-        let hidden = tree.stats.error_count.saturating_sub(tree.errors.len() as u64);
+        let hidden = tree
+            .stats
+            .error_count
+            .saturating_sub(tree.errors.len() as u64);
         if hidden > 0 {
             println!("  … and {} more", group(hidden));
         }
@@ -421,7 +481,8 @@ fn print_report(args: &Args, tree: &ScanTree) {
 /// Lists only. Removing is the app's job, behind a review step.
 fn print_cleanup(args: &Args, tree: &ScanTree) {
     use strata_reclaim::{find_duplicates, suggest, DuplicateControl, Options, Target};
-    let (Some(env), Ok(policy)) = (Env::current(), strata_safety::Policy::for_current_user()) else {
+    let (Some(env), Ok(policy)) = (Env::current(), strata_safety::Policy::for_current_user())
+    else {
         println!("\nCleanup suggestions need a home folder to be set.");
         return;
     };
@@ -429,23 +490,44 @@ fn print_cleanup(args: &Args, tree: &ScanTree) {
         let attribution = attribute(tree, &RuleSet::builtin(Os::current()), &env);
         let found = suggest(tree, &attribution, &env, &policy, &Options::default());
         let total: u64 = found.iter().map(|s| s.bytes).sum();
-        println!("\nCould be cleaned up: {} in {} items", human(total), found.len());
+        println!(
+            "\nCould be cleaned up: {} in {} items",
+            human(total),
+            found.len()
+        );
         for s in found.iter().take(args.top) {
             let shown = match &s.target {
                 Target::Contents(p) => format!("{} (contents)", p.display()),
                 Target::Item(p) => p.display().to_string(),
             };
-            println!("{:>10}  {}\n            {}", human(s.bytes), shown, s.reason);
+            println!(
+                "{:>10}  {}\n            {}",
+                human(s.bytes),
+                shown,
+                s.reason
+            );
         }
     }
     if args.duplicates {
         let groups = find_duplicates(tree, &policy, &DuplicateControl::new());
         let total: u64 = groups.iter().map(|g| g.reclaimable_bytes()).sum();
-        println!("\nDuplicates: {} in spare copies, {} sets", human(total), groups.len());
+        println!(
+            "\nDuplicates: {} in spare copies, {} sets",
+            human(total),
+            groups.len()
+        );
         for g in groups.iter().take(args.top) {
-            println!("{:>10}  keep  {}", human(g.alloc_bytes), g.files[0].path.display());
+            println!(
+                "{:>10}  keep  {}",
+                human(g.alloc_bytes),
+                g.files[0].path.display()
+            );
             for f in &g.files[1..] {
-                println!("            {}  {}", if f.removable { "spare" } else { "kept " }, f.path.display());
+                println!(
+                    "            {}  {}",
+                    if f.removable { "spare" } else { "kept " },
+                    f.path.display()
+                );
             }
         }
     }

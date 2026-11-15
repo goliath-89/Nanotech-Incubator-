@@ -50,7 +50,8 @@ fn cluster_size(path: &Path) -> Option<u64> {
     let w = wide(path);
     let (mut sectors, mut bytes, mut free, mut total) = (0u32, 0u32, 0u32, 0u32);
     // SAFETY: `w` is NUL-terminated and the four out-pointers are valid u32s.
-    let ok = unsafe { GetDiskFreeSpaceW(w.as_ptr(), &mut sectors, &mut bytes, &mut free, &mut total) };
+    let ok =
+        unsafe { GetDiskFreeSpaceW(w.as_ptr(), &mut sectors, &mut bytes, &mut free, &mut total) };
     let cluster = sectors as u64 * bytes as u64;
     (ok != 0 && cluster > 0).then_some(cluster)
 }
