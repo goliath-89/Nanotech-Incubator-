@@ -16,7 +16,8 @@ cargo run --release -p strata-cli -- scan /path/to/folder
 
 Prints the space used on disk, the largest folders and files, anything it
 could not read, and how the total compares with the operating system's own
-figure for the volume. `--json` prints one line for scripts.
+figure for the volume. `--json` prints one line for scripts. `--save history.sqlite`
+keeps the result; `strata history` and `strata growth` read it back.
 
 ## Develop
 

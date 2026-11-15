@@ -1,14 +1,19 @@
 //! `strata scan <folder>`: run the scanner and print what it found.
+//! `strata history <file>` and `strata growth <file>`: read saved scans.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::Duration;
 use strata_core::{scan, volume_usage, NoClassify, ScanControl, ScanOptions, ScanTree};
+use strata_store::{ScanMeta, Store};
 
 const USAGE: &str = "\
 Usage: strata scan <folder> [options]
+       strata history <file>     List the scans saved in a history file
+       strata growth <file>      What changed between the last two saved scans
 
-Options:
+Options for scan:
+  --save <file>        Add the result to a history file (created if missing)
   --top <n>            How many folders and files to list (default 20)
   --all-filesystems    Also enter other volumes mounted below the folder
   --threads <n>        Worker threads (default: one per CPU core)
@@ -24,15 +29,11 @@ struct Args {
     errors: bool,
     json: bool,
     quiet: bool,
+    save: Option<PathBuf>,
 }
 
 fn parse_args() -> Result<Args, String> {
-    let mut it = std::env::args_os().skip(1);
-    match it.next() {
-        Some(cmd) if cmd == "scan" => {}
-        Some(cmd) if cmd == "--help" || cmd == "-h" => return Err(String::new()),
-        _ => return Err("expected the `scan` command".into()),
-    }
+    let mut it = std::env::args_os().skip(2);
     let mut args = Args {
         root: PathBuf::new(),
         top: 20,
@@ -41,6 +42,7 @@ fn parse_args() -> Result<Args, String> {
         errors: false,
         json: false,
         quiet: false,
+        save: None,
     };
     let mut root = None;
     while let Some(a) = it.next() {
@@ -52,6 +54,9 @@ fn parse_args() -> Result<Args, String> {
         match a.to_str() {
             Some("--top") => args.top = number("--top")?,
             Some("--threads") => args.threads = number("--threads")?,
+            Some("--save") => {
+                args.save = Some(PathBuf::from(it.next().ok_or("--save needs a file name")?))
+            }
             Some("--all-filesystems") => args.all_filesystems = true,
             Some("--errors") => args.errors = true,
             Some("--json") => args.json = true,
@@ -67,6 +72,79 @@ fn parse_args() -> Result<Args, String> {
 }
 
 fn main() -> ExitCode {
+    let mut argv = std::env::args_os().skip(1);
+    let command = argv.next().and_then(|c| c.into_string().ok());
+    match (command.as_deref(), argv.next()) {
+        (Some("scan"), _) => run_scan(),
+        (Some("history"), Some(file)) => report(history(&PathBuf::from(file))),
+        (Some("growth"), Some(file)) => report(growth(&PathBuf::from(file))),
+        _ => {
+            eprintln!("{USAGE}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+fn report(result: Result<(), strata_store::StoreError>) -> ExitCode {
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("strata: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn history(file: &std::path::Path) -> Result<(), strata_store::StoreError> {
+    let store = Store::open(file)?;
+    for s in store.scans(None)? {
+        println!(
+            "#{:<4} {:>10}  {:>12} files  {}{}",
+            s.id,
+            human(s.alloc_bytes),
+            group(s.file_count),
+            s.root.display(),
+            if s.has_tree { "" } else { "  [totals only]" }
+        );
+    }
+    Ok(())
+}
+
+fn growth(file: &std::path::Path) -> Result<(), strata_store::StoreError> {
+    let store = Store::open(file)?;
+    let scans = store.scans(None)?;
+    let Some(newest) = scans.first() else {
+        println!("No scans saved yet.");
+        return Ok(());
+    };
+    let Some(previous) = scans.iter().skip(1).find(|s| s.volume_id == newest.volume_id) else {
+        println!("Only one scan of {} so far; scan again later to see changes.", newest.root.display());
+        return Ok(());
+    };
+    println!(
+        "{}: {} -> {} between scan #{} and #{}",
+        newest.root.display(),
+        human(previous.alloc_bytes),
+        human(newest.alloc_bytes),
+        previous.id,
+        newest.id
+    );
+    for row in store.diff(previous.id, newest.id, 20)? {
+        let sign = if row.delta() >= 0 { '+' } else { '-' };
+        let name = if row.path.is_empty() { "(whole scan)" } else { &row.path };
+        println!("{sign}{:>10}  {}", human(row.delta().unsigned_abs()), name);
+    }
+    Ok(())
+}
+
+fn now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+fn run_scan() -> ExitCode {
     let args = match parse_args() {
         Ok(a) => a,
         Err(msg) => {
@@ -84,6 +162,7 @@ fn main() -> ExitCode {
     let ctl = ScanControl::new();
     let show_progress = !args.quiet && !args.json;
 
+    let started_at = now();
     let done = std::sync::atomic::AtomicBool::new(false);
     let result = std::thread::scope(|s| {
         let (ctl, done) = (&ctl, &done);
@@ -117,6 +196,23 @@ fn main() -> ExitCode {
         print_json(&args, &tree);
     } else {
         print_report(&args, &tree);
+    }
+
+    if let Some(file) = &args.save {
+        // Until volumes get real identities (Day 11), the scanned path stands in.
+        let meta = ScanMeta {
+            volume_id: args.root.to_string_lossy().into_owned(),
+            started_at,
+            finished_at: now(),
+        };
+        match Store::open(file).and_then(|mut s| s.save(&tree, &meta)) {
+            Ok(id) if !args.json => println!("\nSaved as scan #{id} in {}", file.display()),
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("strata: could not save the scan: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
     }
     ExitCode::SUCCESS
 }

@@ -36,6 +36,11 @@ impl Kind {
         Kind::Caches,
     ];
 
+    /// The kind stored as `index`, if there is one.
+    pub fn from_index(index: u8) -> Option<Kind> {
+        Kind::ALL.get(index as usize).copied()
+    }
+
     pub fn name(self) -> &'static str {
         match self {
             Kind::Other => "Other",
@@ -88,7 +93,7 @@ impl DirFlags {
 }
 
 /// One folder. Totals cover the folder and everything below it.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DirNode {
     /// `None` only for the scan root.
     pub parent: Option<u32>,
@@ -117,7 +122,7 @@ pub struct DirNode {
 }
 
 /// One of the largest files, kept individually for the "largest items" list.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileNode {
     /// Index of the folder that holds the file.
     pub dir: u32,
@@ -135,7 +140,7 @@ pub enum ScanErrorKind {
 }
 
 /// Something the scanner could not read.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScanError {
     pub path: PathBuf,
     pub kind: ScanErrorKind,

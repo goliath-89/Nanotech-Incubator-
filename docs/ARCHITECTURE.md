@@ -10,7 +10,7 @@ contract changes.
 | --- | --- | --- |
 | `crates/strata-core` | Walk a folder tree and total what is on disk | Built |
 | `crates/strata-cli` | `strata scan` command for testing and benchmarks | Built |
-| `crates/strata-store` | Save scans and snapshots in SQLite | Day 2 |
+| `crates/strata-store` | Save scans and snapshots in SQLite | Built |
 | `crates/strata-safety` | Protected paths, move to Trash / Recycle Bin | Day 4 |
 | `crates/strata-mft` | Windows fast scan from the NTFS Master File Table | Days 5–6 |
 | `crates/strata-classify` | File kinds and app attribution from rules | Day 7 |
@@ -76,20 +76,37 @@ pub fn scan(opts: &ScanOptions, classify: &dyn Classify, ctl: &ScanControl)
 
 ## strata-store (SQLite)
 
-One database file per user, in the app's data folder.
+One database file per user, in the app's data folder. A scan is saved in one
+transaction: after a crash the file holds the whole scan or none of it. The
+format version is in `PRAGMA user_version`; a file written by a newer version
+is refused, never modified.
 
-| Table | Columns |
+| Table | Holds |
 | --- | --- |
-| `scans` | `id`, `volume_id`, `root`, `started_at`, `finished_at`, `alloc_bytes`, `file_count`, `dir_count`, `error_count`, `cancelled` |
-| `dirs` | `scan_id`, `id`, `parent_id`, `name` (blob, exact OS bytes), `alloc_bytes`, `logical_bytes`, `file_count`, `dir_count`, `kind_bytes` (blob, 10 × u64 LE), `cloud_only_bytes`, `own_files_alloc`, `flags`, `app_id` |
-| `files` | `scan_id`, `dir_id`, `name` (blob), `alloc_bytes`, `logical_bytes`, `kind`, `app_id` |
-| `apps` | `id`, `name`, `bundle_id`, `platform` |
-| `snapshots` | `scan_id`, `path_hash`, `alloc_bytes` (folders to depth 6, for Growth) |
-| `suggestions` | `id`, `scan_id`, `dir_id`, `file_name`, `type`, `reason`, `rebuildable`, `bytes` |
+| `scans` | One row per scan: volume, root, times, totals, `has_tree` |
+| `dirs` | Every folder of a scan, keyed `(scan_id, id)`, same fields as `DirNode`, plus `app_id` |
+| `files` | The largest files, keyed `(scan_id, rank)`, rank 0 = largest, plus `app_id` |
+| `scan_errors` | What could not be read |
+| `snapshots` | Folder sizes to depth 6 and at least 1 MiB, by relative path, for Growth |
+| `apps`, `suggestions` | Empty until the classifier (Day 7) and Reclaim (Day 9) fill them |
 
-API: `save(&ScanTree) -> ScanId`, `load(ScanId) -> ScanTree`,
-`children(ScanId, dir) -> Vec<Row>` (so the UI never loads a whole tree),
-`latest(volume)`, `diff(a, b)` for Growth, `prune(keep_last_n)`.
+Names and paths are stored as the exact bytes the OS gave (UTF-16 LE on
+Windows), never as lossy text. Snapshot paths are display text.
+
+```rust
+Store::open(path) / Store::open_in_memory()
+save(&ScanTree, &ScanMeta) -> ScanId        // ScanMeta: volume_id, started_at, finished_at
+load(ScanId) -> ScanTree                    // identical to what was saved
+scans(Option<volume_id>) / latest(volume_id) / scan_info(ScanId)
+children(ScanId, dir) -> DirListing         // dir, breadcrumb, child folders and large files, largest first
+dir_path(ScanId, dir) / largest_files(ScanId, Option<Kind>, limit) / errors(ScanId)
+diff(before, after, limit) -> Vec<GrowthRow> // biggest change first; a folder and its parents each get a row
+prune(volume_id, keep)                      // older scans keep totals + snapshot, lose folders (has_tree = 0)
+delete(ScanId)
+```
+
+The app calls `children` for each level it draws and never loads a whole
+tree. `load` and `children` on a pruned scan return `StoreError::TreePruned`.
 
 ## Bridge (Tauri commands and events)
 
