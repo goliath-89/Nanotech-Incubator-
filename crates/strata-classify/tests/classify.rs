@@ -108,6 +108,27 @@ fn a_folders_location_decides_before_file_names_do() {
         ("/Windows/System32", Some(Kind::System)),
         ("/Users/sam/Windows/notes", None),
         ("/Users/sam/Library", None),
+        // Ordinary words people use for their own folders are not markers there.
+        ("/Users/sam/Documents/Applications/2026/cover-letter", None),
+        ("/Users/sam/Documents/Temp", None),
+        ("/Users/sam/Pictures/cache", None),
+        ("/Users/sam/Music/Pods", None),
+        ("/Users/sam/Desktop/Program Files", None),
+        ("/Users/sam/OneDrive - Work/tmp", None),
+        ("/home/sam/Videos/Cache", None),
+        // Strong markers still count inside personal folders.
+        (
+            "/Users/sam/Documents/code/app/node_modules",
+            Some(Kind::Developer),
+        ),
+        ("/Users/sam/Documents/Tool.app/Contents", Some(Kind::Apps)),
+        ("/Users/sam/Downloads/steamapps/common", Some(Kind::Games)),
+        // The real programs folders, and real caches outside personal folders.
+        ("/Users/sam/Applications", Some(Kind::Apps)),
+        ("/Applications/Utilities", Some(Kind::Apps)),
+        ("/Users/sam/AppData/Local/Temp/x", Some(Kind::Caches)),
+        ("/Users/sam/code/app/tmp", Some(Kind::Caches)),
+        ("/Volumes/Ext/Backups/Program Files/x", None),
     ];
     for (path, kind) in cases {
         assert_eq!(folder_kind(Path::new(path)), *kind, "{path}");

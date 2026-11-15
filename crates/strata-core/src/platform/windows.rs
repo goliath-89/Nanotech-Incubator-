@@ -1,4 +1,4 @@
-use super::{EntryInfo, RootCtx, VolumeUsage};
+use super::{EntryInfo, RootCtx, Volume, VolumeKind, VolumeUsage};
 use std::fs::{self, DirEntry};
 use std::io;
 use std::os::windows::ffi::OsStrExt;
@@ -6,7 +6,8 @@ use std::os::windows::fs::MetadataExt;
 use std::path::Path;
 use windows_sys::Win32::Foundation::{GetLastError, NO_ERROR};
 use windows_sys::Win32::Storage::FileSystem::{
-    GetCompressedFileSizeW, GetDiskFreeSpaceExW, GetDiskFreeSpaceW, INVALID_FILE_SIZE,
+    GetCompressedFileSizeW, GetDiskFreeSpaceExW, GetDiskFreeSpaceW, GetDriveTypeW,
+    GetLogicalDrives, GetVolumeInformationW, INVALID_FILE_SIZE,
 };
 
 const FILE_ATTRIBUTE_SPARSE_FILE: u32 = 0x0000_0200;
@@ -120,4 +121,87 @@ pub(super) fn volume_usage(path: &Path) -> io::Result<VolumeUsage> {
         free_bytes: free,
         available_bytes: available,
     })
+}
+
+const DRIVE_REMOVABLE: u32 = 2;
+const DRIVE_FIXED: u32 = 3;
+const DRIVE_REMOTE: u32 = 4;
+const DRIVE_RAMDISK: u32 = 6;
+const FILE_READ_ONLY_VOLUME: u32 = 0x0008_0000;
+
+pub(super) fn volumes() -> io::Result<Vec<Volume>> {
+    // SAFETY: no arguments; returns a bit per drive letter, 0 on failure.
+    let letters = unsafe { GetLogicalDrives() };
+    if letters == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    let mut list = Vec::new();
+    for index in 0..26u8 {
+        if letters & (1 << index) == 0 {
+            continue;
+        }
+        let letter = (b'A' + index) as char;
+        let root = format!("{letter}:\\");
+        let root_wide = wide(Path::new(&root));
+        // SAFETY: `root_wide` is NUL-terminated.
+        let kind = match unsafe { GetDriveTypeW(root_wide.as_ptr()) } {
+            DRIVE_FIXED | DRIVE_RAMDISK => VolumeKind::Internal,
+            DRIVE_REMOVABLE => VolumeKind::External,
+            DRIVE_REMOTE => VolumeKind::Network,
+            _ => continue, // optical drives, and letters with nothing behind them
+        };
+        let mut label = [0u16; 261];
+        let mut file_system = [0u16; 261];
+        let (mut serial, mut max_name, mut flags) = (0u32, 0u32, 0u32);
+        // SAFETY: both text buffers are 261 units long as declared, and the
+        // three out-pointers are valid u32s. Fails for a reader with no card.
+        let ok = unsafe {
+            GetVolumeInformationW(
+                root_wide.as_ptr(),
+                label.as_mut_ptr(),
+                label.len() as u32,
+                &mut serial,
+                &mut max_name,
+                &mut flags,
+                file_system.as_mut_ptr(),
+                file_system.len() as u32,
+            )
+        };
+        if ok == 0 {
+            continue;
+        }
+        let Ok(usage) = volume_usage(Path::new(&root)) else {
+            continue;
+        };
+        let from_wide = |buffer: &[u16]| {
+            let end = buffer.iter().position(|c| *c == 0).unwrap_or(buffer.len());
+            String::from_utf16_lossy(&buffer[..end])
+        };
+        let label = from_wide(&label);
+        let name = if !label.is_empty() {
+            label
+        } else {
+            match kind {
+                VolumeKind::Internal => "Local Disk",
+                VolumeKind::External => "Removable Disk",
+                VolumeKind::Network => "Network Drive",
+            }
+            .to_string()
+        };
+        list.push(Volume {
+            // A network share has no serial number of its own to rely on.
+            id: if serial != 0 {
+                format!("{serial:08X}")
+            } else {
+                root.clone()
+            },
+            name,
+            mount: std::path::PathBuf::from(&root),
+            file_system: from_wide(&file_system).to_lowercase(),
+            kind,
+            read_only: flags & FILE_READ_ONLY_VOLUME != 0,
+            usage,
+        });
+    }
+    Ok(list)
 }

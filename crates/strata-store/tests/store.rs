@@ -456,3 +456,157 @@ fn large_scan_saves_and_reopens_quickly() {
         "listing one level took {listed:?}"
     );
 }
+
+// --- apps and suggestions ----------------------------------------------------
+
+use strata_store::{AppRole, AppRow, DirOwner, SuggestionRow};
+
+fn app(name: &str, bytes: u64) -> AppRow {
+    AppRow {
+        name: name.into(),
+        key: format!("key.{name}"),
+        kind: Some(Kind::Developer),
+        app_bytes: bytes,
+        data_bytes: 2 * bytes,
+        cache_bytes: 3 * bytes,
+    }
+}
+
+#[test]
+fn apps_and_folder_owners_are_saved_and_replaced() {
+    let t = tree(&[
+        (None, "/", 0),
+        (Some(0), "Docker", 10 * MB),
+        (Some(1), "cache", 5 * MB),
+        (Some(0), "Unowned", MB),
+    ]);
+    let mut store = Store::open_in_memory().unwrap();
+    let id = store.save(&t, &meta("vol", 1)).unwrap();
+    assert!(store.apps(id).unwrap().is_empty());
+
+    let apps = [app("Docker", MB), app("Other", 2 * MB)];
+    let data = DirOwner {
+        app: 0,
+        role: AppRole::Data,
+    };
+    let cache = DirOwner {
+        app: 0,
+        role: AppRole::Cache,
+    };
+    store
+        .save_apps(id, &apps, &[None, Some(data), Some(cache), None])
+        .unwrap();
+    assert_eq!(store.apps(id).unwrap(), apps);
+
+    let top = store.children(id, 0).unwrap();
+    assert_eq!(top.dir.owner, None);
+    let owners: Vec<_> = top
+        .children
+        .iter()
+        .map(|d| (d.name.to_str().unwrap().to_string(), d.owner))
+        .collect();
+    assert_eq!(
+        owners,
+        [
+            ("Docker".to_string(), Some(data)),
+            ("Unowned".to_string(), None)
+        ]
+    );
+    assert_eq!(
+        store.children(id, 1).unwrap().children[0].owner,
+        Some(cache)
+    );
+    assert_same(&store.load(id).unwrap(), &t);
+
+    // Saving again replaces everything, including owners that went away.
+    let program = DirOwner {
+        app: 0,
+        role: AppRole::Program,
+    };
+    store
+        .save_apps(id, &apps[1..], &[None, None, None, Some(program)])
+        .unwrap();
+    assert_eq!(store.apps(id).unwrap(), &apps[1..]);
+    assert_eq!(store.children(id, 1).unwrap().dir.owner, None);
+    assert_eq!(store.children(id, 3).unwrap().dir.owner, Some(program));
+}
+
+#[test]
+fn bad_app_data_is_refused_and_changes_nothing() {
+    let t = tree(&[(None, "/", 0), (Some(0), "a", MB)]);
+    let mut store = Store::open_in_memory().unwrap();
+    let id = store.save(&t, &meta("vol", 1)).unwrap();
+    let owner = DirOwner {
+        app: 0,
+        role: AppRole::Data,
+    };
+    store
+        .save_apps(id, &[app("Good", MB)], &[None, Some(owner)])
+        .unwrap();
+
+    // One owner entry too few, and an owner pointing at an app that is not there.
+    assert!(matches!(
+        store.save_apps(id, &[app("X", MB)], &[None]),
+        Err(StoreError::Corrupt(_))
+    ));
+    let dangling = DirOwner {
+        app: 5,
+        role: AppRole::Data,
+    };
+    assert!(matches!(
+        store.save_apps(id, &[app("X", MB)], &[None, Some(dangling)]),
+        Err(StoreError::Corrupt(_))
+    ));
+    assert!(matches!(
+        store.save_apps(999, &[], &[]),
+        Err(StoreError::NotFound)
+    ));
+    assert_eq!(store.apps(id).unwrap()[0].name, "Good");
+}
+
+#[test]
+fn suggestions_round_trip_in_order_and_follow_the_scan() {
+    let t = tree(&[(None, "/", 10 * MB)]);
+    let mut store = Store::open_in_memory().unwrap();
+    let old = store.save(&t, &meta("vol", 1)).unwrap();
+    let new = store.save(&t, &meta("vol", 2)).unwrap();
+    let rows = vec![
+        SuggestionRow {
+            group: "app_cache".into(),
+            contents_only: true,
+            path: "/Users/sam/Library/Caches/com.docker.docker".into(),
+            bytes: 3 * MB,
+            app: Some("Docker".into()),
+            rebuildable: true,
+            reason: "Cache kept by Docker. It rebuilds what it needs.".into(),
+        },
+        SuggestionRow {
+            group: "old_download".into(),
+            contents_only: false,
+            path: "/Users/sam/Downloads/film.mkv".into(),
+            bytes: 9 * MB,
+            app: None,
+            rebuildable: false,
+            reason: "In Downloads, unchanged for 200 days.".into(),
+        },
+    ];
+    store.save_suggestions(old, &rows).unwrap();
+    store.save_suggestions(new, &rows[1..]).unwrap();
+    store.save_apps(old, &[app("Docker", MB)], &[None]).unwrap();
+    assert_eq!(store.suggestions(old).unwrap(), rows);
+    assert_eq!(store.suggestions(new).unwrap(), &rows[1..]);
+
+    // Pruning drops an old scan's suggestions (they describe a disk that has
+    // moved on) but keeps its per-app totals for history.
+    assert_eq!(store.prune("vol", 1).unwrap(), 1);
+    assert!(store.suggestions(old).unwrap().is_empty());
+    assert_eq!(store.apps(old).unwrap().len(), 1);
+    assert_eq!(store.suggestions(new).unwrap().len(), 1);
+    assert!(matches!(
+        store.save_suggestions(old, &rows),
+        Err(StoreError::TreePruned)
+    ));
+
+    store.delete(new).unwrap();
+    assert!(matches!(store.suggestions(new), Err(StoreError::NotFound)));
+}

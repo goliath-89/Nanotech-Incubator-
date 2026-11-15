@@ -172,6 +172,9 @@ fn scan_dir(ctx: &Ctx, path: PathBuf, name: OsString, dir_alloc: u64) -> RawDir 
     }
     let entries = match std::fs::read_dir(&path) {
         Ok(e) => e,
+        // Deleted between being listed by its parent and being opened: on a
+        // drive in use that is routine, not something the user must be told.
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return dir,
         Err(e) => {
             ctx.record_error(path, &e);
             dir.flags.unreadable = true;
@@ -196,6 +199,8 @@ fn scan_dir(ctx: &Ctx, path: PathBuf, name: OsString, dir_alloc: u64) -> RawDir 
         };
         let info = match platform::entry_info(&entry, &ctx.root) {
             Ok(i) => i,
+            // Deleted since it was listed. Nothing to count, nothing to report.
+            Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
             Err(e) => {
                 ctx.record_error(entry.path(), &e);
                 continue;

@@ -88,7 +88,10 @@ pub fn find_duplicates(
             f.kind,
             Kind::Videos | Kind::Photos | Kind::Music | Kind::Documents | Kind::Other
         );
-        if f.logical_bytes == 0 || !personal {
+        // A file with contents but no space on disk is a cloud placeholder
+        // (or entirely sparse). Reading it would make the system download it.
+        let on_this_disk = f.alloc_bytes > 0;
+        if f.logical_bytes == 0 || !personal || !on_this_disk {
             continue;
         }
         by_len.entry(f.logical_bytes).or_default().push(Candidate {

@@ -38,7 +38,8 @@ CREATE TABLE dirs (
     own_files_alloc  INTEGER NOT NULL,
     own_file_count   INTEGER NOT NULL,
     flags            INTEGER NOT NULL,
-    app_id           INTEGER,
+    app_idx          INTEGER,             -- scan_apps.idx of the owning app, if any
+    app_role         INTEGER,             -- 0 program, 1 data, 2 cache
     PRIMARY KEY (scan_id, id)
 ) WITHOUT ROWID;
 CREATE INDEX dirs_by_parent ON dirs (scan_id, parent_id);
@@ -51,7 +52,6 @@ CREATE TABLE files (
     alloc_bytes   INTEGER NOT NULL,
     logical_bytes INTEGER NOT NULL,
     kind          INTEGER NOT NULL,
-    app_id        INTEGER,
     PRIMARY KEY (scan_id, rank)
 ) WITHOUT ROWID;
 CREATE INDEX files_by_dir  ON files (scan_id, dir_id);
@@ -76,24 +76,32 @@ CREATE TABLE snapshots (
 );
 CREATE INDEX snapshots_by_path ON snapshots (scan_id, path);
 
-CREATE TABLE apps (
-    id        INTEGER PRIMARY KEY,
-    name      TEXT NOT NULL,
-    bundle_id TEXT,
-    platform  TEXT NOT NULL
-);
-
-CREATE TABLE suggestions (
-    id          INTEGER PRIMARY KEY,
+-- Apps that own space in a scan, largest first (idx 0 = largest).
+CREATE TABLE scan_apps (
     scan_id     INTEGER NOT NULL REFERENCES scans (id) ON DELETE CASCADE,
-    dir_id      INTEGER NOT NULL,
-    file_name   BLOB,
-    type        TEXT    NOT NULL,
-    reason      TEXT    NOT NULL,
-    rebuildable INTEGER NOT NULL,
-    bytes       INTEGER NOT NULL
-);
-CREATE INDEX suggestions_by_scan ON suggestions (scan_id);
+    idx         INTEGER NOT NULL,
+    name        TEXT    NOT NULL,
+    key         TEXT    NOT NULL,            -- stable id from the app rules
+    kind        INTEGER,
+    app_bytes   INTEGER NOT NULL,
+    data_bytes  INTEGER NOT NULL,
+    cache_bytes INTEGER NOT NULL,
+    PRIMARY KEY (scan_id, idx)
+) WITHOUT ROWID;
+
+-- Cleanup suggestions as computed right after the scan, in display order.
+CREATE TABLE suggestions (
+    scan_id       INTEGER NOT NULL REFERENCES scans (id) ON DELETE CASCADE,
+    seq           INTEGER NOT NULL,
+    grp           TEXT    NOT NULL,
+    contents_only INTEGER NOT NULL,          -- 1: empty the folder, keep it
+    path          BLOB    NOT NULL,
+    bytes         INTEGER NOT NULL,
+    app           TEXT,
+    rebuildable   INTEGER NOT NULL,
+    reason        TEXT    NOT NULL,
+    PRIMARY KEY (scan_id, seq)
+) WITHOUT ROWID;
 ";
 
 pub(crate) fn migrate(conn: &mut Connection) -> rusqlite::Result<i64> {

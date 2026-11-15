@@ -15,7 +15,7 @@ pub mod raw;
 mod scan;
 mod tree;
 
-pub use platform::{volume_usage, VolumeUsage};
+pub use platform::{volume_usage, volumes, Volume, VolumeKind, VolumeUsage};
 pub use scan::{scan, ScanControl, ScanOptions};
 pub use tree::{
     Classify, DirFlags, DirNode, FileNode, Kind, NoClassify, ScanError, ScanErrorKind, ScanStats,

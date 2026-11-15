@@ -12,6 +12,7 @@ use strata_store::{ScanMeta, Store};
 
 const USAGE: &str = "\
 Usage: strata scan <folder> [options]
+       strata volumes            List the drives that can be scanned
        strata history <file>     List the scans saved in a history file
        strata growth <file>      What changed between the last two saved scans
        strata make-tree <folder> <files>   Create a test tree with that many files
@@ -95,6 +96,7 @@ fn main() -> ExitCode {
     let command = argv.next().and_then(|c| c.into_string().ok());
     match (command.as_deref(), argv.next()) {
         (Some("scan"), _) => run_scan(),
+        (Some("volumes"), _) => report_io(list_volumes()),
         (Some("history"), Some(file)) => report(history(&PathBuf::from(file))),
         (Some("growth"), Some(file)) => report(growth(&PathBuf::from(file))),
         (Some("make-tree"), Some(folder)) => {
@@ -132,6 +134,94 @@ fn report(result: Result<(), strata_store::StoreError>) -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// Save a scan together with its app attribution and cleanup suggestions,
+/// the way the app does after every scan.
+fn save_everything(
+    file: &std::path::Path,
+    tree: &ScanTree,
+    meta: &ScanMeta,
+) -> Result<strata_store::ScanId, strata_store::StoreError> {
+    use strata_classify::Role;
+    use strata_reclaim::{suggest, Group, Options, Target};
+    use strata_store::{AppRole, AppRow, DirOwner, SuggestionRow};
+
+    let mut store = Store::open(file)?;
+    let id = store.save(tree, meta)?;
+    let Some(env) = Env::current() else {
+        return Ok(id);
+    };
+    let attribution = attribute(tree, &RuleSet::builtin(Os::current()), &env);
+    let apps: Vec<AppRow> = attribution
+        .apps
+        .iter()
+        .map(|a| AppRow {
+            name: a.name.clone(),
+            key: a.id.clone(),
+            kind: a.kind,
+            app_bytes: a.app_bytes,
+            data_bytes: a.data_bytes,
+            cache_bytes: a.cache_bytes,
+        })
+        .collect();
+    let owners: Vec<Option<DirOwner>> = attribution
+        .owners
+        .iter()
+        .map(|o| {
+            o.map(|o| DirOwner {
+                app: o.app,
+                role: match o.role {
+                    Role::App => AppRole::Program,
+                    Role::Data => AppRole::Data,
+                    Role::Cache => AppRole::Cache,
+                },
+            })
+        })
+        .collect();
+    store.save_apps(id, &apps, &owners)?;
+
+    if let Ok(policy) = strata_safety::Policy::for_current_user() {
+        let rows: Vec<SuggestionRow> =
+            suggest(tree, &attribution, &env, &policy, &Options::default())
+                .into_iter()
+                .map(|s| SuggestionRow {
+                    group: match s.group {
+                        Group::AppCache => "app_cache",
+                        Group::DeveloperJunk => "developer_junk",
+                        Group::Cache => "cache",
+                        Group::OldInstaller => "old_installer",
+                        Group::OldDownload => "old_download",
+                    }
+                    .into(),
+                    contents_only: matches!(s.target, Target::Contents(_)),
+                    path: s.target.path().to_path_buf(),
+                    bytes: s.bytes,
+                    app: s.app,
+                    rebuildable: s.rebuildable,
+                    reason: s.reason,
+                })
+                .collect();
+        store.save_suggestions(id, &rows)?;
+    }
+    Ok(id)
+}
+
+fn list_volumes() -> std::io::Result<()> {
+    for v in strata_core::volumes()? {
+        println!(
+            "{:<20} {:>9} used of {:>9}  {:<8} {:?}{}  {}  [{}]",
+            v.name,
+            human(v.usage.used_bytes()),
+            human(v.usage.total_bytes),
+            v.file_system,
+            v.kind,
+            if v.read_only { ", read-only" } else { "" },
+            v.mount.display(),
+            v.id
+        );
+    }
+    Ok(())
 }
 
 fn report_io(result: std::io::Result<()>) -> ExitCode {
@@ -269,7 +359,7 @@ fn run_scan() -> ExitCode {
             started_at,
             finished_at: now(),
         };
-        match Store::open(file).and_then(|mut s| s.save(&tree, &meta)) {
+        match save_everything(file, &tree, &meta) {
             Ok(id) if !args.json => println!("\nSaved as scan #{id} in {}", file.display()),
             Ok(_) => {}
             Err(e) => {

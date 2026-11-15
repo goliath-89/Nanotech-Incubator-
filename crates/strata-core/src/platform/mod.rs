@@ -72,3 +72,48 @@ impl VolumeUsage {
 pub fn volume_usage(path: &Path) -> io::Result<VolumeUsage> {
     imp::volume_usage(path)
 }
+
+/// Where a volume is attached.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VolumeKind {
+    /// Built into the computer.
+    Internal,
+    /// A drive that can be unplugged, or a mounted disk image.
+    External,
+    /// Reached over a network. Strata lists these but does not scan them.
+    Network,
+}
+
+/// A volume the user could scan.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Volume {
+    /// Stays the same for this volume across restarts and re-plugging where
+    /// the system gives such an identity (a UUID on macOS, the serial
+    /// number on Windows); otherwise the device name.
+    pub id: String,
+    /// The name the system shows for it ("Macintosh HD", "Local Disk").
+    pub name: String,
+    /// Where it is mounted: the folder to scan.
+    pub mount: std::path::PathBuf,
+    /// File system type, lower case ("apfs", "ntfs", "exfat").
+    pub file_system: String,
+    pub kind: VolumeKind,
+    pub read_only: bool,
+    pub usage: VolumeUsage,
+}
+
+/// The volumes a person would recognise as drives: internal first, then by
+/// mount point. System-internal volumes (swap, recovery, pseudo file
+/// systems) are left out.
+pub fn volumes() -> io::Result<Vec<Volume>> {
+    let mut list = imp::volumes()?;
+    list.sort_by(|a, b| {
+        let rank = |v: &Volume| match v.kind {
+            VolumeKind::Internal => 0,
+            VolumeKind::External => 1,
+            VolumeKind::Network => 2,
+        };
+        rank(a).cmp(&rank(b)).then_with(|| a.mount.cmp(&b.mount))
+    });
+    Ok(list)
+}

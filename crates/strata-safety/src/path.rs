@@ -134,6 +134,11 @@ fn parse_windows(text: &str) -> Result<Parsed, Reason> {
         if looks_like_short_name(part) {
             return Err(Reason::UnusualPath);
         }
+        // `NUL`, `CON`, `COM1` and the like name devices, not files, in any
+        // folder and with any extension.
+        if is_device_name(part) {
+            return Err(Reason::UnusualPath);
+        }
         parts.push(fold(part, Platform::Windows));
     }
     Ok(Parsed {
@@ -147,4 +152,15 @@ fn looks_like_short_name(part: &str) -> bool {
     bytes
         .windows(2)
         .any(|w| w[0] == b'~' && w[1].is_ascii_digit())
+}
+
+fn is_device_name(part: &str) -> bool {
+    let stem = part.split('.').next().unwrap_or(part).trim_end_matches(' ');
+    let upper = stem.to_ascii_uppercase();
+    matches!(
+        upper.as_str(),
+        "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+    ) || (upper.len() == 4
+        && (upper.starts_with("COM") || upper.starts_with("LPT"))
+        && upper.as_bytes()[3].is_ascii_digit())
 }

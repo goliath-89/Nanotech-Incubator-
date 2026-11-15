@@ -6,7 +6,6 @@
 //! Folders no rule reaches belong to no app. Nothing is guessed.
 
 use crate::rules::{pattern_parts, Os, Role, RuleSet};
-use std::path::Path;
 use strata_core::{Kind, ScanTree};
 
 /// Where things are on the machine that was scanned.
@@ -167,43 +166,62 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
 
     // Programs no rule names still are programs: each folder directly inside
     // an applications folder is an app called by its own name.
-    for (i, dir) in tree.dirs.iter().enumerate() {
-        if direct[i].is_some() {
-            continue;
-        }
-        let Some(parent) = dir.parent else { continue };
-        let full = tree.dir_path(parent);
-        if !is_programs_folder(&full, env, &matcher) {
-            continue;
-        }
-        let name = &names[i];
-        let display = match env.os {
-            Os::MacOs => match name.len().checked_sub(4) {
-                Some(cut)
-                    if name.is_char_boundary(cut) && name[cut..].eq_ignore_ascii_case(".app") =>
-                {
-                    &name[..cut]
+    let programs_folders: &[&str] = match env.os {
+        Os::MacOs => &["/Applications", "~/Applications"],
+        Os::Windows => &[
+            "C:/Program Files",
+            "C:/Program Files (x86)",
+            "~/AppData/Local/Programs",
+        ],
+        Os::Linux => &[],
+    };
+    for pattern in programs_folders {
+        let (folders, _) = locate(
+            tree,
+            &names,
+            &matcher,
+            &root_parts,
+            &home_parts,
+            env,
+            pattern,
+        );
+        for folder in folders {
+            for &child in &tree.dirs[folder as usize].children {
+                let i = child as usize;
+                if direct[i].is_some() {
+                    continue;
                 }
-                _ => continue, // loose folders in /Applications are not apps
-            },
-            _ => name.as_str(),
-        };
-        let app = usages.len() as u32;
-        usages.push(AppUsage {
-            name: display.to_string(),
-            id: format!("folder:{name}"),
-            kind: None,
-            app_bytes: 0,
-            data_bytes: 0,
-            cache_bytes: 0,
-        });
-        direct[i] = Some((
-            Owner {
-                app,
-                role: Role::App,
-            },
-            usize::MAX,
-        ));
+                let name = &names[i];
+                let display = match env.os {
+                    Os::MacOs => match name.len().checked_sub(4) {
+                        Some(cut)
+                            if name.is_char_boundary(cut)
+                                && name[cut..].eq_ignore_ascii_case(".app") =>
+                        {
+                            &name[..cut]
+                        }
+                        _ => continue, // loose folders in /Applications are not apps
+                    },
+                    _ => name.as_str(),
+                };
+                let app = usages.len() as u32;
+                usages.push(AppUsage {
+                    name: display.to_string(),
+                    id: format!("folder:{name}"),
+                    kind: None,
+                    app_bytes: 0,
+                    data_bytes: 0,
+                    cache_bytes: 0,
+                });
+                direct[i] = Some((
+                    Owner {
+                        app,
+                        role: Role::App,
+                    },
+                    usize::MAX,
+                ));
+            }
+        }
     }
 
     // Hand owners down the tree (parents come before children) and add up
@@ -340,31 +358,5 @@ fn descend(
         if matcher.eq(first, &names[child as usize]) {
             descend(tree, names, matcher, child, rest, hits);
         }
-    }
-}
-
-fn is_programs_folder(path: &Path, env: &Env, matcher: &Matcher) -> bool {
-    let text = path.to_string_lossy();
-    let parts = split_path(&text);
-    let home = split_path(&env.home);
-    let is = |candidate: &[&str]| {
-        candidate.len() == parts.len()
-            && candidate.iter().zip(&parts).all(|(c, p)| matcher.eq(c, p))
-    };
-    match env.os {
-        Os::MacOs => {
-            let mut user_apps = home.clone();
-            user_apps.push("Applications");
-            is(&["Applications"]) || is(&user_apps)
-        }
-        Os::Windows => {
-            let drive = env.system_drive.as_str();
-            let mut user_programs = home.clone();
-            user_programs.extend(["AppData", "Local", "Programs"]);
-            is(&[drive, "Program Files"])
-                || is(&[drive, "Program Files (x86)"])
-                || is(&user_programs)
-        }
-        Os::Linux => false,
     }
 }

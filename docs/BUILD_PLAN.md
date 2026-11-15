@@ -14,7 +14,7 @@ Claude what to build and tells you what only you can do.
 - A gate is a pass/fail test. Do not start the next phase until it passes;
   if it fails, the next day is spent on the failure and later days shift.
 
-Status: **Days 1, 2, 4, 5, 7, 8 and 9 done; Day 6 half done.** Day 3 waits for the scan outputs from your Mac and Windows PC (see [BACKLOG.md](BACKLOG.md)).
+Status: **Days 1, 2, 4, 5, 7, 8 and 9 done; Day 6 and Day 10 half done.** Days 3 and 6 and the Gate A check wait for runs on your Mac and Windows PC (see [BACKLOG.md](BACKLOG.md)). Day 11 can start in the meantime.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -29,7 +29,23 @@ Status: **Days 1, 2, 4, 5, 7, 8 and 9 done; Day 6 half done.** Day 3 waits for t
 | 7 ✅ | Fable | `strata-classify`: extension table (about 600), folder-context kinds, TOML rule format and loader, attribution engine, 20 starter apps per system, 11 tests | — |
 | 8 ✅ | Fable | Benchmark tool: `strata make-tree` and `strata bench`. On Linux (4 cores, warm cache): 2M files in 1.7 s, 107 MB peak. Mac and Windows tuning waits for your numbers | Run the 2M benchmark on both machines (about 10 minutes each), paste the `RESULT` lines. |
 | 9 ✅ | Fable | `strata-reclaim`: duplicate finder (size, partial hash, full hash) and cleanup suggestion engine on top of the safety rules, 8 tests; `strata scan --reclaim --duplicates` lists them | — |
-| 10 | Fable | Review of everything so far against the architecture contract; fix findings. **Gate A check** | **Gate A:** 2M-file scan under 60 s and total within 2% of the OS figure on both machines. |
+| 10 ◐ | Fable | Review done, 7 findings fixed (see below). **Gate A check** waits for your machines | **Gate A:** 2M-file scan under 60 s and total within 2% of the OS figure on both machines. |
+
+### Day 10 review: what was found and fixed
+
+| Finding | Fix |
+| --- | --- |
+| Personal folders named `Applications`, `Temp`, `cache` or `Pods` were classed as apps, cache or developer files | Those names no longer count inside Documents, Pictures and the like; programs folders only count at the top of a drive or home folder |
+| The duplicate finder would have read cloud-only files, making OneDrive or iCloud download them | Files that take no space on this disk are never read |
+| On a drive in use, files deleted mid-scan showed up as "could not be read" | Vanished files are skipped silently; a test scans while another thread creates and deletes files |
+| The bridge contract promised a drive list that no crate provided | `strata_core::volumes()` for macOS, Windows and Linux, with stable ids; `strata volumes` |
+| App attribution and cleanup suggestions were computed but could not be saved with a scan | `save_apps` / `apps` / `save_suggestions` / `suggestions` in the store; `--save` stores all three |
+| Finding apps that no rule names built a full path for every folder of the scan | Only the children of the programs folders are looked at |
+| The safety engine accepted Windows device names (`NUL`, `CON`, `COM1`) as file names | Refused, in any folder and with any extension |
+
+Still open after the review, all needing real machines: everything in the
+"Known gaps" table of ARCHITECTURE.md, the first run of the fast scan on a
+real Windows drive, and benchmark numbers for Mac and Windows.
 
 ## Sprint 2 · weeks 3–4 · app shell
 

@@ -114,6 +114,52 @@ pub struct DirRow {
     pub own_files_alloc: u64,
     pub own_file_count: u64,
     pub flags: DirFlags,
+    /// The app this folder belongs to, once [`Store::save_apps`] has run.
+    pub owner: Option<DirOwner>,
+}
+
+/// What a folder is to the app that owns it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AppRole {
+    /// The program itself.
+    Program,
+    /// What it created and needs.
+    Data,
+    /// What it rebuilds on its own.
+    Cache,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DirOwner {
+    /// Position in [`Store::apps`] for the same scan.
+    pub app: u32,
+    pub role: AppRole,
+}
+
+/// One app's share of a scan.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AppRow {
+    pub name: String,
+    /// Stable id from the app rules.
+    pub key: String,
+    pub kind: Option<Kind>,
+    pub app_bytes: u64,
+    pub data_bytes: u64,
+    pub cache_bytes: u64,
+}
+
+/// One cleanup suggestion, as computed right after the scan.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SuggestionRow {
+    /// Which heading it belongs under; a stable key such as `app_cache`.
+    pub group: String,
+    /// True: empty the folder at `path` and keep it. False: `path` itself.
+    pub contents_only: bool,
+    pub path: PathBuf,
+    pub bytes: u64,
+    pub app: Option<String>,
+    pub rebuildable: bool,
+    pub reason: String,
 }
 
 /// One of the largest files as stored.
@@ -560,6 +606,139 @@ impl Store {
         Ok(old.len())
     }
 
+    /// Record which app each folder of a scan belongs to. `owners` has one
+    /// entry per folder, in folder-id order. Replaces what was there.
+    pub fn save_apps(
+        &mut self,
+        scan: ScanId,
+        apps: &[AppRow],
+        owners: &[Option<DirOwner>],
+    ) -> Result<()> {
+        let info = self.require_tree(scan)?;
+        if owners.len() as u64 != info.dir_count + 1 {
+            return Err(StoreError::Corrupt(format!(
+                "{} owners for {} folders",
+                owners.len(),
+                info.dir_count + 1
+            )));
+        }
+        if owners
+            .iter()
+            .flatten()
+            .any(|o| o.app as usize >= apps.len())
+        {
+            return Err(StoreError::Corrupt(
+                "a folder names an app that is not listed".into(),
+            ));
+        }
+        let tx = self.conn.transaction()?;
+        tx.execute("DELETE FROM scan_apps WHERE scan_id = ?1", params![scan])?;
+        tx.execute(
+            "UPDATE dirs SET app_idx = NULL, app_role = NULL WHERE scan_id = ?1 AND app_idx IS NOT NULL",
+            params![scan],
+        )?;
+        {
+            let mut insert = tx.prepare(
+                "INSERT INTO scan_apps (scan_id, idx, name, key, kind, app_bytes, data_bytes, cache_bytes)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            )?;
+            for (idx, a) in apps.iter().enumerate() {
+                insert.execute(params![
+                    scan,
+                    idx as i64,
+                    a.name,
+                    a.key,
+                    a.kind.map(|k| k as u8),
+                    int(a.app_bytes),
+                    int(a.data_bytes),
+                    int(a.cache_bytes),
+                ])?;
+            }
+            let mut update = tx.prepare(
+                "UPDATE dirs SET app_idx = ?3, app_role = ?4 WHERE scan_id = ?1 AND id = ?2",
+            )?;
+            for (dir, owner) in owners.iter().enumerate() {
+                if let Some(o) = owner {
+                    update.execute(params![scan, dir as i64, o.app, role_to_int(o.role)])?;
+                }
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// The apps that own space in a scan, in the order they were saved
+    /// (largest first). Kept when the scan's folders are pruned.
+    pub fn apps(&self, scan: ScanId) -> Result<Vec<AppRow>> {
+        self.scan_info(scan)?;
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT name, key, kind, app_bytes, data_bytes, cache_bytes FROM scan_apps
+             WHERE scan_id = ?1 ORDER BY idx",
+        )?;
+        let rows = stmt.query_map(params![scan], |r| {
+            Ok(AppRow {
+                name: r.get(0)?,
+                key: r.get(1)?,
+                kind: r.get::<_, Option<u8>>(2)?.and_then(Kind::from_index),
+                app_bytes: r.get::<_, i64>(3)? as u64,
+                data_bytes: r.get::<_, i64>(4)? as u64,
+                cache_bytes: r.get::<_, i64>(5)? as u64,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Record a scan's cleanup suggestions, in display order. Replaces what
+    /// was there.
+    pub fn save_suggestions(&mut self, scan: ScanId, suggestions: &[SuggestionRow]) -> Result<()> {
+        self.require_tree(scan)?;
+        let tx = self.conn.transaction()?;
+        tx.execute("DELETE FROM suggestions WHERE scan_id = ?1", params![scan])?;
+        {
+            let mut insert = tx.prepare(
+                "INSERT INTO suggestions (scan_id, seq, grp, contents_only, path, bytes, app, rebuildable, reason)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            )?;
+            for (seq, s) in suggestions.iter().enumerate() {
+                insert.execute(params![
+                    scan,
+                    seq as i64,
+                    s.group,
+                    s.contents_only,
+                    names::encode(s.path.as_os_str()),
+                    int(s.bytes),
+                    s.app,
+                    s.rebuildable,
+                    s.reason,
+                ])?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// A scan's cleanup suggestions as saved. They describe the disk as it
+    /// was at scan time; check each again before acting on it.
+    pub fn suggestions(&self, scan: ScanId) -> Result<Vec<SuggestionRow>> {
+        self.scan_info(scan)?;
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT grp, contents_only, path, bytes, app, rebuildable, reason FROM suggestions
+             WHERE scan_id = ?1 ORDER BY seq",
+        )?;
+        let rows = stmt.query_map(params![scan], |r| {
+            Ok(SuggestionRow {
+                group: r.get(0)?,
+                contents_only: r.get(1)?,
+                path: PathBuf::from(names::decode(r.get(2)?)),
+                bytes: r.get::<_, i64>(3)? as u64,
+                app: r.get(4)?,
+                rebuildable: r.get(5)?,
+                reason: r.get(6)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
     fn require_tree(&self, scan: ScanId) -> Result<ScanInfo> {
         let info = self.scan_info(scan)?;
         if info.has_tree {
@@ -580,7 +759,7 @@ impl Store {
 
 const DIR_COLUMNS: &str =
     "id, parent_id, name, alloc_bytes, logical_bytes, file_count, dir_count, \
-                           kind_bytes, cloud_only_bytes, own_files_alloc, own_file_count, flags";
+     kind_bytes, cloud_only_bytes, own_files_alloc, own_file_count, flags, app_idx, app_role";
 const FILE_COLUMNS: &str = "dir_id, name, alloc_bytes, logical_bytes, kind";
 
 fn collect_dirs(mut rows: rusqlite::Rows<'_>) -> Result<Vec<DirRow>> {
@@ -608,6 +787,13 @@ fn dir_from_row(r: &Row<'_>) -> Result<DirRow> {
         own_files_alloc: r.get::<_, i64>(9)? as u64,
         own_file_count: r.get::<_, i64>(10)? as u64,
         flags: flags_from_bits(r.get(11)?),
+        owner: match (r.get::<_, Option<u32>>(12)?, r.get::<_, Option<u8>>(13)?) {
+            (Some(app), Some(role)) => Some(DirOwner {
+                app,
+                role: role_from_int(role),
+            }),
+            _ => None,
+        },
     })
 }
 
@@ -643,6 +829,22 @@ fn scan_info_from_row(r: &Row<'_>) -> rusqlite::Result<ScanInfo> {
 /// SQLite integers are signed 64-bit. No real size comes near the limit.
 fn int(v: u64) -> i64 {
     i64::try_from(v).unwrap_or(i64::MAX)
+}
+
+fn role_to_int(role: AppRole) -> u8 {
+    match role {
+        AppRole::Program => 0,
+        AppRole::Data => 1,
+        AppRole::Cache => 2,
+    }
+}
+
+fn role_from_int(n: u8) -> AppRole {
+    match n {
+        0 => AppRole::Program,
+        2 => AppRole::Cache,
+        _ => AppRole::Data,
+    }
 }
 
 fn kinds_to_blob(kinds: &[u64; KIND_COUNT]) -> Vec<u8> {

@@ -60,7 +60,6 @@ const DEVELOPER_NAMES: &[&str] = &[
     "com.docker.docker",
     ".android",
     ".cocoapods",
-    "pods",
     ".nuget",
     ".pub-cache",
     ".terraform",
@@ -80,7 +79,6 @@ const DEVELOPER_NAMES: &[&str] = &[
     ".idea",
     "homebrew",
     "cellar",
-    "wsl",
     ".local-chromium",
 ];
 const GAME_NAMES: &[&str] = &[
@@ -96,7 +94,6 @@ const GAME_NAMES: &[&str] = &[
     "ea games",
     "ubisoft game launcher",
     "rockstar games",
-    "itch",
 ];
 const APP_NAMES: &[&str] = &[
     "applications",
@@ -145,28 +142,60 @@ const SYSTEM_TOP: &[&str] = &[
     "nix",
 ];
 
+/// Cache names so ordinary that people use them for their own folders too.
+/// They are not trusted inside a personal folder.
+const WEAK_CACHE_NAMES: &[&str] = &["temp", "tmp", "cache", "caches"];
+
+/// Folders directly inside a home folder that hold a person's own files.
+const PERSONAL_NAMES: &[&str] = &[
+    "documents",
+    "desktop",
+    "downloads",
+    "pictures",
+    "movies",
+    "music",
+    "videos",
+    "public",
+];
+
 /// The kind shared by every file under `dir`, if its location settles it.
 /// `dir` must be an absolute path.
 pub fn folder_kind(dir: &Path) -> Option<Kind> {
     let mut found: Option<Kind> = None;
     let mut depth = 0usize;
     let mut previous = String::new();
+    // `/Users/<name>/...`, `C:\Users\<name>\...` or `/home/<name>/...`.
+    let mut under_homes = false;
+    // Inside Documents, Pictures and the like: the person's own material.
+    let mut personal = false;
     for component in dir.components() {
         let Component::Normal(name) = component else {
             continue;
         };
         let name = name.to_string_lossy().to_lowercase();
-        let here = if GAME_NAMES.contains(&name.as_str()) {
+        let name = name.as_str();
+        if depth == 0 {
+            under_homes = name == "users" || name == "home";
+        }
+        let home_level = under_homes && depth == 2;
+        if home_level && (PERSONAL_NAMES.contains(&name) || name.starts_with("onedrive")) {
+            personal = true;
+        }
+
+        let here = if GAME_NAMES.contains(&name) {
             Some(Kind::Games)
-        } else if CACHE_NAMES.contains(&name.as_str()) {
+        } else if CACHE_NAMES.contains(&name) && !(personal && WEAK_CACHE_NAMES.contains(&name)) {
             Some(Kind::Caches)
-        } else if DEVELOPER_NAMES.contains(&name.as_str())
-            || (name == "developer" && previous == "library")
+        } else if DEVELOPER_NAMES.contains(&name) || (name == "developer" && previous == "library")
         {
             Some(Kind::Developer)
-        } else if name.ends_with(".app") || APP_NAMES.contains(&name.as_str()) {
+        } else if name.ends_with(".app") {
             Some(Kind::Apps)
-        } else if depth == 0 && SYSTEM_TOP.contains(&name.as_str()) {
+        } else if APP_NAMES.contains(&name) && (depth == 0 || home_level) {
+            // Only the real programs folders: at the top of a drive or of a
+            // home folder. A "Applications" folder in Documents is paperwork.
+            Some(Kind::Apps)
+        } else if depth == 0 && SYSTEM_TOP.contains(&name) {
             Some(Kind::System)
         } else {
             None
@@ -183,7 +212,7 @@ pub fn folder_kind(dir: &Path) -> Option<Kind> {
             _ => {}
         }
         depth += 1;
-        previous = name;
+        previous = name.to_string();
     }
     found
 }

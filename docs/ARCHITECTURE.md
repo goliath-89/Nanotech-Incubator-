@@ -65,7 +65,24 @@ pub fn scan(opts: &ScanOptions, classify: &dyn Classify, ctl: &ScanControl)
 6. **Nothing is dropped silently.** A folder that cannot be listed gets
    `flags.unreadable` and an entry in `errors`.
 
+7. **Files that vanish mid-scan are not errors.** On a drive in use, a file
+   listed a moment ago may be gone when examined; it is skipped silently.
+
 `DirFlags::not_scanned()` is what the UI shows as "Not scanned".
+
+### Volumes
+
+```rust
+volumes() -> io::Result<Vec<Volume>>     // internal first, then by mount point
+volume_usage(path) -> io::Result<VolumeUsage>
+```
+
+`Volume`: `id` (UUID on macOS, serial number on Windows, device name on
+Linux; this is the `volume_id` saved with scans), `name` as the system shows
+it, `mount` (the folder to scan), `file_system`, `kind` (Internal, External,
+Network), `read_only`, `usage`. Helper volumes the system hides (macOS
+"don't browse" mounts, pseudo file systems) are left out. Network volumes
+are listed but not offered for scanning.
 
 ### Known gaps, with the day they are closed
 
@@ -87,11 +104,12 @@ is refused, never modified.
 | Table | Holds |
 | --- | --- |
 | `scans` | One row per scan: volume, root, times, totals, `has_tree` |
-| `dirs` | Every folder of a scan, keyed `(scan_id, id)`, same fields as `DirNode`, plus `app_id` |
-| `files` | The largest files, keyed `(scan_id, rank)`, rank 0 = largest, plus `app_id` |
+| `dirs` | Every folder of a scan, keyed `(scan_id, id)`, same fields as `DirNode`, plus its owning app and role |
+| `files` | The largest files, keyed `(scan_id, rank)`, rank 0 = largest |
 | `scan_errors` | What could not be read |
 | `snapshots` | Folder sizes to depth 6 and at least 1 MiB, by relative path, for Growth |
-| `apps`, `suggestions` | Empty until the classifier (Day 7) and Reclaim (Day 9) fill them |
+| `scan_apps` | Per-app totals of a scan, largest first; `dirs.app_idx` / `dirs.app_role` point into it |
+| `suggestions` | Cleanup suggestions as computed right after the scan, in display order |
 
 Names and paths are stored as the exact bytes the OS gave (UTF-16 LE on
 Windows), never as lossy text. Snapshot paths are display text.
@@ -104,9 +122,20 @@ scans(Option<volume_id>) / latest(volume_id) / scan_info(ScanId)
 children(ScanId, dir) -> DirListing         // dir, breadcrumb, child folders and large files, largest first
 dir_path(ScanId, dir) / largest_files(ScanId, Option<Kind>, limit) / errors(ScanId)
 diff(before, after, limit) -> Vec<GrowthRow> // biggest change first; a folder and its parents each get a row
-prune(volume_id, keep)                      // older scans keep totals + snapshot, lose folders (has_tree = 0)
+save_apps(ScanId, &[AppRow], &[Option<DirOwner>]) / apps(ScanId)      // one owner entry per folder
+save_suggestions(ScanId, &[SuggestionRow]) / suggestions(ScanId)
+prune(volume_id, keep)                      // older scans keep totals, app totals + snapshot; lose folders and suggestions
 delete(ScanId)
 ```
+
+The store knows nothing about the classifier or the cleanup engine: it has
+its own plain row types (`AppRow`, `DirOwner`, `SuggestionRow`) and the
+caller converts. After every scan the app does what `strata scan --save`
+does (`save_everything` in `crates/strata-cli/src/main.rs` is the reference):
+save the tree, run `attribute` and save apps and owners, run `suggest` and
+save the suggestions. `DirRow.owner` then tells a view which app a folder
+belongs to. Saved suggestions describe the disk at scan time; `trash`
+re-checks every item when the user acts.
 
 The app calls `children` for each level it draws and never loads a whole
 tree. `load` and `children` on a pruned scan return `StoreError::TreePruned`.
@@ -137,6 +166,14 @@ a display string; the UI never builds a path itself.
 | `scan://done` | `{ scan_token, scan_id, stats }` | scan finished or cancelled |
 | `scan://failed` | `{ scan_token, message }` | root could not be read |
 
+At start-up the bridge builds one `Policy::for_current_user()` and calls
+`policy.protect()` on Strata's own data folder (the history database), so
+nothing the app shows can remove its own records.
+
+`list_volumes` is `strata_core::volumes()`. `start_scan` with `fast: true`
+is `strata_mft::scan_volume`; on `NotNtfs` or `NeedsAdministrator` fall back
+to the folder walk and say why.
+
 `trash` is the only command that changes the user's files. It goes through
 `strata-safety`, which re-checks every item against the protected list in
 Rust; the UI's own filtering is a convenience, not the safeguard.
@@ -151,6 +188,11 @@ Rust; the UI's own filtering is a convenience, not the safeguard.
    System. The first marker on the way down decides, with three exceptions:
    a game library inside a programs folder is Games, and caches or developer
    tools inside a system folder are Caches or Developer.
+   Ordinary words people use for their own folders are treated with care:
+   `Temp`, `tmp`, `cache` and `caches` are ignored inside Documents, Desktop,
+   Downloads, Pictures, Movies, Music, Videos and OneDrive, and
+   `Applications` / `Program Files` only count at the top of a drive or of a
+   home folder.
 2. Otherwise the file's name: a table of about 600 extensions.
 3. Otherwise `Other`. The largest `Other` files are re-checked by file
    signature after the scan (Day 43); reading every unknown file's first
@@ -208,8 +250,8 @@ trash(policy, scan_root, items) -> TrashReport // { moved, refused, failed }
   open anything: a rule that marks a path `rebuildable` must already pass
   `policy.check`, and a test in `strata-classify` enforces that for every rule.
 - **Strict parsing.** Relative paths, `..`, network paths, Windows stream
-  names, trailing dots and spaces, and short-name aliases (`PROGRA~1`) are
-  refused, not tidied. macOS and Windows compare without regard to case,
+  names, trailing dots and spaces, short-name aliases (`PROGRA~1`) and
+  device names (`NUL`, `CON`, `COM1`) are refused, not tidied. macOS and Windows compare without regard to case,
   including the non-ASCII letters those systems treat as ASCII ones.
 - **`vet` re-checks at the real location.** After the text check it resolves
   links in the folders above the item and checks again, so a linked folder
@@ -238,7 +280,8 @@ find_duplicates(&ScanTree, &Policy, &DuplicateControl) -> Vec<DuplicateGroup>
 - No two suggestions overlap, so their bytes add up to what would be freed.
   Anything the policy refuses is left out. Below 10 MiB is left out.
 - Duplicates: only personal files (Videos, Photos, Music, Documents, Other)
-  among the scan's large files. Grouped by length, then a hash of both ends,
+  among the scan's large files, and only files that take space on this disk
+  (reading a cloud placeholder would make the system download it). Grouped by length, then a hash of both ends,
   then a hash of everything. A copy the policy protects is listed first as
   the one to keep and is never offered. Files changed since the scan are
   dropped. A cancelled search returns nothing.

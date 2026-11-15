@@ -428,6 +428,27 @@ fn identical_files_inside_tools_and_apps_are_not_duplicates_to_clean() {
     assert!(find_duplicates(&scan_small(&h.home), &h.policy, &DuplicateControl::new()).is_empty());
 }
 
+/// Cloud placeholders have a length but take no space; reading one makes
+/// the system download it. Fully sparse files look the same and stand in.
+#[cfg(unix)]
+#[test]
+fn files_that_take_no_space_on_disk_are_never_read() {
+    use std::os::unix::fs::MetadataExt;
+    let h = home();
+    for name in ["one.mov", "two.mov"] {
+        fs::File::create(h.home.join(name))
+            .unwrap()
+            .set_len(5_000_000)
+            .unwrap();
+    }
+    if fs::metadata(h.home.join("one.mov")).unwrap().blocks() > 0 {
+        return; // this file system does not do sparse files
+    }
+    let ctl = DuplicateControl::new();
+    assert!(find_duplicates(&scan_small(&h.home), &h.policy, &ctl).is_empty());
+    assert_eq!(ctl.bytes_read(), 0);
+}
+
 #[test]
 fn files_that_changed_after_the_scan_are_left_out() {
     let h = home();

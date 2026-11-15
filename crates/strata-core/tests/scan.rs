@@ -490,3 +490,35 @@ fn bad_roots_are_errors() {
     assert!(go(&tmp.path().join("missing")).is_err());
     assert!(go(&tmp.path().join("file")).is_err());
 }
+
+/// A drive in use changes under the scanner. Files that vanish between
+/// being listed and being examined are not errors, and nothing may panic.
+#[test]
+fn a_tree_that_changes_during_the_scan_is_handled_quietly() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let tmp = tempfile::tempdir().unwrap();
+    build_mixed_tree(tmp.path());
+    let stop = AtomicBool::new(false);
+    std::thread::scope(|scope| {
+        // Keep creating and deleting folders full of files while scans run.
+        scope.spawn(|| {
+            let mut round = 0u32;
+            while !stop.load(Ordering::Relaxed) {
+                let churn = tmp.path().join(format!("churn{}", round % 4));
+                let _ = fs::create_dir_all(churn.join("inner"));
+                for i in 0..200 {
+                    let _ = fs::write(churn.join(format!("f{i}")), b"x");
+                    let _ = fs::write(churn.join("inner").join(format!("g{i}")), b"x");
+                }
+                let _ = fs::remove_dir_all(&churn);
+                round += 1;
+            }
+        });
+        for _ in 0..40 {
+            let tree = run(tmp.path());
+            assert_eq!(tree.stats.error_count, 0, "{:?}", tree.errors.first());
+            assert!(tree.root().file_count >= 3200);
+        }
+        stop.store(true, Ordering::Relaxed);
+    });
+}
