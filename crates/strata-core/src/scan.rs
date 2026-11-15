@@ -215,6 +215,7 @@ fn scan_dir(ctx: &Ctx, path: PathBuf, name: OsString, dir_alloc: u64) -> RawDir 
         }
     };
     ctx.ctl.dirs.fetch_add(1, Relaxed);
+    let folder_kind = ctx.classify.folder_kind(&path);
 
     // (path, name, the folder's own bytes, flags decided here)
     let mut subdirs: Vec<(PathBuf, OsString, u64, DirFlags)> = Vec::new();
@@ -257,7 +258,7 @@ fn scan_dir(ctx: &Ctx, path: PathBuf, name: OsString, dir_alloc: u64) -> RawDir 
         files_here += 1;
         dir.file_count += 1;
         let file = RawFile {
-            kind: ctx.classify.file_kind(&path, &entry_name),
+            kind: folder_kind.unwrap_or_else(|| ctx.classify.file_kind(&entry_name)),
             name: entry_name,
             alloc: info.alloc,
             logical: info.logical,

@@ -1,0 +1,30 @@
+//! What things are: the kind of each file, and the app each folder belongs to.
+
+mod attribute;
+mod context;
+mod extensions;
+mod rules;
+
+pub use attribute::{attribute, AppUsage, Attribution, Env, Owner};
+pub use context::folder_kind;
+pub use extensions::{kind_of_name, known_extensions};
+pub use rules::{AppRule, Os, Role, RuleSet};
+
+use std::ffi::OsStr;
+use std::path::Path;
+use strata_core::{Classify, Kind};
+
+/// The classifier Strata scans with: a folder's place in the tree first,
+/// then the file's name.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct KindClassifier;
+
+impl Classify for KindClassifier {
+    fn folder_kind(&self, dir: &Path) -> Option<Kind> {
+        context::folder_kind(dir)
+    }
+
+    fn file_kind(&self, name: &OsStr) -> Kind {
+        extensions::kind_of_name(name.as_encoded_bytes())
+    }
+}

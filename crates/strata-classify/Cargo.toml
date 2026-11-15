@@ -1,0 +1,16 @@
+[package]
+name = "strata-classify"
+description = "File kinds and app attribution for Strata"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+strata-core = { path = "../strata-core" }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+
+[dev-dependencies]
+strata-safety = { path = "../strata-safety" }
+tempfile = "3"

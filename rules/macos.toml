@@ -1,0 +1,178 @@
+# App rules for macOS.
+#
+# Each [[app]] lists the folders that belong to one application:
+#   app   - the program itself
+#   data  - what it created and needs
+#   cache - what it rebuilds on its own; Strata may offer to clear these
+# `~` is the home folder. `*` stands for any one folder name; `Name*` and
+# `*.ext` match by start or end. Optional `kind` says what the app's data mostly is.
+#
+# A `cache` entry must lie inside a folder that strata-safety lists as Open;
+# a test fails otherwise. Never guess a path: leave out what you are not sure of.
+
+[[app]]
+name = "Xcode"
+id = "com.apple.dt.Xcode"
+kind = "Developer"
+app = ["/Applications/Xcode.app"]
+data = ["~/Library/Developer/Xcode", "~/Library/Developer/CoreSimulator"]
+cache = [
+  "~/Library/Developer/Xcode/DerivedData",
+  "~/Library/Developer/Xcode/iOS DeviceSupport",
+  "~/Library/Developer/CoreSimulator/Caches",
+  "~/Library/Caches/com.apple.dt.Xcode",
+]
+
+[[app]]
+name = "Docker"
+id = "com.docker.docker"
+kind = "Developer"
+app = ["/Applications/Docker.app"]
+data = ["~/Library/Containers/com.docker.docker", "~/Library/Group Containers/group.com.docker", "~/.docker"]
+cache = ["~/Library/Caches/com.docker.docker"]
+
+[[app]]
+name = "Homebrew"
+id = "sh.brew"
+kind = "Developer"
+data = ["/opt/homebrew", "/usr/local/Homebrew", "/usr/local/Cellar", "/usr/local/Caskroom"]
+cache = ["~/Library/Caches/Homebrew"]
+
+[[app]]
+name = "Node.js and npm"
+id = "org.nodejs"
+kind = "Developer"
+data = ["~/.nvm", "~/.npm"]
+cache = ["~/.npm/_cacache"]
+
+[[app]]
+name = "Visual Studio Code"
+id = "com.microsoft.VSCode"
+kind = "Developer"
+app = ["/Applications/Visual Studio Code.app"]
+data = ["~/Library/Application Support/Code", "~/.vscode"]
+cache = [
+  "~/Library/Application Support/Code/Cache",
+  "~/Library/Application Support/Code/CachedData",
+  "~/Library/Application Support/Code/Code Cache",
+  "~/Library/Application Support/Code/GPUCache",
+  "~/Library/Caches/com.microsoft.VSCode",
+]
+
+[[app]]
+name = "Google Chrome"
+id = "com.google.Chrome"
+app = ["/Applications/Google Chrome.app"]
+data = ["~/Library/Application Support/Google/Chrome"]
+cache = ["~/Library/Caches/Google/Chrome"]
+
+[[app]]
+name = "Safari"
+id = "com.apple.Safari"
+data = ["~/Library/Safari", "~/Library/Containers/com.apple.Safari"]
+cache = ["~/Library/Caches/com.apple.Safari"]
+
+[[app]]
+name = "Firefox"
+id = "org.mozilla.firefox"
+app = ["/Applications/Firefox.app"]
+data = ["~/Library/Application Support/Firefox"]
+cache = ["~/Library/Caches/Firefox"]
+
+[[app]]
+name = "Slack"
+id = "com.tinyspeck.slackmacgap"
+app = ["/Applications/Slack.app"]
+data = ["~/Library/Application Support/Slack"]
+cache = [
+  "~/Library/Application Support/Slack/Cache",
+  "~/Library/Application Support/Slack/Code Cache",
+  "~/Library/Application Support/Slack/GPUCache",
+  "~/Library/Caches/com.tinyspeck.slackmacgap",
+]
+
+[[app]]
+name = "Spotify"
+id = "com.spotify.client"
+kind = "Music"
+app = ["/Applications/Spotify.app"]
+data = ["~/Library/Application Support/Spotify"]
+cache = ["~/Library/Caches/com.spotify.client"]
+
+[[app]]
+name = "Zoom"
+id = "us.zoom.xos"
+app = ["/Applications/zoom.us.app"]
+data = ["~/Library/Application Support/zoom.us"]
+cache = ["~/Library/Caches/us.zoom.xos"]
+
+[[app]]
+name = "Steam"
+id = "com.valvesoftware.steam"
+kind = "Games"
+app = ["/Applications/Steam.app"]
+data = ["~/Library/Application Support/Steam"]
+
+[[app]]
+name = "Photos"
+id = "com.apple.Photos"
+kind = "Photos"
+data = ["~/Pictures/*.photoslibrary"]
+cache = ["~/Library/Containers/com.apple.Photos/Data/Library/Caches"]
+
+[[app]]
+name = "Final Cut Pro"
+id = "com.apple.FinalCut"
+kind = "Videos"
+app = ["/Applications/Final Cut Pro.app"]
+data = ["~/Movies/*.fcpbundle"]
+cache = ["~/Library/Caches/com.apple.FinalCut"]
+
+[[app]]
+name = "Music"
+id = "com.apple.Music"
+kind = "Music"
+data = ["~/Music/Music"]
+cache = ["~/Library/Caches/com.apple.Music"]
+
+[[app]]
+name = "Mail"
+id = "com.apple.mail"
+kind = "Documents"
+data = ["~/Library/Mail", "~/Library/Containers/com.apple.mail"]
+
+[[app]]
+name = "Messages"
+id = "com.apple.MobileSMS"
+data = ["~/Library/Messages"]
+
+[[app]]
+name = "iPhone and iPad backups"
+id = "com.apple.MobileSync"
+data = ["~/Library/Application Support/MobileSync/Backup"]
+
+[[app]]
+name = "Adobe Creative Cloud"
+id = "com.adobe.acc"
+app = ["/Applications/Adobe*"]
+data = ["~/Library/Application Support/Adobe"]
+cache = ["~/Library/Caches/Adobe"]
+
+[[app]]
+name = "Microsoft Office"
+id = "com.microsoft.office"
+kind = "Documents"
+app = [
+  "/Applications/Microsoft Word.app",
+  "/Applications/Microsoft Excel.app",
+  "/Applications/Microsoft PowerPoint.app",
+  "/Applications/Microsoft Outlook.app",
+  "/Applications/Microsoft OneNote.app",
+]
+data = [
+  "~/Library/Group Containers/UBF8T346G9.Office",
+  "~/Library/Containers/com.microsoft.Word",
+  "~/Library/Containers/com.microsoft.Excel",
+  "~/Library/Containers/com.microsoft.Powerpoint",
+  "~/Library/Containers/com.microsoft.Outlook",
+]

@@ -352,7 +352,10 @@ fn progress_counters_reach_the_totals() {
 fn classifier_decides_kind_totals() {
     struct ByExtension;
     impl Classify for ByExtension {
-        fn file_kind(&self, _dir: &Path, name: &OsStr) -> Kind {
+        fn folder_kind(&self, dir: &Path) -> Option<Kind> {
+            (dir.file_name()? == "Caches").then_some(Kind::Caches)
+        }
+        fn file_kind(&self, name: &OsStr) -> Kind {
             match Path::new(name).extension().and_then(|e| e.to_str()) {
                 Some("mp4") => Kind::Videos,
                 Some("jpg") => Kind::Photos,
@@ -366,6 +369,8 @@ fn classifier_decides_kind_totals() {
     write(&tmp.path().join("sub/b.mp4"), 200_000);
     write(&tmp.path().join("sub/c.jpg"), 100_000);
     write(&tmp.path().join("notes.txt"), 5_000);
+    fs::create_dir(tmp.path().join("Caches")).unwrap();
+    write(&tmp.path().join("Caches/thumb.jpg"), 40_000);
     let on_disk = |p: &str| fs::metadata(tmp.path().join(p)).unwrap().blocks() * 512;
 
     let tree = scan(&ScanOptions::new(tmp.path()), &ByExtension, &ScanControl::new()).unwrap();
@@ -373,6 +378,7 @@ fn classifier_decides_kind_totals() {
     assert_eq!(kinds[Kind::Videos as usize], on_disk("a.mp4") + on_disk("sub/b.mp4"));
     assert_eq!(kinds[Kind::Photos as usize], on_disk("sub/c.jpg"));
     assert_eq!(kinds[Kind::Other as usize], on_disk("notes.txt"));
+    assert_eq!(kinds[Kind::Caches as usize], on_disk("Caches/thumb.jpg"), "the folder's kind wins over the name");
     assert_eq!(tree.files.len(), 0);
 }
 

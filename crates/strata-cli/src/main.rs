@@ -4,7 +4,8 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::Duration;
-use strata_core::{scan, volume_usage, NoClassify, ScanControl, ScanOptions, ScanTree};
+use strata_classify::{attribute, Env, KindClassifier, Os, RuleSet};
+use strata_core::{scan, volume_usage, Kind, ScanControl, ScanOptions, ScanTree};
 use strata_store::{ScanMeta, Store};
 
 const USAGE: &str = "\
@@ -179,7 +180,7 @@ fn run_scan() -> ExitCode {
                 eprint!("\r{:60}\r", "");
             });
         }
-        let r = scan(&opts, &NoClassify, ctl);
+        let r = scan(&opts, &KindClassifier, ctl);
         done.store(true, std::sync::atomic::Ordering::Relaxed);
         r
     });
@@ -272,6 +273,33 @@ fn print_report(args: &Args, tree: &ScanTree) {
             human(v.total_bytes),
             share
         );
+    }
+
+    let mut kinds: Vec<(Kind, u64)> = Kind::ALL.iter().map(|&k| (k, root.kind_bytes[k as usize])).collect();
+    kinds.sort_by_key(|&(_, bytes)| std::cmp::Reverse(bytes));
+    let file_bytes: u64 = kinds.iter().map(|&(_, b)| b).sum();
+    println!("\nBy kind");
+    for (kind, bytes) in kinds.into_iter().filter(|&(_, b)| b > 0) {
+        println!("{:>10}  {:>5.1}%  {}", human(bytes), percent(bytes, file_bytes), kind.name());
+    }
+
+    if let Some(env) = Env::current() {
+        // Rules exist for macOS and Windows; on other systems this stays empty.
+        let rules = RuleSet::builtin(Os::current());
+        let apps = attribute(tree, &rules, &env).apps;
+        if !apps.is_empty() {
+            println!("\nBy app{:>31}", "app / data / cache");
+            for app in apps.iter().take(args.top) {
+                println!(
+                    "{:>10}  {:<24} {} / {} / {}",
+                    human(app.total_bytes()),
+                    app.name,
+                    human(app.app_bytes),
+                    human(app.data_bytes),
+                    human(app.cache_bytes)
+                );
+            }
+        }
     }
 
     let mut children: Vec<u32> = root.children.clone();

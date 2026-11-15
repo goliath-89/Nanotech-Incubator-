@@ -13,8 +13,8 @@ contract changes.
 | `crates/strata-store` | Save scans and snapshots in SQLite | Built |
 | `crates/strata-safety` | Protected paths, move to Trash / Recycle Bin | Built |
 | `crates/strata-mft` | Windows fast scan from the NTFS Master File Table | Days 5–6 |
-| `crates/strata-classify` | File kinds and app attribution from rules | Day 7 |
-| `rules/` | App attribution rules (YAML) | Day 7 onwards |
+| `crates/strata-classify` | File kinds and app attribution from rules | Built |
+| `rules/` | App attribution rules (TOML), 20 starter apps per system | Started; grows in Sprint 5 |
 | `app/src-tauri` | Tauri commands and events | Day 9 |
 | `app/ui` | Svelte views | Sprint 2 onwards |
 
@@ -34,8 +34,10 @@ pub fn scan(opts: &ScanOptions, classify: &dyn Classify, ctl: &ScanControl)
 - `ScanControl`: live counters `files()`, `dirs()`, `bytes()`, `errors()` and
   `cancel()`. The caller polls it from another thread (the app does so 10
   times a second) while `scan` blocks.
-- `Classify`: `fn file_kind(&self, dir: &Path, name: &OsStr) -> Kind`, called
-  from many threads, once per file. `NoClassify` returns `Kind::Other`.
+- `Classify`: `folder_kind(&self, dir: &Path) -> Option<Kind>` is called once
+  per folder; `Some` gives every file directly in it that kind. Otherwise
+  `file_kind(&self, name: &OsStr) -> Kind` is called per file. Both run on
+  many threads. `NoClassify` returns `Kind::Other`.
 - `ScanTree`: `dirs` (every folder, parent before child, index 0 = root,
   children sorted by name), `files` (the largest files, biggest first),
   `errors` (capped at 10,000; the exact count is `stats.error_count`), `stats`.
@@ -140,25 +142,47 @@ Rust; the UI's own filtering is a convenience, not the safeguard.
 
 ## strata-classify
 
-- Kinds: `Other, Videos, Photos, Music, Documents, Apps, Games, Developer,
-  System, Caches` (`strata_core::Kind`; numbers are stored, never reorder).
-- Kind of a file: extension table first; files with no known extension stay
-  `Other` during the scan and the largest are re-checked by file signature
-  afterwards (reading every unknown file's first bytes would slow the walk).
-- App attribution runs after the scan, on folders, longest matching rule first.
+**Kinds** (`KindClassifier`, the `Classify` the app scans with):
 
-```yaml
-# rules/macos/docker.yaml
-app: Docker
-bundle_id: com.docker.docker
-paths:
-  - { path: "/Applications/Docker.app",                       role: app }
-  - { path: "~/Library/Containers/com.docker.docker",         role: data }
-  - { path: "~/Library/Caches/com.docker.docker",             role: cache, rebuildable: true }
+1. Where the folder is. Everything under a cache folder is Caches, under
+   `node_modules` or `DerivedData` Developer, inside an `.app` or Program
+   Files Apps, under `steamapps` Games, under a top-level system folder
+   System. The first marker on the way down decides, with three exceptions:
+   a game library inside a programs folder is Games, and caches or developer
+   tools inside a system folder are Caches or Developer.
+2. Otherwise the file's name: a table of about 600 extensions.
+3. Otherwise `Other`. The largest `Other` files are re-checked by file
+   signature after the scan (Day 43); reading every unknown file's first
+   bytes during the walk would slow it.
+
+Kind numbers are stored in saved scans: never reorder `strata_core::Kind`.
+
+**Apps** (`attribute(&ScanTree, &RuleSet, &Env) -> Attribution`) runs after
+the scan, on folders. A folder belongs to the app whose rule names it or the
+nearest folder above it; a deeper rule wins, so an app's cache folder inside
+its data folder is cache. Each folder directly inside an applications folder
+that no rule names is an app called by its own name. Everything else has no
+app; nothing is guessed. `Attribution` gives per-app `app / data / cache`
+bytes (largest first), the owner of every folder, and `cache_dirs`, the
+folders a cache rule named (the candidates for Reclaim).
+
+Rules are TOML, one file per system, compiled in and replaceable by an update:
+
+```toml
+[[app]]
+name  = "Docker"
+id    = "com.docker.docker"
+kind  = "Developer"                                   # optional
+app   = ["/Applications/Docker.app"]                  # the program
+data  = ["~/Library/Containers/com.docker.docker"]    # what it created
+cache = ["~/Library/Caches/com.docker.docker"]        # what it rebuilds
 ```
 
-`role` is `app`, `data` or `cache`. `~` and `%NAME%` expand per user.
-A folder with no matching rule has no app; nothing is guessed.
+`~` is the home folder, `C:` the Windows system drive, `*` any one folder
+name, `Name*` and `*.ext` match by start or end. A rules file with any
+mistake (unknown key, path too broad, `..`, duplicate id) is rejected whole.
+A `cache` path must already be removable under `strata-safety`; the test
+`every_cache_rule_is_inside_a_place_the_safety_policy_allows` enforces it.
 
 ## strata-safety
 

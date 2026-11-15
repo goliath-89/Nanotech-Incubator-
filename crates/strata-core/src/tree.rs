@@ -59,15 +59,22 @@ impl Kind {
 
 /// Decides the kind of each file while the scan runs. Called from many threads.
 pub trait Classify: Sync {
-    /// `dir` is the folder that holds the file, `name` the file's own name.
-    fn file_kind(&self, dir: &Path, name: &OsStr) -> Kind;
+    /// Called once for each folder, before its files. Returning a kind gives
+    /// every file directly in that folder that kind (files in a cache folder
+    /// are cache, whatever their names) and skips `file_kind` for them.
+    fn folder_kind(&self, _dir: &Path) -> Option<Kind> {
+        None
+    }
+
+    /// The kind of one file, judged by its name.
+    fn file_kind(&self, name: &OsStr) -> Kind;
 }
 
 /// Classifier that files everything under [`Kind::Other`].
 pub struct NoClassify;
 
 impl Classify for NoClassify {
-    fn file_kind(&self, _dir: &Path, _name: &OsStr) -> Kind {
+    fn file_kind(&self, _name: &OsStr) -> Kind {
         Kind::Other
     }
 }

@@ -13,3 +13,4 @@ path = "src/main.rs"
 [dependencies]
 strata-core = { path = "../strata-core" }
 strata-store = { path = "../strata-store" }
+strata-classify = { path = "../strata-classify" }

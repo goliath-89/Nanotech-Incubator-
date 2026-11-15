@@ -1,0 +1,141 @@
+# App rules for Windows. Same format as macos.toml.
+# Write paths with `/`. `C:` stands for the drive Windows is installed on.
+
+[[app]]
+name = "Google Chrome"
+id = "Google.Chrome"
+app = ["C:/Program Files/Google/Chrome", "C:/Program Files (x86)/Google/Chrome"]
+data = ["~/AppData/Local/Google/Chrome/User Data"]
+cache = [
+  "~/AppData/Local/Google/Chrome/User Data/*/Cache",
+  "~/AppData/Local/Google/Chrome/User Data/*/Code Cache",
+]
+
+[[app]]
+name = "Microsoft Edge"
+id = "Microsoft.Edge"
+app = ["C:/Program Files (x86)/Microsoft/Edge"]
+data = ["~/AppData/Local/Microsoft/Edge/User Data"]
+cache = [
+  "~/AppData/Local/Microsoft/Edge/User Data/*/Cache",
+  "~/AppData/Local/Microsoft/Edge/User Data/*/Code Cache",
+]
+
+[[app]]
+name = "Firefox"
+id = "Mozilla.Firefox"
+app = ["C:/Program Files/Mozilla Firefox"]
+data = ["~/AppData/Roaming/Mozilla/Firefox", "~/AppData/Local/Mozilla/Firefox"]
+cache = ["~/AppData/Local/Mozilla/Firefox/Profiles/*/cache2"]
+
+[[app]]
+name = "Steam"
+id = "Valve.Steam"
+kind = "Games"
+app = ["C:/Program Files (x86)/Steam"]
+
+[[app]]
+name = "Epic Games"
+id = "EpicGames.EpicGamesLauncher"
+kind = "Games"
+app = ["C:/Program Files/Epic Games", "C:/Program Files (x86)/Epic Games"]
+data = ["C:/ProgramData/Epic"]
+
+[[app]]
+name = "Docker Desktop"
+id = "Docker.DockerDesktop"
+kind = "Developer"
+app = ["C:/Program Files/Docker"]
+data = ["~/AppData/Local/Docker", "C:/ProgramData/Docker", "C:/ProgramData/DockerDesktop"]
+
+[[app]]
+name = "Windows Subsystem for Linux"
+id = "Microsoft.WSL"
+kind = "Developer"
+data = ["~/AppData/Local/Packages/CanonicalGroupLimited*", "~/AppData/Local/wsl"]
+
+[[app]]
+name = "Visual Studio Code"
+id = "Microsoft.VisualStudioCode"
+kind = "Developer"
+app = ["~/AppData/Local/Programs/Microsoft VS Code"]
+data = ["~/AppData/Roaming/Code", "~/.vscode"]
+cache = [
+  "~/AppData/Roaming/Code/Cache",
+  "~/AppData/Roaming/Code/CachedData",
+  "~/AppData/Roaming/Code/Code Cache",
+  "~/AppData/Roaming/Code/GPUCache",
+]
+
+[[app]]
+name = "Visual Studio"
+id = "Microsoft.VisualStudio"
+kind = "Developer"
+app = ["C:/Program Files/Microsoft Visual Studio", "C:/Program Files (x86)/Microsoft Visual Studio"]
+data = ["C:/ProgramData/Microsoft/VisualStudio", "~/AppData/Local/Microsoft/VisualStudio", "C:/ProgramData/Package Cache"]
+
+[[app]]
+name = "Node.js and npm"
+id = "OpenJS.NodeJS"
+kind = "Developer"
+app = ["C:/Program Files/nodejs"]
+data = ["~/AppData/Roaming/npm"]
+cache = ["~/AppData/Local/npm-cache"]
+
+[[app]]
+name = "NuGet"
+id = "Microsoft.NuGet"
+kind = "Developer"
+data = ["~/.nuget/packages"]
+cache = ["~/AppData/Local/NuGet/v3-cache"]
+
+[[app]]
+name = "Python pip"
+id = "Python.pip"
+kind = "Developer"
+cache = ["~/AppData/Local/pip/Cache"]
+
+[[app]]
+name = "Slack"
+id = "SlackTechnologies.Slack"
+app = ["~/AppData/Local/slack"]
+data = ["~/AppData/Roaming/Slack"]
+cache = ["~/AppData/Roaming/Slack/Cache", "~/AppData/Roaming/Slack/Code Cache"]
+
+[[app]]
+name = "Spotify"
+id = "Spotify.Spotify"
+kind = "Music"
+app = ["~/AppData/Roaming/Spotify"]
+data = ["~/AppData/Local/Spotify"]
+
+[[app]]
+name = "Zoom"
+id = "Zoom.Zoom"
+app = ["~/AppData/Roaming/Zoom/bin"]
+data = ["~/AppData/Roaming/Zoom"]
+
+[[app]]
+name = "Microsoft Office"
+id = "Microsoft.Office"
+kind = "Documents"
+app = ["C:/Program Files/Microsoft Office", "C:/Program Files (x86)/Microsoft Office"]
+data = ["~/AppData/Local/Microsoft/Office", "~/AppData/Local/Microsoft/Outlook"]
+
+[[app]]
+name = "Adobe Creative Cloud"
+id = "Adobe.CreativeCloud"
+app = ["C:/Program Files/Adobe", "C:/Program Files (x86)/Adobe"]
+data = ["~/AppData/Roaming/Adobe", "C:/ProgramData/Adobe"]
+
+[[app]]
+name = "Windows Update"
+id = "Microsoft.WindowsUpdate"
+kind = "System"
+cache = ["C:/Windows/SoftwareDistribution/Download"]
+
+[[app]]
+name = "Temporary files"
+id = "Windows.Temp"
+kind = "Caches"
+cache = ["~/AppData/Local/Temp", "C:/Windows/Temp"]
