@@ -11,7 +11,7 @@ contract changes.
 | `crates/strata-core` | Walk a folder tree and total what is on disk | Built |
 | `crates/strata-cli` | `strata scan` command for testing and benchmarks | Built |
 | `crates/strata-store` | Save scans and snapshots in SQLite | Built |
-| `crates/strata-safety` | Protected paths, move to Trash / Recycle Bin | Day 4 |
+| `crates/strata-safety` | Protected paths, move to Trash / Recycle Bin | Built |
 | `crates/strata-mft` | Windows fast scan from the NTFS Master File Table | Days 5–6 |
 | `crates/strata-classify` | File kinds and app attribution from rules | Day 7 |
 | `rules/` | App attribution rules (YAML) | Day 7 onwards |
@@ -162,10 +162,32 @@ A folder with no matching rule has no app; nothing is guessed.
 
 ## strata-safety
 
-- `is_protected(path) -> Option<Reason>`: operating-system folders, the
-  running app, installed app bundles and program folders, user-profile roots,
-  anything outside the scanned volume, and every ancestor of a protected path.
-- `trash(paths) -> Report`: refuses protected paths, then moves the rest to
-  the Trash / Recycle Bin. There is no code path that deletes outright.
-- Suggestions may only name items that match an allow rule (a known cache,
-  installer or rebuildable folder) and are not protected.
+The only code in Strata that removes anything, and it can only move things to
+the Trash or Recycle Bin.
+
+```rust
+Policy::for_current_user() / Policy::new(platform, extra_homes)
+policy.check(path) -> Result<(), Refusal>      // text only, no file access
+policy.protect(folder)                         // add a protected tree; there is no way to remove one
+vet(policy, scan_root, item) -> Result<PathBuf, VetError>   // every check, without moving
+trash(policy, scan_root, items) -> TrashReport // { moved, refused, failed }
+```
+
+- **The policy is three lists in `src/rules.rs`** (macOS, Windows, Linux),
+  each entry `Tree` (the path and everything in it), `Exact` (the path
+  itself) or `Open` (a hole in a tree: a cache folder whose contents may go).
+  The longest matching rule decides. Anything that contains a listed path is
+  refused too. On macOS, programs (`.app`, `.framework`, ...) and the insides
+  of library packages (`.photoslibrary`, ...) are refused wherever they are.
+- **Open rules exist only in that file.** App rules (`rules/*.yaml`) cannot
+  open anything: a rule that marks a path `rebuildable` must already pass
+  `policy.check`, and a test in `strata-classify` enforces that for every rule.
+- **Strict parsing.** Relative paths, `..`, network paths, Windows stream
+  names, trailing dots and spaces, and short-name aliases (`PROGRA~1`) are
+  refused, not tidied. macOS and Windows compare without regard to case,
+  including the non-ASCII letters those systems treat as ASCII ones.
+- **`vet` re-checks at the real location.** After the text check it resolves
+  links in the folders above the item and checks again, so a linked folder
+  cannot lead into a protected area or out of the scanned folder. Links and
+  other drives' mount points are refused outright.
+- The bridge's `trash` command must call `trash()` and nothing else.

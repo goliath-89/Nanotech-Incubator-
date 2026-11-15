@@ -14,7 +14,7 @@ Claude what to build and tells you what only you can do.
 - A gate is a pass/fail test. Do not start the next phase until it passes;
   if it fails, the next day is spent on the failure and later days shift.
 
-Status: **Days 1–2 done.** Next: Day 3, which needs the scan outputs from your Mac and Windows PC.
+Status: **Days 1, 2 and 4 done.** Day 3 waits for the scan outputs from your Mac and Windows PC (see [BACKLOG.md](BACKLOG.md)).
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -23,7 +23,7 @@ Status: **Days 1–2 done.** Next: Day 3, which needs the scan outputs from your
 | 1 ✅ | Fable | Workspace, scanner core (parallel walk, size on disk, hard links, cloud files, unreadable folders, cancel, progress), `strata scan` command, 16 tests, CI for 3 platforms, architecture contract | — |
 | 2 ✅ | Fable | `strata-store`: SQLite schema, save / load / children / diff / prune, all-or-nothing saves, 14 tests; `strata scan --save`, `strata history`, `strata growth` | Download the `strata` builds from the CI run. Run `strata scan / --errors` on your Mac and `strata scan C:\ --errors` on Windows. Paste both outputs. |
 | 3 | Fable | Fix what Day 2's real runs show. macOS: Data volume and firmlinks, snapshots, purgeable space, clone gap. Windows: cluster and small-file rules. Windows test suite | Rerun both scans, paste outputs. Note the used space Finder and Explorer show. |
-| 4 | Fable | `strata-safety`: protected paths for both systems, move to Trash / Recycle Bin, property tests that no input can reach a protected path | — |
+| 4 ✅ | Fable | `strata-safety`: protected paths for both systems, move to Trash / Recycle Bin, 28 tests including randomized ones that no spelling of a path reaches a protected place | — |
 | 5 | Fable | `strata-mft` part 1: read NTFS file records, sizes, names, hard links by file id, build the same `ScanTree` | — |
 | 6 | Fable | `strata-mft` part 2: admin elevation on demand, fallback to the plain walk, shadow copies shown under System | Run the fast scan on Windows as administrator; paste output next to the plain scan. |
 | 7 | Fable | `strata-classify`: extension table (about 600), rule format and loader, attribution engine, rule test fixtures | — |

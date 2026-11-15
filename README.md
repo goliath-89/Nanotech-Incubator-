@@ -7,6 +7,7 @@ of file, by folder, and by the application that owns it.
 - Design concept: https://claude.ai/artifact/R3bpVchpxHeN62tJTk9LmV
 - How the code is organised and the contracts between parts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - What gets built each day: [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md)
+- What needs you: [docs/BACKLOG.md](docs/BACKLOG.md)
 
 ## Try the scanner
 
