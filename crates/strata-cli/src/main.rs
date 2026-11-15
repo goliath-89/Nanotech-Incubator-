@@ -1,6 +1,8 @@
 //! `strata scan <folder>`: run the scanner and print what it found.
 //! `strata history <file>` and `strata growth <file>`: read saved scans.
 
+mod bench;
+
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::Duration;
@@ -12,6 +14,8 @@ const USAGE: &str = "\
 Usage: strata scan <folder> [options]
        strata history <file>     List the scans saved in a history file
        strata growth <file>      What changed between the last two saved scans
+       strata make-tree <folder> <files>   Create a test tree with that many files
+       strata bench <folder> [runs]        Time the scanner on a folder (default 3 runs)
 
 Options for scan:
   --save <file>        Add the result to a history file (created if missing)
@@ -87,6 +91,20 @@ fn main() -> ExitCode {
         (Some("scan"), _) => run_scan(),
         (Some("history"), Some(file)) => report(history(&PathBuf::from(file))),
         (Some("growth"), Some(file)) => report(growth(&PathBuf::from(file))),
+        (Some("make-tree"), Some(folder)) => {
+            let files = argv.next().and_then(|n| n.to_str().and_then(|s| s.replace(['_', ','], "").parse().ok()));
+            match files {
+                Some(files) => report_io(bench::make_tree(&PathBuf::from(folder), files)),
+                None => {
+                    eprintln!("strata: make-tree needs a number of files\n\n{USAGE}");
+                    ExitCode::from(2)
+                }
+            }
+        }
+        (Some("bench"), Some(folder)) => {
+            let runs = argv.next().and_then(|n| n.to_str().and_then(|s| s.parse().ok())).unwrap_or(3);
+            report_io(bench::bench(&PathBuf::from(folder), runs))
+        }
         _ => {
             eprintln!("{USAGE}");
             ExitCode::from(2)
@@ -95,6 +113,16 @@ fn main() -> ExitCode {
 }
 
 fn report(result: Result<(), strata_store::StoreError>) -> ExitCode {
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("strata: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn report_io(result: std::io::Result<()>) -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {

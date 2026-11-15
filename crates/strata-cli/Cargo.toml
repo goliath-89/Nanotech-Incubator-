@@ -16,3 +16,6 @@ strata-store = { path = "../strata-store" }
 strata-classify = { path = "../strata-classify" }
 strata-reclaim = { path = "../strata-reclaim" }
 strata-safety = { path = "../strata-safety" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"

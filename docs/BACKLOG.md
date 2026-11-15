@@ -17,7 +17,10 @@ go; Claude adds to this list when something new needs a person.
 ## Do this week
 
 - [ ] After Day 6: run the fast scan on Windows as administrator and paste the output.
-- [ ] After Day 8: run the 2-million-file benchmark on both machines (about 10 minutes each).
+- [ ] Run the 2-million-file benchmark on both machines (about 10 minutes each, needs about 5 GB free)
+      and paste the two `RESULT` lines:
+      `strata make-tree bench-tree 2000000`, then `strata bench bench-tree`, then delete `bench-tree`.
+      On Windows run it somewhere under your user folder, with `strata.exe`.
 - [ ] Tell Claude how long you expect to have Fable, so the remaining
       Fable-first work can be ordered around it.
 
