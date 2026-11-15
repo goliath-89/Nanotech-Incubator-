@@ -13,7 +13,7 @@ contract changes.
 | `crates/strata-store` | Save scans and snapshots in SQLite | Built |
 | `crates/strata-safety` | Protected paths, move to Trash / Recycle Bin | Built |
 | `crates/strata-reclaim` | Cleanup suggestions and duplicate finder (read-only) | Built |
-| `crates/strata-mft` | Windows fast scan from the NTFS Master File Table | Days 5–6 |
+| `crates/strata-mft` | Fast whole-volume scan from the NTFS file table | Built; first run on real Windows pending |
 | `crates/strata-classify` | File kinds and app attribution from rules | Built |
 | `rules/` | App attribution rules (TOML), 20 starter apps per system | Started; grows in Sprint 5 |
 | `app/src-tauri` | Tauri commands and events | Day 9 |
@@ -71,7 +71,7 @@ pub fn scan(opts: &ScanOptions, classify: &dyn Classify, ctl: &ScanControl)
 
 | Gap | Effect | Plan |
 | --- | --- | --- |
-| Windows hard links are not de-duplicated by the plain walk | `C:\Windows\WinSxS` over-counted by a few GB | Day 5–6: the MFT scanner sees link counts for free; the plain walk opens handles only under known link-heavy folders |
+| Windows hard links are not de-duplicated by the plain walk | `C:\Windows\WinSxS` over-counted by a few GB | The fast scan (`strata-mft`) counts them once. The plain walk still over-counts; Day 6 adds handle lookups under known link-heavy folders |
 | APFS clones (copies that share blocks) count once per copy | Over-count on Macs with many duplicated files | Day 3: measure on a real Mac; report the gap to the OS figure as "Shared or purgeable" |
 | macOS root scan and the Data volume | `/` and `/System/Volumes/Data` are separate volumes joined by firmlinks | Day 3: scanning "Macintosh HD" means scanning the Data volume and adding the sealed system volume as one System item |
 | APFS local snapshots and purgeable space | Used space the walk cannot see | Day 3: read sizes from `tmutil` / volume attributes and show as their own items |
@@ -242,3 +242,36 @@ find_duplicates(&ScanTree, &Policy, &DuplicateControl) -> Vec<DuplicateGroup>
   then a hash of everything. A copy the policy protects is listed first as
   the one to keep and is never offered. Files changed since the scan are
   dropped. A cancelled search returns nothing.
+
+## strata-mft
+
+Reads the NTFS Master File Table front to back instead of walking folders.
+Read-only, and generic over `Read + Seek`, so it runs against volume images
+on any system and against `\\.\C:` on Windows (administrator needed).
+
+```rust
+scan_volume(volume, &MftOptions, &classify, &ScanControl) -> Result<ScanTree, MftError>
+is_ntfs(&mut volume) -> bool
+open_drive('C') -> Result<File, MftError>      // Windows only
+```
+
+- The result is an ordinary `ScanTree`, built through `strata_core::raw`
+  (`RawDir`, `build_tree`), the same step the folder walk uses, so both
+  scanners apply the same hard-link and roll-up rules.
+- Space on disk is added up from each stream's run list: holes are left
+  out, so sparse and compressed files count what they occupy, contents
+  stored inside the file record count as zero, and NTFS's bad-cluster map
+  (whose stream spans the volume) counts as nothing. Named streams and a
+  folder's own index count too. On the test images the total equals the
+  volume's own used-space figure to the byte.
+- NTFS's own files (`$MFT`, `$LogFile`, `$Extend\...`) appear under the root
+  as kind System. Short 8.3 alias names are ignored. A name whose parent
+  folder was deleted or reused is dropped.
+- All input is untrusted. Every offset is bounds-checked; a damaged record
+  is skipped; a damaged table is an error. A test flips bytes across an
+  image 400 times and requires no panic.
+- Errors: `NotNtfs` (fall back to the walk), `NeedsAdministrator`, `Damaged`,
+  `Cancelled`, `Io`.
+- Tests use `tests/fixtures/small.img.gz`, a real NTFS volume built by
+  `tools/make-ntfs-fixture.sh` (ntfs-3g), and compare against the listing
+  the mounted volume gave.

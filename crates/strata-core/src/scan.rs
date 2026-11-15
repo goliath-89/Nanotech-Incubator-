@@ -1,8 +1,6 @@
 use crate::platform::{self, RootCtx};
-use crate::tree::{
-    Classify, DirFlags, DirNode, FileNode, Kind, ScanError, ScanErrorKind, ScanStats, ScanTree,
-    KIND_COUNT,
-};
+use crate::raw::{build_tree, RawDir, RawFile, RawLink};
+use crate::tree::{Classify, DirFlags, ScanError, ScanErrorKind, ScanTree};
 use rayon::prelude::*;
 use std::ffi::OsString;
 use std::io;
@@ -76,6 +74,13 @@ impl ScanControl {
     pub fn dirs(&self) -> u64 {
         self.dirs.load(Relaxed)
     }
+    /// Add to the live counters. For scanners other than [`scan`] that
+    /// build their result through [`crate::raw`].
+    pub fn record(&self, files: u64, dirs: u64, bytes: u64) {
+        self.files.fetch_add(files, Relaxed);
+        self.dirs.fetch_add(dirs, Relaxed);
+        self.bytes.fetch_add(bytes, Relaxed);
+    }
     /// Bytes on disk counted so far. Hard-linked files are added at the end,
     /// so this can finish slightly below the final total.
     pub fn bytes(&self) -> u64 {
@@ -84,51 +89,6 @@ impl ScanControl {
     /// Entries that could not be read so far.
     pub fn errors(&self) -> u64 {
         self.errors.load(Relaxed)
-    }
-}
-
-struct RawFile {
-    name: OsString,
-    alloc: u64,
-    logical: u64,
-    kind: Kind,
-}
-
-struct RawLink {
-    id: (u64, u64),
-    file: RawFile,
-}
-
-/// One folder as the walk found it: only what sits directly inside it.
-struct RawDir {
-    name: OsString,
-    dir_alloc: u64,
-    files_alloc: u64,
-    files_logical: u64,
-    file_count: u64,
-    kind_bytes: [u64; KIND_COUNT],
-    cloud_only: u64,
-    big: Vec<RawFile>,
-    links: Vec<RawLink>,
-    children: Vec<RawDir>,
-    flags: DirFlags,
-}
-
-impl RawDir {
-    fn new(name: OsString, dir_alloc: u64) -> Self {
-        RawDir {
-            name,
-            dir_alloc,
-            files_alloc: 0,
-            files_logical: 0,
-            file_count: 0,
-            kind_bytes: [0; KIND_COUNT],
-            cloud_only: 0,
-            big: Vec::new(),
-            links: Vec::new(),
-            children: Vec::new(),
-            flags: DirFlags::default(),
-        }
     }
 }
 
@@ -190,7 +150,7 @@ pub fn scan(opts: &ScanOptions, classify: &dyn Classify, ctl: &ScanControl) -> i
             opts.root.clone().into_os_string(),
             root.alloc,
         );
-        build_tree(raw, opts)
+        build_tree(raw, opts.min_file_bytes, opts.max_files)
     });
 
     tree.errors = ctx.errors.into_inner().unwrap_or_else(|e| e.into_inner());
@@ -296,124 +256,4 @@ fn scan_dir(ctx: &Ctx, path: PathBuf, name: OsString, dir_alloc: u64) -> RawDir 
         })
         .collect();
     dir
-}
-
-struct PendingLink {
-    id: (u64, u64),
-    dir: u32,
-    file: RawFile,
-}
-
-fn build_tree(raw: RawDir, opts: &ScanOptions) -> ScanTree {
-    let mut dirs: Vec<DirNode> = Vec::new();
-    let mut files: Vec<FileNode> = Vec::new();
-    let mut links: Vec<PendingLink> = Vec::new();
-    flatten(raw, None, &mut dirs, &mut files, &mut links);
-
-    // Hard links: each file is counted once, in the first folder (in tree
-    // order, then by name) that holds a link to it. Sorting makes the choice
-    // the same on every run, whatever order the threads finished in.
-    let mut stats = ScanStats::default();
-    links.sort_by(|a, b| {
-        (a.id, a.dir)
-            .cmp(&(b.id, b.dir))
-            .then_with(|| a.file.name.cmp(&b.file.name))
-    });
-    let mut previous: Option<(u64, u64)> = None;
-    for link in links {
-        if previous == Some(link.id) {
-            stats.hardlink_duplicates += 1;
-            stats.hardlink_saved_bytes += link.file.alloc;
-            continue;
-        }
-        previous = Some(link.id);
-        let d = &mut dirs[link.dir as usize];
-        d.alloc_bytes += link.file.alloc;
-        d.logical_bytes += link.file.logical;
-        d.own_files_alloc += link.file.alloc;
-        d.kind_bytes[link.file.kind as usize] += link.file.alloc;
-        if link.file.alloc >= opts.min_file_bytes {
-            files.push(FileNode {
-                dir: link.dir,
-                name: link.file.name,
-                alloc_bytes: link.file.alloc,
-                logical_bytes: link.file.logical,
-                kind: link.file.kind,
-            });
-        }
-    }
-
-    // Roll totals up. Children always have a higher index than their parent,
-    // so walking backwards finishes every folder before it is added upwards.
-    for i in (1..dirs.len()).rev() {
-        let (head, tail) = dirs.split_at_mut(i);
-        let child = &tail[0];
-        let parent = &mut head[child.parent.expect("only the root has no parent") as usize];
-        parent.alloc_bytes += child.alloc_bytes;
-        parent.logical_bytes += child.logical_bytes;
-        parent.file_count += child.file_count;
-        parent.dir_count += child.dir_count + 1;
-        parent.cloud_only_bytes += child.cloud_only_bytes;
-        for k in 0..KIND_COUNT {
-            parent.kind_bytes[k] += child.kind_bytes[k];
-        }
-    }
-
-    files.sort_by(|a, b| {
-        b.alloc_bytes
-            .cmp(&a.alloc_bytes)
-            .then_with(|| a.dir.cmp(&b.dir))
-            .then_with(|| a.name.cmp(&b.name))
-    });
-    files.truncate(opts.max_files);
-    files.shrink_to_fit();
-
-    ScanTree {
-        dirs,
-        files,
-        errors: Vec::new(),
-        stats,
-    }
-}
-
-fn flatten(
-    mut raw: RawDir,
-    parent: Option<u32>,
-    dirs: &mut Vec<DirNode>,
-    files: &mut Vec<FileNode>,
-    links: &mut Vec<PendingLink>,
-) -> u32 {
-    let id = u32::try_from(dirs.len()).expect("more than 4 billion folders");
-    dirs.push(DirNode {
-        parent,
-        name: raw.name,
-        children: Vec::with_capacity(raw.children.len()),
-        alloc_bytes: raw.dir_alloc + raw.files_alloc,
-        logical_bytes: raw.files_logical,
-        file_count: raw.file_count,
-        dir_count: 0,
-        kind_bytes: raw.kind_bytes,
-        cloud_only_bytes: raw.cloud_only,
-        own_files_alloc: raw.files_alloc,
-        own_file_count: raw.file_count,
-        flags: raw.flags,
-    });
-    files.extend(raw.big.into_iter().map(|f| FileNode {
-        dir: id,
-        name: f.name,
-        alloc_bytes: f.alloc,
-        logical_bytes: f.logical,
-        kind: f.kind,
-    }));
-    links.extend(raw.links.into_iter().map(|l| PendingLink {
-        id: l.id,
-        dir: id,
-        file: l.file,
-    }));
-    raw.children.sort_by(|a, b| a.name.cmp(&b.name));
-    for child in raw.children {
-        let cid = flatten(child, Some(id), dirs, files, links);
-        dirs[id as usize].children.push(cid);
-    }
-    id
 }

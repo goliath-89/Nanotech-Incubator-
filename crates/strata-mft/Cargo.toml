@@ -1,0 +1,14 @@
+[package]
+name = "strata-mft"
+description = "Fast whole-volume scan by reading the NTFS Master File Table"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+strata-core = { path = "../strata-core" }
+
+[dev-dependencies]
+strata-classify = { path = "../strata-classify" }
+flate2 = "1"

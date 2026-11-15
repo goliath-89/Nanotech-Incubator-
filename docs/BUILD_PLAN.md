@@ -14,7 +14,7 @@ Claude what to build and tells you what only you can do.
 - A gate is a pass/fail test. Do not start the next phase until it passes;
   if it fails, the next day is spent on the failure and later days shift.
 
-Status: **Days 1, 2, 4, 7, 8 and 9 done.** Day 3 waits for the scan outputs from your Mac and Windows PC (see [BACKLOG.md](BACKLOG.md)).
+Status: **Days 1, 2, 4, 5, 7, 8 and 9 done; Day 6 half done.** Day 3 waits for the scan outputs from your Mac and Windows PC (see [BACKLOG.md](BACKLOG.md)).
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -24,8 +24,8 @@ Status: **Days 1, 2, 4, 7, 8 and 9 done.** Day 3 waits for the scan outputs from
 | 2 ✅ | Fable | `strata-store`: SQLite schema, save / load / children / diff / prune, all-or-nothing saves, 14 tests; `strata scan --save`, `strata history`, `strata growth` | Download the `strata` builds from the CI run. Run `strata scan / --errors` on your Mac and `strata scan C:\ --errors` on Windows. Paste both outputs. |
 | 3 | Fable | Fix what Day 2's real runs show. macOS: Data volume and firmlinks, snapshots, purgeable space, clone gap. Windows: cluster and small-file rules. Windows test suite | Rerun both scans, paste outputs. Note the used space Finder and Explorer show. |
 | 4 ✅ | Fable | `strata-safety`: protected paths for both systems, move to Trash / Recycle Bin, 28 tests including randomized ones that no spelling of a path reaches a protected place | — |
-| 5 | Fable | `strata-mft` part 1: read NTFS file records, sizes, names, hard links by file id, build the same `ScanTree` | — |
-| 6 | Fable | `strata-mft` part 2: admin elevation on demand, fallback to the plain walk, shadow copies shown under System | Run the fast scan on Windows as administrator; paste output next to the plain scan. |
+| 5 ✅ | Fable | `strata-mft`: reads NTFS file records, sizes from run lists, names, hard links; builds the same `ScanTree`; 9 tests on a real NTFS image, total matches the volume's used space to the byte | — |
+| 6 ◐ | Fable | Done: `strata scan C: --fast`, `NotNtfs` and `NeedsAdministrator` errors for falling back. Left: fixes from your first real run, shadow copies under System, hard-link lookups for the plain walk | Run `strata.exe scan C: --fast --errors` as administrator and `strata.exe scan C:\ --errors` normally; paste both. |
 | 7 ✅ | Fable | `strata-classify`: extension table (about 600), folder-context kinds, TOML rule format and loader, attribution engine, 20 starter apps per system, 11 tests | — |
 | 8 ✅ | Fable | Benchmark tool: `strata make-tree` and `strata bench`. On Linux (4 cores, warm cache): 2M files in 1.7 s, 107 MB peak. Mac and Windows tuning waits for your numbers | Run the 2M benchmark on both machines (about 10 minutes each), paste the `RESULT` lines. |
 | 9 ✅ | Fable | `strata-reclaim`: duplicate finder (size, partial hash, full hash) and cleanup suggestion engine on top of the safety rules, 8 tests; `strata scan --reclaim --duplicates` lists them | — |

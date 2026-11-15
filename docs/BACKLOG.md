@@ -16,7 +16,8 @@ go; Claude adds to this list when something new needs a person.
 
 ## Do this week
 
-- [ ] After Day 6: run the fast scan on Windows as administrator and paste the output.
+- [ ] On the PC, in a terminal opened with "Run as administrator": `strata.exe scan C: --fast --errors`.
+      Paste the output next to the normal scan's. This is the first run of the fast scan on real Windows.
 - [ ] Run the 2-million-file benchmark on both machines (about 10 minutes each, needs about 5 GB free)
       and paste the two `RESULT` lines:
       `strata make-tree bench-tree 2000000`, then `strata bench bench-tree`, then delete `bench-tree`.

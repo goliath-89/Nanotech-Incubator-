@@ -18,6 +18,9 @@ Usage: strata scan <folder> [options]
        strata bench <folder> [runs]        Time the scanner on a folder (default 3 runs)
 
 Options for scan:
+  --fast               Read the NTFS file table instead of walking folders. Give a
+                       drive (C:) on Windows, as administrator; elsewhere a volume
+                       image or device
   --save <file>        Add the result to a history file (created if missing)
   --top <n>            How many folders and files to list (default 20)
   --all-filesystems    Also enter other volumes mounted below the folder
@@ -39,6 +42,7 @@ struct Args {
     save: Option<PathBuf>,
     reclaim: bool,
     duplicates: bool,
+    fast: bool,
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -54,6 +58,7 @@ fn parse_args() -> Result<Args, String> {
         save: None,
         reclaim: false,
         duplicates: false,
+        fast: false,
     };
     let mut root = None;
     while let Some(a) = it.next() {
@@ -71,6 +76,7 @@ fn parse_args() -> Result<Args, String> {
             Some("--all-filesystems") => args.all_filesystems = true,
             Some("--errors") => args.errors = true,
             Some("--reclaim") => args.reclaim = true,
+            Some("--fast") => args.fast = true,
             Some("--duplicates") => args.duplicates = true,
             Some("--json") => args.json = true,
             Some("--quiet") => args.quiet = true,
@@ -216,7 +222,11 @@ fn run_scan() -> ExitCode {
                 eprint!("\r{:60}\r", "");
             });
         }
-        let r = scan(&opts, &KindClassifier, ctl);
+        let r = if args.fast {
+            fast_scan(&args.root, ctl).map_err(|e| std::io::Error::other(e.to_string()))
+        } else {
+            scan(&opts, &KindClassifier, ctl)
+        };
         done.store(true, std::sync::atomic::Ordering::Relaxed);
         r
     });
@@ -252,6 +262,23 @@ fn run_scan() -> ExitCode {
         }
     }
     ExitCode::SUCCESS
+}
+
+/// Scan a whole NTFS volume from its file table.
+fn fast_scan(volume: &std::path::Path, ctl: &ScanControl) -> Result<ScanTree, strata_mft::MftError> {
+    #[cfg(windows)]
+    {
+        // `C:` or `C:\` names a drive; anything else is taken as an image file.
+        let text = volume.to_string_lossy();
+        let mut chars = text.chars();
+        if let (Some(letter), Some(':'), true) = (chars.next(), chars.next(), text.len() <= 3) {
+            let drive = strata_mft::open_drive(letter)?;
+            let name = format!("{}:\\", letter.to_ascii_uppercase());
+            return strata_mft::scan_volume(drive, &strata_mft::MftOptions::new(name), &KindClassifier, ctl);
+        }
+    }
+    let file = std::fs::File::open(volume)?;
+    strata_mft::scan_volume(file, &strata_mft::MftOptions::new(volume.as_os_str()), &KindClassifier, ctl)
 }
 
 fn print_report(args: &Args, tree: &ScanTree) {

@@ -11,6 +11,7 @@
 //! * anything that could not be read is recorded, never silently dropped.
 
 mod platform;
+pub mod raw;
 mod scan;
 mod tree;
 
