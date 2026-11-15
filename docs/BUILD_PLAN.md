@@ -14,7 +14,7 @@ Claude what to build and tells you what only you can do.
 - A gate is a pass/fail test. Do not start the next phase until it passes;
   if it fails, the next day is spent on the failure and later days shift.
 
-Status: **Days 1, 2, 4 and 7 done.** Day 3 waits for the scan outputs from your Mac and Windows PC (see [BACKLOG.md](BACKLOG.md)).
+Status: **Days 1, 2, 4, 7 and 9 done.** Day 3 waits for the scan outputs from your Mac and Windows PC (see [BACKLOG.md](BACKLOG.md)).
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -28,7 +28,7 @@ Status: **Days 1, 2, 4 and 7 done.** Day 3 waits for the scan outputs from your 
 | 6 | Fable | `strata-mft` part 2: admin elevation on demand, fallback to the plain walk, shadow copies shown under System | Run the fast scan on Windows as administrator; paste output next to the plain scan. |
 | 7 ✅ | Fable | `strata-classify`: extension table (about 600), folder-context kinds, TOML rule format and loader, attribution engine, 20 starter apps per system, 11 tests | — |
 | 8 | Fable | Benchmark tool: generates 500k / 2M / 4M-file trees, measures time and memory; tune thread count and macOS bulk attribute reads | Run the 2M benchmark on both machines (about 10 minutes each), paste results. |
-| 9 | Fable | Duplicate finder engine (size, partial hash, full hash) and the cleanup suggestion engine, on top of safety rules | — |
+| 9 ✅ | Fable | `strata-reclaim`: duplicate finder (size, partial hash, full hash) and cleanup suggestion engine on top of the safety rules, 8 tests; `strata scan --reclaim --duplicates` lists them | — |
 | 10 | Fable | Review of everything so far against the architecture contract; fix findings. **Gate A check** | **Gate A:** 2M-file scan under 60 s and total within 2% of the OS figure on both machines. |
 
 ## Sprint 2 · weeks 3–4 · app shell

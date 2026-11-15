@@ -117,41 +117,19 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
 
     for (app_index, app) in rules.apps.iter().enumerate() {
         for (pattern, role) in &app.paths {
-            // Turn the pattern into absolute path parts on this machine.
-            let mut parts: Vec<&str> = Vec::new();
-            let written = pattern_parts(pattern);
-            let mut rest = &written[..];
-            if written.first() == Some(&"~") {
-                parts.extend(&home_parts);
-                rest = &written[1..];
-            } else if written.first().is_some_and(|p| p.ends_with(':')) {
-                parts.push(&env.system_drive);
-                rest = &written[1..];
-            }
-            parts.extend(rest);
-
+            let (hits, depth) = locate(tree, &names, &matcher, &root_parts, &home_parts, env, pattern);
             let owner = Owner {
                 app: app_index as u32,
                 role: *role,
             };
-            let mut hits = Vec::new();
-            if parts.len() >= root_parts.len() {
-                // The rule is at or below the scanned folder: walk down to it.
-                let (above, below) = parts.split_at(root_parts.len());
-                if above.iter().zip(&root_parts).all(|(p, r)| matcher.eq(p, r)) {
-                    descend(tree, &names, &matcher, 0, below, &mut hits);
-                }
-            } else if parts.iter().zip(&root_parts).all(|(p, r)| matcher.eq(p, r)) {
-                // The scanned folder is inside the rule's folder: all of it belongs.
-                hits.push(0);
-            }
+            let parts_len = depth;
             for dir in hits {
                 let better = match direct[dir as usize] {
                     None => true,
-                    Some((_, depth)) => parts.len() > depth,
+                    Some((_, depth)) => parts_len > depth,
                 };
                 if better {
-                    direct[dir as usize] = Some((owner, parts.len()));
+                    direct[dir as usize] = Some((owner, parts_len));
                 }
                 if *role == Role::Cache {
                     cache_dirs.push(dir);
@@ -236,6 +214,55 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
         owners,
         cache_dirs,
     }
+}
+
+/// Folders of the scan that `pattern` names, and how many path parts the
+/// pattern has once written out in full.
+fn locate(
+    tree: &ScanTree,
+    names: &[String],
+    matcher: &Matcher,
+    root_parts: &[&str],
+    home_parts: &[&str],
+    env: &Env,
+    pattern: &str,
+) -> (Vec<u32>, usize) {
+    // Turn the pattern into absolute path parts on this machine.
+    let mut parts: Vec<&str> = Vec::new();
+    let written = pattern_parts(pattern);
+    let mut rest = &written[..];
+    if written.first() == Some(&"~") {
+        parts.extend(home_parts);
+        rest = &written[1..];
+    } else if written.first().is_some_and(|p| p.ends_with(':')) {
+        parts.push(&env.system_drive);
+        rest = &written[1..];
+    }
+    parts.extend(rest);
+
+    let mut hits = Vec::new();
+    if parts.len() >= root_parts.len() {
+        // The pattern is at or below the scanned folder: walk down to it.
+        let (above, below) = parts.split_at(root_parts.len());
+        if above.iter().zip(root_parts).all(|(p, r)| matcher.eq(p, r)) {
+            descend(tree, names, matcher, 0, below, &mut hits);
+        }
+    } else if parts.iter().zip(root_parts).all(|(p, r)| matcher.eq(p, r)) {
+        // The scanned folder is inside the pattern's folder: all of it matches.
+        hits.push(0);
+    }
+    (hits, parts.len())
+}
+
+/// The folders of a scan that a rule-style pattern names (`~/Downloads`,
+/// `~/Library/Caches/*`, `C:/Windows/Temp`).
+pub fn find_dirs(tree: &ScanTree, env: &Env, pattern: &str) -> Vec<u32> {
+    let matcher = Matcher {
+        ignore_case: env.os != Os::Linux,
+    };
+    let root_text = tree.root().name.to_string_lossy().into_owned();
+    let names: Vec<String> = tree.dirs.iter().map(|d| d.name.to_string_lossy().into_owned()).collect();
+    locate(tree, &names, &matcher, &split_path(&root_text), &split_path(&env.home), env, pattern).0
 }
 
 fn descend(tree: &ScanTree, names: &[String], matcher: &Matcher, dir: u32, rest: &[&str], hits: &mut Vec<u32>) {

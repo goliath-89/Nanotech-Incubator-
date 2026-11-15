@@ -12,6 +12,7 @@ contract changes.
 | `crates/strata-cli` | `strata scan` command for testing and benchmarks | Built |
 | `crates/strata-store` | Save scans and snapshots in SQLite | Built |
 | `crates/strata-safety` | Protected paths, move to Trash / Recycle Bin | Built |
+| `crates/strata-reclaim` | Cleanup suggestions and duplicate finder (read-only) | Built |
 | `crates/strata-mft` | Windows fast scan from the NTFS Master File Table | Days 5–6 |
 | `crates/strata-classify` | File kinds and app attribution from rules | Built |
 | `rules/` | App attribution rules (TOML), 20 starter apps per system | Started; grows in Sprint 5 |
@@ -215,3 +216,29 @@ trash(policy, scan_root, items) -> TrashReport // { moved, refused, failed }
   cannot lead into a protected area or out of the scanned folder. Links and
   other drives' mount points are refused outright.
 - The bridge's `trash` command must call `trash()` and nothing else.
+
+## strata-reclaim
+
+Read-only. Decides what to offer; `strata-safety` does the moving.
+
+```rust
+suggest(&ScanTree, &Attribution, &Env, &Policy, &Options) -> Vec<Suggestion>
+expand(&Target) -> io::Result<Vec<PathBuf>>      // paths to hand to strata_safety::trash, listed at that moment
+find_duplicates(&ScanTree, &Policy, &DuplicateControl) -> Vec<DuplicateGroup>
+```
+
+- `Suggestion`: `group` (AppCache, DeveloperJunk, Cache, OldInstaller,
+  OldDownload), `target` (`Contents(folder)`: empty it, keep it; or
+  `Item(path)`), `bytes`, `app`, `rebuildable`, and a one-sentence `reason`.
+- Sources, in order of precedence: cache folders named by app rules; tool
+  caches at fixed places (`~/.gradle/caches`, `~/.cargo/registry`, ...);
+  rebuildable project folders by name, some only next to a marker file
+  (`target` beside `Cargo.toml`); other children of the system cache and log
+  folders; large files in Downloads past an age (installers 14 days, others 90).
+- No two suggestions overlap, so their bytes add up to what would be freed.
+  Anything the policy refuses is left out. Below 10 MiB is left out.
+- Duplicates: only personal files (Videos, Photos, Music, Documents, Other)
+  among the scan's large files. Grouped by length, then a hash of both ends,
+  then a hash of everything. A copy the policy protects is listed first as
+  the one to keep and is never offered. Files changed since the scan are
+  dropped. A cancelled search returns nothing.

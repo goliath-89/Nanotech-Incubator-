@@ -5,7 +5,7 @@ mod context;
 mod extensions;
 mod rules;
 
-pub use attribute::{attribute, AppUsage, Attribution, Env, Owner};
+pub use attribute::{attribute, find_dirs, AppUsage, Attribution, Env, Owner};
 pub use context::folder_kind;
 pub use extensions::{kind_of_name, known_extensions};
 pub use rules::{AppRule, Os, Role, RuleSet};

@@ -1,0 +1,17 @@
+[package]
+name = "strata-reclaim"
+description = "Cleanup suggestions and duplicate finding for Strata"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+strata-core = { path = "../strata-core" }
+strata-classify = { path = "../strata-classify" }
+strata-safety = { path = "../strata-safety" }
+blake3 = { version = "1", default-features = false, features = ["std", "pure"] }
+rayon = "1.10"
+
+[dev-dependencies]
+tempfile = "3"

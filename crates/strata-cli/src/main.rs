@@ -18,6 +18,8 @@ Options for scan:
   --top <n>            How many folders and files to list (default 20)
   --all-filesystems    Also enter other volumes mounted below the folder
   --threads <n>        Worker threads (default: one per CPU core)
+  --reclaim            List what could be cleaned up (nothing is removed)
+  --duplicates         List identical large files (reads file contents; slower)
   --errors             List what could not be read
   --json               Print a one-line JSON summary instead of the report
   --quiet              No progress line while scanning";
@@ -31,6 +33,8 @@ struct Args {
     json: bool,
     quiet: bool,
     save: Option<PathBuf>,
+    reclaim: bool,
+    duplicates: bool,
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -44,6 +48,8 @@ fn parse_args() -> Result<Args, String> {
         json: false,
         quiet: false,
         save: None,
+        reclaim: false,
+        duplicates: false,
     };
     let mut root = None;
     while let Some(a) = it.next() {
@@ -60,6 +66,8 @@ fn parse_args() -> Result<Args, String> {
             }
             Some("--all-filesystems") => args.all_filesystems = true,
             Some("--errors") => args.errors = true,
+            Some("--reclaim") => args.reclaim = true,
+            Some("--duplicates") => args.duplicates = true,
             Some("--json") => args.json = true,
             Some("--quiet") => args.quiet = true,
             Some("--help") | Some("-h") => return Err(String::new()),
@@ -339,6 +347,10 @@ fn print_report(args: &Args, tree: &ScanTree) {
         }
     }
 
+    if args.reclaim || args.duplicates {
+        print_cleanup(args, tree);
+    }
+
     if args.errors && !tree.errors.is_empty() {
         println!("\nCould not read");
         for e in &tree.errors {
@@ -347,6 +359,39 @@ fn print_report(args: &Args, tree: &ScanTree) {
         let hidden = tree.stats.error_count.saturating_sub(tree.errors.len() as u64);
         if hidden > 0 {
             println!("  … and {} more", group(hidden));
+        }
+    }
+}
+
+/// Lists only. Removing is the app's job, behind a review step.
+fn print_cleanup(args: &Args, tree: &ScanTree) {
+    use strata_reclaim::{find_duplicates, suggest, DuplicateControl, Options, Target};
+    let (Some(env), Ok(policy)) = (Env::current(), strata_safety::Policy::for_current_user()) else {
+        println!("\nCleanup suggestions need a home folder to be set.");
+        return;
+    };
+    if args.reclaim {
+        let attribution = attribute(tree, &RuleSet::builtin(Os::current()), &env);
+        let found = suggest(tree, &attribution, &env, &policy, &Options::default());
+        let total: u64 = found.iter().map(|s| s.bytes).sum();
+        println!("\nCould be cleaned up: {} in {} items", human(total), found.len());
+        for s in found.iter().take(args.top) {
+            let shown = match &s.target {
+                Target::Contents(p) => format!("{} (contents)", p.display()),
+                Target::Item(p) => p.display().to_string(),
+            };
+            println!("{:>10}  {}\n            {}", human(s.bytes), shown, s.reason);
+        }
+    }
+    if args.duplicates {
+        let groups = find_duplicates(tree, &policy, &DuplicateControl::new());
+        let total: u64 = groups.iter().map(|g| g.reclaimable_bytes()).sum();
+        println!("\nDuplicates: {} in spare copies, {} sets", human(total), groups.len());
+        for g in groups.iter().take(args.top) {
+            println!("{:>10}  keep  {}", human(g.alloc_bytes), g.files[0].path.display());
+            for f in &g.files[1..] {
+                println!("            {}  {}", if f.removable { "spare" } else { "kept " }, f.path.display());
+            }
         }
     }
 }

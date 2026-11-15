@@ -14,3 +14,5 @@ path = "src/main.rs"
 strata-core = { path = "../strata-core" }
 strata-store = { path = "../strata-store" }
 strata-classify = { path = "../strata-classify" }
+strata-reclaim = { path = "../strata-reclaim" }
+strata-safety = { path = "../strata-safety" }
