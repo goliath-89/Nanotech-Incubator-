@@ -554,16 +554,37 @@ fn print_report(args: &Args, tree: &ScanTree) {
     }
 
     if args.errors && !tree.errors.is_empty() {
-        println!("\nCould not read");
+        // Hundreds of locked folders usually sit in a handful of places;
+        // list the places, not every folder.
+        let mut places: std::collections::BTreeMap<PathBuf, u64> =
+            std::collections::BTreeMap::new();
         for e in &tree.errors {
-            println!("  {}: {}", e.path.display(), e.message);
+            let place = e.path.parent().unwrap_or(&e.path).to_path_buf();
+            *places.entry(place).or_default() += 1;
+        }
+        let mut places: Vec<(PathBuf, u64)> = places.into_iter().collect();
+        places.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        println!("\nCould not read (by the folder they are in)");
+        for (place, count) in places.iter().take(args.top) {
+            let what = if *count == 1 { "item" } else { "items" };
+            println!("{:>8} {what:<5}  {}", group(*count), place.display());
+        }
+        if places.len() > args.top {
+            println!(
+                "  … and {} more folders (--top {} lists more)",
+                places.len() - args.top,
+                places.len()
+            );
         }
         let hidden = tree
             .stats
             .error_count
             .saturating_sub(tree.errors.len() as u64);
         if hidden > 0 {
-            println!("  … and {} more", group(hidden));
+            println!("  … and {} more items not recorded", group(hidden));
+        }
+        if cfg!(windows) && !args.fast {
+            println!("  Windows protects these even from administrators. --fast reads them from the file table.");
         }
     }
 }

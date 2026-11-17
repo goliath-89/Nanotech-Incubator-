@@ -513,6 +513,10 @@ fn windows_rules_use_the_system_drive_and_profile() {
             ("Users/sam/AppData/Local/Programs/Obsidian", GB),
             ("Windows/Temp", 2 * GB),
             ("Users/sam/Documents", 9 * GB),
+            ("Program Files/Common Files/System", GB),
+            ("Program Files (x86)/Common Files/Oracle", GB),
+            ("Program Files/Vendor X/bin", GB),
+            ("Program Files (x86)/vendor x/bin", GB),
         ],
     );
     let a = attribute(&t, &RuleSet::builtin(Os::Windows), &env);

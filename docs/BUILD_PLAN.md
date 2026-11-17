@@ -47,6 +47,18 @@ Still open after the review, all needing real machines: everything in the
 "Known gaps" table of ARCHITECTURE.md, the first run of the fast scan on a
 real Windows drive, and benchmark numbers for Mac and Windows.
 
+### First real Windows run (folder walk, C:, 475 GB drive)
+
+| Finding | Status |
+| --- | --- |
+| Total matches Windows exactly: 441,209,839,616 bytes used | Confirmed |
+| Walk sees 418 of 441 GB (94.8%); 562 folders are locked even for administrators | Expected; the fast scan reads them. Gate A on Windows is judged on `--fast` |
+| Walk took 61 s for 470k files (7,700 files/s), far slower than Linux | Open: rerun warm to separate cold disk cache and AVG's on-access scanning from the walk itself |
+| Same folder name in both Program Files folders listed twice (Google, Common Files) | Fixed: merged; Common Files shown as "Shared program files" |
+| `~/.docker`, `C:\Program Files\WSL` and Claude's VM bundle were not attributed | Fixed: rules added |
+| 8.8 GB Recycle Bin counted as System | Open: show it as its own item and offer "Empty Recycle Bin" through Windows itself |
+| Error list printed every locked folder (500+ lines) | Fixed: grouped by the folder they are in |
+
 ## Sprint 2 · weeks 3–4 · app shell
 
 | Day | Model | Claude builds | You |

@@ -46,12 +46,13 @@ name = "Docker Desktop"
 id = "Docker.DockerDesktop"
 kind = "Developer"
 app = ["C:/Program Files/Docker"]
-data = ["~/AppData/Local/Docker", "C:/ProgramData/Docker", "C:/ProgramData/DockerDesktop"]
+data = ["~/AppData/Local/Docker", "C:/ProgramData/Docker", "C:/ProgramData/DockerDesktop", "~/.docker"]
 
 [[app]]
 name = "Windows Subsystem for Linux"
 id = "Microsoft.WSL"
 kind = "Developer"
+app = ["C:/Program Files/WSL"]
 data = ["~/AppData/Local/Packages/CanonicalGroupLimited*", "~/AppData/Local/wsl"]
 
 [[app]]
@@ -94,6 +95,11 @@ name = "Python pip"
 id = "Python.pip"
 kind = "Developer"
 cache = ["~/AppData/Local/pip/Cache"]
+
+[[app]]
+name = "Claude"
+id = "Anthropic.Claude"
+data = ["~/AppData/Local/Claude-Data"]
 
 [[app]]
 name = "Slack"

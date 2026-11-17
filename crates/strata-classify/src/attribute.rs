@@ -175,6 +175,9 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
         ],
         Os::Linux => &[],
     };
+    // Program Files and Program Files (x86) often both hold a folder of the
+    // same name (Google, Common Files); those are one entry, not two.
+    let mut by_name: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
     for pattern in programs_folders {
         let (folders, _) = locate(
             tree,
@@ -202,17 +205,27 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
                         }
                         _ => continue, // loose folders in /Applications are not apps
                     },
+                    // Shared libraries that many programs install into.
+                    _ if name.eq_ignore_ascii_case("Common Files") => "Shared program files",
                     _ => name.as_str(),
                 };
-                let app = usages.len() as u32;
-                usages.push(AppUsage {
-                    name: display.to_string(),
-                    id: format!("folder:{name}"),
-                    kind: None,
-                    app_bytes: 0,
-                    data_bytes: 0,
-                    cache_bytes: 0,
-                });
+                let key = display.to_lowercase();
+                let app = match by_name.get(&key) {
+                    Some(&existing) => existing,
+                    None => {
+                        let app = usages.len() as u32;
+                        usages.push(AppUsage {
+                            name: display.to_string(),
+                            id: format!("folder:{key}"),
+                            kind: None,
+                            app_bytes: 0,
+                            data_bytes: 0,
+                            cache_bytes: 0,
+                        });
+                        by_name.insert(key, app);
+                        app
+                    }
+                };
                 direct[i] = Some((
                     Owner {
                         app,
