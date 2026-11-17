@@ -92,7 +92,9 @@ jobs:
           name: ui-test-report
           path: app/playwright-report
 
-  # The desktop app: installers for Windows and macOS (unsigned until Day 75).
+  # The desktop app: Windows installers on every push (unsigned until Day 75).
+  # The macOS installer is built nightly (nightly.yml): Mac runners can queue
+  # for a long time, and Windows is the current focus.
   app:
     strategy:
       fail-fast: false
@@ -105,10 +107,6 @@ jobs:
             name: windows-arm64
             args: "--target aarch64-pc-windows-msvc"
             rust_target: aarch64-pc-windows-msvc
-          - os: macos-latest
-            name: macos-universal
-            args: "--target universal-apple-darwin"
-            rust_target: aarch64-apple-darwin,x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
