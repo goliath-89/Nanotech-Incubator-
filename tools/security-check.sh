@@ -14,7 +14,7 @@ run cargo deny check advisories bans licenses sources
 step "Rust dependencies: app"
 run cargo deny --manifest-path app/src-tauri/Cargo.toml check advisories bans licenses sources
 step "Interface dependencies"
-(cd app && npm audit --audit-level=low && npm audit signatures) || failed+=("npm audit")
+(python3 tools/npm-audit-gate.py app && cd app && npm audit signatures) || failed+=("npm audit")
 step "App hardening"
 run python3 tools/check-app-hardening.py
 step "Security lints"

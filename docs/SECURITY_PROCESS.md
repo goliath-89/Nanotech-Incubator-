@@ -56,7 +56,9 @@ Steps, every time:
    without the fix where possible.
 3. **If no fix exists yet** and the code is not reachable, add an exception
    in `deny.toml` (`ignore = [{ id = "...", reason = "...; review by YYYY-MM-DD" }]`)
-   with a review date at most 30 days away. Exceptions are never added for
+   with a review date at most 30 days away; for npm packages, in
+   `tools/npm-audit-exceptions.json` (checked by `tools/npm-audit-gate.py`,
+   which fails again once the date passes). Exceptions are never added for
    Critical or High advisories that are reachable.
 4. **Record** it in the table below.
 5. **Release** a fixed build if the problem shipped.
@@ -119,6 +121,8 @@ Checked by `tools/check-app-hardening.py` on every push:
 | 2026-11-17 | Day 20 review: Content Security Policy did not set `base-uri`, `form-action`, `object-src`, `frame-ancestors` | Low | All set to `'none'` |
 | 2026-11-17 | Day 20 review: the per-user install puts Strata's program files where the user can write; malware running as the user could swap the exe before the administrator prompt for the fast scan | Medium — **accepted until Day 75** (review 2026-12-17) | The prompt shows an unverified publisher until signing. Day 75: signed builds, and the elevated copy refuses to run unless its own signature checks out; consider a per-machine install |
 | 2026-11-17 | Dependency updates (Dependabot PRs #2–#4): windows-sys 0.61, rusqlite 0.43 (SQLite 3.5x), toml 1.x; checkout, upload-artifact, setup-node v7; gitleaks-action v3 | — (maintenance) | Applied together on the branch; every action SHA checked against its release tag |
+| 2026-11-17 | picomatch ReDoS (GHSA-fc5q-39xc-vjpf), via vite and svelte-check; no fixed release yet | High (advisory) — not reachable: build tools only, our own patterns, not in the app | **Accepted until 2026-12-01** in `tools/npm-audit-exceptions.json`; update as soon as a fix ships |
+| 2026-11-17 | Repository made public | — (process) | History checked: no secrets (gitleaks, manual grep), no personal email addresses in commits |
 
 ## Your part
 

@@ -1,0 +1,11 @@
+{
+  "_note": "Advisories accepted for a limited time, per docs/SECURITY_PROCESS.md (step 3). Each needs a reason and a review date at most 30 days away. An expired entry fails the check.",
+  "exceptions": [
+    {
+      "id": "GHSA-fc5q-39xc-vjpf",
+      "package": "picomatch",
+      "reason": "ReDoS from crafted glob patterns. picomatch is only used by build tools (vite, svelte-check) on Strata's own config patterns; it is not in the app. No fixed release exists yet (<=4.0.7 affected).",
+      "review_by": "2026-12-01"
+    }
+  ]
+}

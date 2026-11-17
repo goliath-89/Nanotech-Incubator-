@@ -46,7 +46,7 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Known vulnerabilities (any severity fails)
         working-directory: app
-        run: npm audit --audit-level=low
+        run: python3 ../tools/npm-audit-gate.py .
       - name: Registry signatures and provenance
         working-directory: app
         run: npm audit signatures
