@@ -72,6 +72,11 @@ export function cleanUp(scanId: number, numbers: number[]): Promise<CleanupRepor
   return inApp ? call("clean_up", { scanId, numbers }) : demo.cleanUp(numbers);
 }
 
+/** "mica" when Windows 11 put its material behind the window, else "none". */
+export function windowMaterial(): Promise<string> {
+  return inApp ? call("window_material") : Promise.resolve("none");
+}
+
 /** Open the Recycle Bin or Trash in Explorer or Finder. */
 export function openTrash(): Promise<void> {
   return inApp ? call("open_trash") : Promise.resolve();

@@ -71,6 +71,8 @@ Checked by `tools/check-app-hardening.py` on every push:
   itself, no `unsafe-eval`, no `unsafe-inline` scripts, no remote origins.
 - No remote content in any window; no devtools in release builds;
   `withGlobalTauri` off; no `dangerous*` settings.
+- Windows created in Rust (`WebviewWindowBuilder`) follow the same rules: the
+  check scans the app's Rust source for devtools and remote URLs.
 - Capabilities: only `core:default`; new permissions are added to the
   script's allow list after review.
 - Only `strata-safety` depends on `trash`; no other code calls

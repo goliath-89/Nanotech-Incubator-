@@ -90,7 +90,7 @@
   .rows li { display: grid; }
   .row {
     all: unset; display: grid; grid-template-columns: minmax(0, 2fr) minmax(60px, 1.2fr) 72px 52px; gap: 14px; align-items: center;
-    padding: 8px 10px; border-radius: 8px;
+    padding: 8px 10px; border-radius: var(--radius-control);
   }
   button.row { cursor: pointer; }
   button.row:hover:not(:disabled), button.row.hot { background: var(--hover); }

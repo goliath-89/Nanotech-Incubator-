@@ -52,6 +52,13 @@ for w in conf.get("app", {}).get("windows", []):
         problem(f"window {w.get('label')} loads remote content: {url}")
     if w.get("devtools"):
         problem(f"window {w.get('label')} enables devtools")
+# Windows built in Rust (WebviewWindowBuilder) get the same rules.
+for rs in sorted((app / "src").glob("*.rs")):
+    text = rs.read_text()
+    if re.search(r"\.devtools\(\s*true|open_devtools\(", text):
+        problem(f"{rs.name}: opens devtools")
+    if re.search(r"WebviewUrl::External", text):
+        problem(f"{rs.name}: a window loads remote content")
 if conf.get("build", {}).get("frontendDist", "").startswith("http"):
     problem("frontendDist points at a remote URL")
 

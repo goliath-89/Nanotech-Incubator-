@@ -149,7 +149,7 @@
 {/if}
 
 <style>
-  .trash { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 14px; }
+  .trash { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 14px; border-radius: var(--radius-control); border: 1px solid var(--line); margin-bottom: 14px; }
   .trash div { display: grid; gap: 2px; }
   .trash button { white-space: nowrap; }
   .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -157,7 +157,7 @@
   h4 { margin: 0 0 6px; font-size: 12.5px; font-weight: 600; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
   h4 .quiet { font-weight: 400; }
   ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-  label { display: grid; grid-template-columns: 18px minmax(0, 1fr) 76px; gap: 12px; align-items: center; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+  label { display: grid; grid-template-columns: 18px minmax(0, 1fr) 76px; gap: 12px; align-items: center; padding: 7px 10px; border-radius: var(--radius-control); cursor: pointer; }
   label:hover { background: var(--hover); }
   input { width: 15px; height: 15px; accent-color: var(--accent); }
   .name { display: grid; min-width: 0; }
@@ -169,15 +169,15 @@
   .review { display: grid; gap: 10px; }
   .review h4 { font-size: 14px; }
   .review p { margin: 0; }
-  .paths { max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
+  .paths { max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-control); padding: 6px; }
   .paths li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 6px; font-size: 12px; }
   .paths .path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .buttons { display: flex; gap: 8px; justify-content: flex-end; }
-  .result { display: grid; gap: 4px; padding: 12px 14px; border-radius: 8px; background: var(--hover); margin-bottom: 12px; }
+  .result { display: grid; gap: 4px; padding: 12px 14px; border-radius: var(--radius-control); background: var(--hover); margin-bottom: 12px; }
   .problems { margin-top: 6px; font-size: 12px; }
-  .note { padding: 10px 14px; border-radius: 8px; background: var(--warning-bg); color: var(--warning); margin: 0 0 10px; }
+  .note { padding: 10px 14px; border-radius: var(--radius-control); background: var(--warning-bg); color: var(--warning); margin: 0 0 10px; }
   .quiet { color: var(--muted); }
-  button.primary, button.secondary { border: 0; border-radius: 8px; padding: 7px 16px; font-weight: 500; cursor: pointer; }
+  button.primary, button.secondary { border: 0; border-radius: var(--radius-control); padding: 7px 16px; font-weight: 500; cursor: pointer; }
   button.primary { background: var(--accent); color: var(--accent-fg); }
   button.secondary { background: var(--track); }
   button:disabled { opacity: 0.5; cursor: default; }

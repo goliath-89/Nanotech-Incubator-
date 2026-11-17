@@ -95,7 +95,7 @@
   .cache { background: var(--kind-caches); }
   .row {
     all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 28px minmax(0, 2fr) minmax(60px, 1.4fr) 72px 52px;
-    gap: 14px; align-items: center; padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    gap: 14px; align-items: center; padding: 8px 10px; border-radius: var(--radius-control); cursor: pointer;
   }
   .row:hover, .row[aria-expanded="true"] { background: var(--hover); }
   .row:focus-visible { outline: 2px solid var(--accent); }

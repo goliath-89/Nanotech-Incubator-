@@ -3,6 +3,7 @@
 
 mod bridge;
 mod elevated;
+mod window;
 
 fn main() {
     // The elevated copy (Windows fast scan) does its one job and exits
@@ -16,6 +17,8 @@ fn main() {
         .setup(|app| {
             let state = bridge::AppState::open(app)?;
             tauri::Manager::manage(app, state);
+            let material = window::create(app)?;
+            tauri::Manager::manage(app, material);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -32,6 +35,7 @@ fn main() {
             bridge::get_suggestions,
             bridge::clean_up,
             bridge::open_trash,
+            window::window_material,
         ])
         .run(tauri::generate_context!())
         .expect("Strata could not start");

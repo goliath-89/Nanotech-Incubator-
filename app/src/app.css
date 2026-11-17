@@ -26,6 +26,14 @@
   --kind-other: #40b8d8;
   --kind-trash: #a2845e;
 
+  /* Shape and depth. Inner corners are the outer radius minus the padding. */
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --radius-pill: 999px;
+  --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.12);
+  /* Behind the sidebar when the system material (Mica) is on. */
+  --sidebar-material: rgba(243, 243, 243, 0.25);
+
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
@@ -48,6 +56,8 @@
     --kind-caches: #ffd60a;
     --kind-other: #64d2ff;
     --kind-trash: #b59a74;
+    --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --sidebar-material: rgba(32, 32, 32, 0.2);
     color-scheme: dark;
   }
 }
@@ -66,3 +76,10 @@ button { font: inherit; color: inherit; }
 .num { font-variant-numeric: tabular-nums; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* Windows 11: the sidebar shows the Mica material through a transparent
+   window; the content area stays solid. Set only when Windows confirms the
+   material was applied (see window_material in the app). */
+:root[data-material="mica"] body { background: transparent; }
+:root[data-material="mica"] { --sidebar: var(--sidebar-material); }
+:root[data-material="mica"] main { background: var(--bg); }

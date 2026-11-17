@@ -52,13 +52,13 @@
 <style>
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
   .chips button {
-    border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 3px 11px; cursor: pointer;
+    border: 1px solid var(--line); background: transparent; border-radius: var(--radius-pill); padding: 3px 11px; cursor: pointer;
     display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
   }
   .chips button.on { background: var(--fg); color: var(--surface); border-color: var(--fg); }
   .chips i { width: 8px; height: 8px; border-radius: 2px; }
   ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-  li { display: grid; grid-template-columns: 10px minmax(0, 1fr) 72px auto; gap: 12px; align-items: center; padding: 7px 10px; border-radius: 8px; }
+  li { display: grid; grid-template-columns: 10px minmax(0, 1fr) 72px auto; gap: 12px; align-items: center; padding: 7px 10px; border-radius: var(--radius-control); }
   li:hover { background: var(--hover); }
   li > i { width: 10px; height: 10px; border-radius: 3px; }
   .name { display: grid; min-width: 0; }

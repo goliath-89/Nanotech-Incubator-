@@ -17,6 +17,9 @@ go; Claude adds to this list when something new needs a person.
       (Click No once too: it should still finish, reading folders one by one.)
 - [ ] Try each tab: Folders (click into the ring), Apps, Largest Files, Clean Up.
       The Recycle Bin should appear as its own item, and Clean Up offers "Open Recycle Bin".
+- [ ] New since Day 21–23 (install the newest build): the ring springs open when you click into a folder; during a folder-by-folder scan
+      (click No at the Windows prompt) the ring fills in live; on Windows 11 the sidebar should show the soft, tinted Mica material
+      (it picks up your desktop colours). Tell me if the sidebar looks blank, black or too see-through.
 - [ ] Use it for a few days. Write down anything slow, wrong or confusing and send me the list (a .txt is fine).
 
 ## Security settings on GitHub (10 minutes, once)

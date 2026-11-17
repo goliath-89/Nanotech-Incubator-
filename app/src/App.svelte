@@ -39,6 +39,8 @@
   onMount(() => {
     let off: (() => void) | undefined;
     const clock = setInterval(() => (now = Date.now()), 250);
+    // Let the system material show behind the sidebar where it is on.
+    api.windowMaterial().then((m) => (document.documentElement.dataset.material = m)).catch(() => {});
     (async () => {
       off = await api.onScanEvents({
         stage: (s) => {
@@ -272,11 +274,11 @@
   @media (max-width: 900px) { .overview { grid-template-columns: 1fr; } }
   .tabs { display: flex; gap: 2px; background: var(--track); border-radius: 9px; padding: 2px; justify-self: start; }
   .tabs button { border: 0; background: transparent; border-radius: 7px; padding: 5px 14px; font-weight: 500; color: var(--muted); cursor: pointer; }
-  .tabs button.on { background: var(--surface); color: var(--fg); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+  .tabs button.on { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-raised); }
   .link { all: unset; color: var(--accent); cursor: pointer; font-size: 12px; margin: 10px 10px 0; display: inline-block; }
   .link:hover { text-decoration: underline; }
   .link:focus-visible { outline: 2px solid var(--accent); border-radius: 3px; }
-  .card { background: var(--surface); border-radius: 12px; padding: 18px 20px; border: 1px solid var(--line); }
+  .card { background: var(--surface); border-radius: var(--radius-card); padding: 18px 20px; border: 1px solid var(--line); }
   h3 { margin: 0 0 14px; font-size: 13px; font-weight: 600; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
   .empty { text-align: center; padding: 70px 20px; display: grid; justify-items: center; gap: 12px; }
   .empty h2 { font: 600 22px/1.2 var(--font-display); margin: 0; }
@@ -290,10 +292,10 @@
   @media (max-width: 760px) { .scanning.with-ring { grid-template-columns: 1fr; } }
   .quiet { color: var(--muted); font-weight: 400; }
   .status { margin: 0; color: var(--muted); }
-  .note { margin: 0; padding: 10px 14px; border-radius: 8px; background: var(--warning-bg); color: var(--warning); }
+  .note { margin: 0; padding: 10px 14px; border-radius: var(--radius-control); background: var(--warning-bg); color: var(--warning); }
   .demo { color: var(--muted); font-size: 11.5px; margin: 0; }
   button.primary, button.secondary {
-    border: 0; border-radius: 8px; padding: 7px 16px; font-weight: 500; cursor: pointer; white-space: nowrap;
+    border: 0; border-radius: var(--radius-control); padding: 7px 16px; font-weight: 500; cursor: pointer; white-space: nowrap;
   }
   button.primary { background: var(--accent); color: var(--accent-fg); }
   button.secondary { background: var(--track); }
