@@ -36,6 +36,41 @@ test.describe("before a scan", () => {
   });
 });
 
+test.describe("errors and empty states", () => {
+  test("a failed scan explains why and offers to try again", async ({ page }) => {
+    await page.goto("/?demo-fail=1");
+    await page.getByRole("button", { name: "Scan Macintosh HD" }).click();
+    await expect(page.getByRole("heading", { name: "Something went wrong" })).toBeVisible();
+    await expect(page.getByText("The drive was disconnected during the scan.")).toBeVisible();
+    await page.getByRole("button", { name: "Try Again" }).click();
+    await expect(page.getByRole("button", { name: "Scan Macintosh HD" })).toBeVisible();
+  });
+
+  test("network drives are listed but cannot be scanned", async ({ page }) => {
+    await page.goto("/");
+    const share = page.getByRole("navigation", { name: "Drives" }).getByRole("button", { name: /Team Share/ });
+    await expect(page.getByText("Network")).toBeVisible();
+    await expect(share).toBeDisabled();
+  });
+
+  test("an empty folder says so", async ({ page }) => {
+    await scanned(page);
+    await rows(page).filter({ hasText: "Users" }).click();
+    await rows(page).filter({ hasText: "sam" }).click();
+    await rows(page).filter({ hasText: "Empty project" }).click();
+    await expect(page.getByText("This folder is empty.")).toBeVisible();
+  });
+
+  test("Changes on a drive's first scan explains what it will show", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: /Archive SSD/ }).click();
+    await page.getByRole("button", { name: "Scan Archive SSD" }).click();
+    await expect(page.getByRole("tablist", { name: "Views" })).toBeVisible({ timeout: 10_000 });
+    await page.getByRole("tab", { name: "Changes" }).click();
+    await expect(page.getByText("This is the first scan of this drive. Scan it again another day to see what grew.")).toBeVisible();
+  });
+});
+
 test.describe("scanning", () => {
   test("shows live progress, then the result", async ({ page }) => {
     const errors = watchErrors(page);

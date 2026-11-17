@@ -9,6 +9,7 @@ const GB = 1_000_000_000;
 
 const volumes: Volume[] = [
   { id: "demo-1", name: "Macintosh HD", mount: "/", fileSystem: "apfs", kind: "internal", readOnly: false, total: String(1000 * GB), used: String(742 * GB), free: String(258 * GB) },
+  { id: "demo-3", name: "Team Share", mount: "//nas/team", fileSystem: "smbfs", kind: "network", readOnly: false, total: String(4000 * GB), used: String(2100 * GB), free: String(1900 * GB) },
   { id: "demo-2", name: "Archive SSD", mount: "/Volumes/Archive SSD", fileSystem: "exfat", kind: "external", readOnly: false, total: String(2000 * GB), used: String(1600 * GB), free: String(400 * GB) },
 ];
 
@@ -21,6 +22,7 @@ const tree: Node = ["/", 0, 8, [
     ["Library", 0, 9, [["Caches", 31, 9], ["Application Support", 52, 0], ["Developer", 27, 7], ["Containers", 12, 7]]],
     ["Documents", 38, 4],
     ["Music", 24, 3],
+    ["Empty project", 0, 0, []],
     ["code", 0, 7, [["app", 9, 7], ["node_modules (412 folders)", 14, 7]]],
   ]]]],
   ["Applications", 0, 5, [["Steam.app", 64, 6], ["Adobe Creative Cloud", 38, 5], ["DaVinci Resolve.app", 21, 5], ["Microsoft Office", 11, 5], ["Xcode.app", 13, 7]]],
@@ -73,6 +75,11 @@ export async function latestScan(volumeId: string): Promise<ScanSummary | null> 
 export async function startScan(_volumeId: string) {
   const token = 1;
   let tick = 0;
+  // UI tests can ask for a failing scan: ?demo-fail=1
+  if (new URLSearchParams(location.search).has("demo-fail")) {
+    setTimeout(() => handlers?.failed({ token, message: "The drive was disconnected during the scan." }), 300);
+    return token;
+  }
   // UI tests can ask for a scan stage message: ?demo-stage=permission
   const stage = new URLSearchParams(location.search).get("demo-stage");
   if (stage === "permission" || stage === "fileTable") setTimeout(() => handlers?.stage?.({ token, stage }), 0);
@@ -239,8 +246,9 @@ export async function includeFolder(path: string) {
 }
 
 const DAY = 86_400;
-export async function listScans(_volumeId: string) {
+export async function listScans(volumeId: string) {
   const now = Math.floor(Date.now() / 1000);
+  if (volumeId !== "demo-1") return [{ scanId: 1, finishedAt: now, allocBytes: String(flat[0].bytes), fileCount: "1840000", cancelled: false, hasTree: true }];
   return [
     { scanId: 1, finishedAt: now, allocBytes: String(flat[0].bytes), fileCount: "1840000", cancelled: false, hasTree: true },
     { scanId: 2, finishedAt: now - 14 * DAY, allocBytes: String(flat[0].bytes - 31 * GB), fileCount: "1790000", cancelled: false, hasTree: true },
