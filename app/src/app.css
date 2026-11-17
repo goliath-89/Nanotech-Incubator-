@@ -24,6 +24,7 @@
   --kind-system: #8e8e93;
   --kind-caches: #e5b800;
   --kind-other: #40b8d8;
+  --kind-trash: #a2845e;
 
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
@@ -46,6 +47,7 @@
     --warning-bg: rgba(255, 159, 10, 0.12);
     --kind-caches: #ffd60a;
     --kind-other: #64d2ff;
+    --kind-trash: #b59a74;
     color-scheme: dark;
   }
 }

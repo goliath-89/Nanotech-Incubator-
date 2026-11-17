@@ -25,6 +25,7 @@ const tree: Node = ["/", 0, 8, [
   ]]]],
   ["Applications", 0, 5, [["Steam.app", 64, 6], ["Adobe Creative Cloud", 38, 5], ["DaVinci Resolve.app", 21, 5], ["Microsoft Office", 11, 5], ["Xcode.app", 13, 7]]],
   ["System", 38, 8],
+  [".Trashes", 9, 10],
   ["private", 26, 8],
   ["Library", 21, 0],
 ]];
@@ -44,7 +45,7 @@ function add(node: Node, parent: number | null): number {
 add(tree, null);
 
 function dirOf(f: Flat): Dir {
-  const kindBytes = Array(10).fill("0");
+  const kindBytes = Array(11).fill("0");
   const sum = (x: Flat) => {
     if (x.children.length === 0) kindBytes[x.kind] = String(Number(kindBytes[x.kind]) + x.bytes);
     x.children.forEach((c) => sum(flat[c]));

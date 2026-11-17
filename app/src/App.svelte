@@ -11,11 +11,12 @@
   import FilesView from "./lib/FilesView.svelte";
   import ReclaimView from "./lib/ReclaimView.svelte";
   import { fileManager, isWindows } from "./lib/platform";
+  import { displayName } from "./lib/kinds";
 
   type Phase =
     | { name: "loading" }
     | { name: "idle" }
-    | { name: "scanning"; token: number; progress: Progress | null; started: number }
+    | { name: "scanning"; token: number; progress: Progress | null; started: number; stage: "permission" | "fileTable" | "walk" | null }
     | { name: "result"; scanId: number; done: Done | null; listing: Listing; ring: RingNode }
     | { name: "error"; message: string };
 
@@ -40,6 +41,9 @@
     const clock = setInterval(() => (now = Date.now()), 250);
     (async () => {
       off = await api.onScanEvents({
+        stage: (s) => {
+          if (phase.name === "scanning" && s.token === phase.token) phase.stage = s.stage;
+        },
         progress: (p) => {
           if (phase.name === "scanning" && p.token === phase.token) phase.progress = p;
         },
@@ -87,7 +91,7 @@
     try {
       // On Windows a whole drive is read from its file table when allowed.
       const token = await api.startScan(volume.mount, volume.id, isWindows);
-      phase = { name: "scanning", token, progress: null, started: Date.now() };
+      phase = { name: "scanning", token, progress: null, started: Date.now(), stage: null };
     } catch (e) {
       phase = { name: "error", message: String(e) };
     }
@@ -154,7 +158,15 @@
           {count(p?.files ?? 0)} files in {count(p?.dirs ?? 0)} folders · {seconds(now - phase.started)}
         </p>
         <div class="track"><span style:width="{volume ? Math.min(100, share(p?.bytes ?? 0, volume.used) * 100) : 0}%"></span></div>
-        <p class="quiet">Counting {volume?.name}. You can keep working while this runs.</p>
+        <p class="quiet">
+          {#if phase.stage === "permission"}
+            Waiting for Windows: allow administrator access for the fast scan, or say no to read folders one by one.
+          {:else if phase.stage === "fileTable"}
+            Reading {volume?.name}'s file table. This takes a few seconds.
+          {:else}
+            Counting {volume?.name}. You can keep working while this runs.
+          {/if}
+        </p>
       </div>
     {:else if phase.name === "result"}
       {#if phase.done}
@@ -194,7 +206,7 @@
           </div>
         </section>
         <section class="card">
-          <h3>By kind <span class="quiet num">{bytes(phase.listing.dir.allocBytes)} in {phase.listing.dir.name}{#if root && phase.listing.dir.id === 0 && volume}{" · "}{percent(root.dir.allocBytes, volume.used)} of used space{/if}</span></h3>
+          <h3>By kind <span class="quiet num">{bytes(phase.listing.dir.allocBytes)} in {displayName(phase.listing.dir.name)}{#if root && phase.listing.dir.id === 0 && volume}{" · "}{percent(root.dir.allocBytes, volume.used)} of used space{/if}</span></h3>
           <KindBar kindBytes={phase.listing.dir.kindBytes} />
         </section>
       {:else if tab === "apps"}
@@ -207,7 +219,7 @@
         </section>
       {:else}
         <section class="card">
-          <ReclaimView scanId={phase.scanId} onchanged={() => {}} />
+          <ReclaimView scanId={phase.scanId} onchanged={() => {}} trashBytes={root?.dir.kindBytes[10] ?? "0"} />
         </section>
       {/if}
     {:else if phase.name === "error"}

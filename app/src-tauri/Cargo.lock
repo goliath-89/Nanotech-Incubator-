@@ -3179,12 +3179,15 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "strata-classify",
  "strata-core",
+ "strata-mft",
  "strata-pipeline",
  "strata-safety",
  "strata-store",
  "tauri",
  "tauri-build",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

@@ -127,6 +127,7 @@ pub fn start_scan(
     let ctl = Arc::new(ScanControl::new());
     state.scans.lock().map_err(text)?.insert(token, ctl.clone());
     let store = state.store.clone();
+    let data_folder = state.data_folder.clone();
 
     std::thread::Builder::new()
         .name(format!("strata-scan-{token}"))
@@ -155,9 +156,8 @@ pub fn start_scan(
                 })
             };
 
-            let result = scan_root(&root, fast, &ctl)
-                .map_err(text)
-                .and_then(|outcome| {
+            let result =
+                run_scan(&app, token, &root, fast, &ctl, &data_folder).and_then(|outcome| {
                     let meta = ScanMeta {
                         volume_id,
                         started_at,
@@ -197,6 +197,72 @@ pub fn start_scan(
         })
         .map_err(text)?;
     Ok(token)
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Stage {
+    token: u64,
+    /// "permission" (waiting for the Windows prompt), "fileTable" or "walk".
+    stage: &'static str,
+}
+
+/// Choose and run the scanner. On Windows, a whole drive with the fast scan
+/// asked for, and no administrator rights yet: ask Windows for them through
+/// the elevated copy (see elevated.rs); if that is declined or fails, walk
+/// the folders and say why.
+fn run_scan(
+    app: &AppHandle,
+    token: u64,
+    root: &std::path::Path,
+    fast: bool,
+    ctl: &ScanControl,
+    data_folder: &std::path::Path,
+) -> Result<strata_pipeline::Outcome, String> {
+    let stage = |stage| {
+        let _ = app.emit("scan://stage", Stage { token, stage });
+    };
+    #[cfg(windows)]
+    if fast && !strata_mft::is_elevated() {
+        if let Some(letter) = whole_drive(root) {
+            stage("permission");
+            match crate::elevated::scan_drive_elevated(letter, data_folder) {
+                Ok(tree) => {
+                    return Ok(strata_pipeline::Outcome {
+                        tree,
+                        method: Method::FileTable,
+                        fallback_reason: None,
+                    })
+                }
+                Err(e) => {
+                    stage("walk");
+                    let mut outcome = scan_root(root, false, ctl).map_err(text)?;
+                    outcome.fallback_reason = Some(match e {
+                        crate::elevated::ElevatedError::Declined => {
+                            "Administrator access was not allowed, so folders were read one by one"
+                                .to_string()
+                        }
+                        other => other.to_string(),
+                    });
+                    return Ok(outcome);
+                }
+            }
+        }
+    }
+    let _ = data_folder;
+    stage(if fast { "fileTable" } else { "walk" });
+    scan_root(root, fast, ctl).map_err(text)
+}
+
+/// `C:\` and the like.
+#[cfg(windows)]
+fn whole_drive(root: &std::path::Path) -> Option<char> {
+    let text = root.to_string_lossy();
+    let mut chars = text.chars();
+    let (Some(letter), Some(':')) = (chars.next(), chars.next()) else {
+        return None;
+    };
+    (letter.is_ascii_alphabetic() && matches!(chars.as_str(), "" | "\\" | "/")).then_some(letter)
 }
 
 /// Ask a running scan to stop. It finishes with what it has counted.
@@ -655,4 +721,33 @@ pub fn clean_up(state: State<'_, AppState>, scan_id: i64, numbers: Vec<u32>) -> 
         refused: problems(report.refused),
         failed: problems(report.failed),
     })
+}
+
+/// Open the Recycle Bin or Trash, so the person can empty it (or restore
+/// from it) themselves. Strata never empties it.
+#[tauri::command]
+pub fn open_trash() -> Reply<()> {
+    #[cfg(windows)]
+    let result = std::process::Command::new("explorer.exe")
+        .arg("shell:RecycleBinFolder")
+        .spawn();
+    #[cfg(target_os = "macos")]
+    let result = match std::env::var_os("HOME") {
+        Some(home) => std::process::Command::new("open")
+            .arg(PathBuf::from(home).join(".Trash"))
+            .spawn(),
+        None => return Err("no home folder".into()),
+    };
+    #[cfg(not(any(windows, target_os = "macos")))]
+    let result = std::process::Command::new("xdg-open")
+        .arg("trash:///")
+        .spawn();
+    let place = if cfg!(windows) {
+        "Recycle Bin"
+    } else {
+        "Trash"
+    };
+    result
+        .map(|_| ())
+        .map_err(|e| format!("could not open the {place}: {e}"))
 }

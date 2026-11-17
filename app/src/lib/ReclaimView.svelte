@@ -4,7 +4,7 @@
   import { bytes } from "./format";
   import { trashName } from "./platform";
 
-  let { scanId, onchanged }: { scanId: number; onchanged: () => void } = $props();
+  let { scanId, onchanged, trashBytes = "0" }: { scanId: number; onchanged: () => void; trashBytes?: string } = $props();
 
   let items = $state<Suggestion[] | null>(null);
   let chosen = $state<Set<number>>(new Set());
@@ -88,6 +88,16 @@
   </div>
 {/if}
 
+{#if Number(trashBytes) > 0 && !reviewing}
+  <div class="trash">
+    <div>
+      <strong>The {trashName} holds {bytes(trashBytes)}</strong>
+      <span class="quiet">That space comes back only when the {trashName} is emptied. Strata never empties it for you, so you can still restore things.</span>
+    </div>
+    <button class="secondary" onclick={() => api.openTrash()}>Open {trashName}</button>
+  </div>
+{/if}
+
 {#if items === null}
   <p class="quiet">Looking for things to clean up…</p>
 {:else if items.length === 0}
@@ -139,6 +149,9 @@
 {/if}
 
 <style>
+  .trash { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 14px; }
+  .trash div { display: grid; gap: 2px; }
+  .trash button { white-space: nowrap; }
   .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
   section { margin-top: 14px; }
   h4 { margin: 0 0 6px; font-size: 12.5px; font-weight: 600; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }

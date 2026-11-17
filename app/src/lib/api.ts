@@ -70,11 +70,17 @@ export function cleanUp(scanId: number, numbers: number[]): Promise<CleanupRepor
   return inApp ? call("clean_up", { scanId, numbers }) : demo.cleanUp(numbers);
 }
 
+/** Open the Recycle Bin or Trash in Explorer or Finder. */
+export function openTrash(): Promise<void> {
+  return inApp ? call("open_trash") : Promise.resolve();
+}
+
 export function latestScan(volumeId: string): Promise<ScanSummary | null> {
   return inApp ? call("latest_scan", { volumeId }) : demo.latestScan(volumeId);
 }
 
 export interface ScanEvents {
+  stage?: (s: { token: number; stage: "permission" | "fileTable" | "walk" }) => void;
   progress: (p: Progress) => void;
   done: (d: Done) => void;
   failed: (f: Failed) => void;
@@ -85,6 +91,7 @@ export async function onScanEvents(handlers: ScanEvents): Promise<() => void> {
   if (!inApp) return demo.onScanEvents(handlers);
   const { listen } = await import("@tauri-apps/api/event");
   const offs = await Promise.all([
+    listen<{ token: number; stage: "permission" | "fileTable" | "walk" }>("scan://stage", (e) => handlers.stage?.(e.payload)),
     listen<Progress>("scan://progress", (e) => handlers.progress(e.payload)),
     listen<Done>("scan://done", (e) => handlers.done(e.payload)),
     listen<Failed>("scan://failed", (e) => handlers.failed(e.payload)),

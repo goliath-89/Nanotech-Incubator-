@@ -2,7 +2,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
 /// Number of file kinds. Keep in sync with [`Kind`].
-pub const KIND_COUNT: usize = 10;
+pub const KIND_COUNT: usize = 11;
 
 /// What a file is, in the user's terms. The scanner only stores this; deciding
 /// it is the job of a [`Classify`] implementation (crate `strata-classify`).
@@ -20,6 +20,8 @@ pub enum Kind {
     Developer = 7,
     System = 8,
     Caches = 9,
+    /// The Recycle Bin or Trash: already thrown away, not yet emptied.
+    Trash = 10,
 }
 
 impl Kind {
@@ -34,6 +36,7 @@ impl Kind {
         Kind::Developer,
         Kind::System,
         Kind::Caches,
+        Kind::Trash,
     ];
 
     /// The kind stored as `index`, if there is one.
@@ -53,6 +56,7 @@ impl Kind {
             Kind::Developer => "Developer",
             Kind::System => "System",
             Kind::Caches => "Caches",
+            Kind::Trash => "Trash",
         }
     }
 }

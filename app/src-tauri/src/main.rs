@@ -2,8 +2,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod bridge;
+mod elevated;
 
 fn main() {
+    // The elevated copy (Windows fast scan) does its one job and exits
+    // before any window or web view exists.
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some(elevated::FLAG) {
+        std::process::exit(elevated::run_elevated_copy(&args));
+    }
+
     tauri::Builder::default()
         .setup(|app| {
             let state = bridge::AppState::open(app)?;
@@ -23,6 +31,7 @@ fn main() {
             bridge::reveal,
             bridge::get_suggestions,
             bridge::clean_up,
+            bridge::open_trash,
         ])
         .run(tauri::generate_context!())
         .expect("Strata could not start");

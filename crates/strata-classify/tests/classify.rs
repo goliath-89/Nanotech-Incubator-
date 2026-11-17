@@ -129,6 +129,14 @@ fn a_folders_location_decides_before_file_names_do() {
         ("/Users/sam/AppData/Local/Temp/x", Some(Kind::Caches)),
         ("/Users/sam/code/app/tmp", Some(Kind::Caches)),
         ("/Volumes/Ext/Backups/Program Files/x", None),
+        // The Recycle Bin and Trash are their own kind, whatever is in them.
+        ("/$Recycle.Bin/S-1-5-21-1001/$R5OYIPA", Some(Kind::Trash)),
+        ("/Users/sam/.Trash/old.app/Contents", Some(Kind::Trash)),
+        ("/.Trashes/501", Some(Kind::Trash)),
+        ("/Volumes/Backup/.Trashes/501", Some(Kind::Trash)),
+        ("/home/sam/.local/share/Trash/files", Some(Kind::Trash)),
+        ("/Users/sam/Documents/Trash", None),
+        ("/Users/sam/Documents/.Trash", None),
     ];
     for (path, kind) in cases {
         assert_eq!(folder_kind(Path::new(path)), *kind, "{path}");

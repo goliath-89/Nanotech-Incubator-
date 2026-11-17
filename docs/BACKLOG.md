@@ -7,13 +7,17 @@ go; Claude adds to this list when something new needs a person.
 
 - [x] Windows: normal and fast scans of C: (Gate A passed on Windows, 17 Nov)
 
-## Try the app (Day 11)
+## Try the MVP (Day 15) — the main thing to do now
 
 - [ ] From the newest run under the repo's **Actions** tab, download `strata-app-windows-arm64`
       (your laptop is ARM). Unzip it and run the `.exe` installer (or the `.msi`).
       SmartScreen will warn because it is not signed yet: More info, then Run anyway.
-- [ ] Open Strata, scan C:, click into folders. Note anything slow, wrong or confusing.
-      (It uses the slower folder scan for now; the fast scan with an administrator prompt comes on Day 15.)
+- [ ] Open Strata normally (not "Run as administrator") and click **Scan C:**.
+      Windows asks for administrator access: click Yes. The scan should take seconds.
+      (Click No once too: it should still finish, reading folders one by one.)
+- [ ] Try each tab: Folders (click into the ring), Apps, Largest Files, Clean Up.
+      The Recycle Bin should appear as its own item, and Clean Up offers "Open Recycle Bin".
+- [ ] Use it for a few days. Write down anything slow, wrong or confusing and send me the list (a .txt is fine).
 
 ## Security settings on GitHub (10 minutes, once)
 

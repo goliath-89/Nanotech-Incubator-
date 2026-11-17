@@ -119,7 +119,6 @@ const SYSTEM_TOP: &[&str] = &[
     "windows",
     "windows.old",
     "programdata",
-    "$recycle.bin",
     "system volume information",
     "recovery",
     "$winreagent",
@@ -168,6 +167,7 @@ pub fn folder_kind(dir: &Path) -> Option<Kind> {
     let mut under_homes = false;
     // Inside Documents, Pictures and the like: the person's own material.
     let mut personal = false;
+    let mut previous_top = String::new();
     for component in dir.components() {
         let Component::Normal(name) = component else {
             continue;
@@ -182,7 +182,15 @@ pub fn folder_kind(dir: &Path) -> Option<Kind> {
             personal = true;
         }
 
-        let here = if GAME_NAMES.contains(&name) {
+        // The Recycle Bin and Trash: at the top of a drive on Windows and
+        // on macOS volumes, in each home folder on macOS and Linux.
+        let trash = (depth == 0 && matches!(name, "$recycle.bin" | ".trashes"))
+            || (home_level && name == ".trash")
+            || (under_homes && depth == 4 && name == "trash" && previous == "share")
+            || (depth == 2 && previous_top == "volumes" && name == ".trashes");
+        let here = if trash {
+            Some(Kind::Trash)
+        } else if GAME_NAMES.contains(&name) {
             Some(Kind::Games)
         } else if CACHE_NAMES.contains(&name) && !(personal && WEAK_CACHE_NAMES.contains(&name)) {
             Some(Kind::Caches)
@@ -201,6 +209,8 @@ pub fn folder_kind(dir: &Path) -> Option<Kind> {
             None
         };
         match (found, here) {
+            // Thrown-away files are trash whatever they were.
+            (_, Some(Kind::Trash)) => found = Some(Kind::Trash),
             // The first marker on the way down decides...
             (None, Some(kind)) => found = Some(kind),
             // ...except that a game library inside a programs folder is games,
@@ -210,6 +220,9 @@ pub fn folder_kind(dir: &Path) -> Option<Kind> {
             // Developer tools installed under a system folder (`/opt/homebrew`).
             (Some(Kind::System), Some(Kind::Developer)) => found = Some(Kind::Developer),
             _ => {}
+        }
+        if depth == 0 {
+            previous_top = name.to_string();
         }
         depth += 1;
         previous = name.to_string();

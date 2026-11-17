@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import type { RingNode } from "./types";
-  import { KINDS } from "./kinds";
+  import { displayName, KINDS } from "./kinds";
   import { bytes, percent } from "./format";
 
   let {
@@ -231,11 +231,11 @@
   <div class="centre" aria-hidden="true">
     {#if focus}
       <div class="size num">{bytes(focus.bytes)}</div>
-      <div class="what">{focus.name}</div>
-      <div class="pct num">{percent(focus.bytes, ring.bytes)} of {ring.name}</div>
+      <div class="what">{displayName(focus.name)}</div>
+      <div class="pct num">{percent(focus.bytes, ring.bytes)} of {displayName(ring.name)}</div>
     {:else}
       <div class="size num">{bytes(ring.bytes)}</div>
-      <div class="what">{ring.name}</div>
+      <div class="what">{displayName(ring.name)}</div>
     {/if}
   </div>
 </div>

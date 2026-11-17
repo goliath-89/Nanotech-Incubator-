@@ -72,7 +72,13 @@ Checked by `tools/check-app-hardening.py` on every push:
 - Capabilities: only `core:default`; new permissions are added to the
   script's allow list after review.
 - Only `strata-safety` depends on `trash`; no other code calls
-  `remove_file`, `remove_dir` or `remove_dir_all`.
+  `remove_file`, `remove_dir` or `remove_dir_all`. The one exception is a
+  `remove_file` of a file Strata itself just created, marked on the same
+  line with `// own-file:` (the temporary result of the Windows fast scan).
+- The Windows fast scan runs in a separate elevated copy of Strata, never
+  in the window. That copy accepts exactly one drive letter and one output
+  file named `fast-scan-<digits>.sqlite` in Strata's own data folder, which
+  it creates fresh (never following or overwriting an existing file).
 - `unsafe` is forbidden in `strata-store`, `strata-safety`,
   `strata-classify`, `strata-reclaim` and `strata-pipeline`; every other
   `unsafe` block carries a `// SAFETY:` comment.

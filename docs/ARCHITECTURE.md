@@ -162,10 +162,12 @@ a display string; the UI never builds a path itself.
 | `get_app_dirs` | `{ scan_id, app }` | an app's outermost folders with paths (`Store::app_dirs`) |
 | `get_suggestions` | `{ scan_id }` | saved suggestions with their numbers |
 | `clean_up` | `{ scan_id, numbers[] }` | `{ done[], bytesFreed, refused[], failed[] }`; paths come from the history, never from the window (`strata_pipeline::cleanup`) |
+| `open_trash` | — | opens the Recycle Bin (Explorer) or Trash (Finder); never empties it |
 | `get_ring` | `{ scan_id, dir_id }` | three levels below the folder for the ring: `{ id, slice: folder/files/smaller, name, bytes, mainKind, notScanned, children }`, slices under 0.4% folded (`strata_pipeline::ring`) |
 
 | Event | Payload | When |
 | --- | --- | --- |
+| `scan://stage` | `{ token, stage }`: `permission`, `fileTable` or `walk` | when the scan changes method; on Windows the app asks for administrator rights and runs a short-lived copy of itself (`--strata-elevated-scan`) that reads the file table and writes the result to a new file in the app's data folder, which the app reads and deletes. Declined → folder walk |
 | `scan://progress` | `{ scan_token, files, dirs, bytes, errors }` | 10 times a second while scanning |
 | `scan://partial` | `{ scan_token, top[] }` (top-level totals so far) | once a second, drives the ring filling in |
 | `scan://done` | `{ scan_token, scan_id, stats }` | scan finished or cancelled |

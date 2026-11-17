@@ -1,3 +1,5 @@
+import { trashName } from "./platform";
+
 // Kinds in the order the engine stores them (strata_core::Kind).
 export const KINDS = [
   { key: "other", name: "Other" },
@@ -10,6 +12,7 @@ export const KINDS = [
   { key: "developer", name: "Developer" },
   { key: "system", name: "System" },
   { key: "caches", name: "Caches" },
+  { key: "trash", name: trashName },
 ] as const;
 
 export function kindColor(index: number): string {
@@ -28,4 +31,17 @@ export function mainKind(kindBytes: string[]): number {
     }
   });
   return best;
+}
+
+/** What a folder is called on screen: the system's own names for a few. */
+export function displayName(name: string): string {
+  switch (name.toLowerCase()) {
+    case "$recycle.bin":
+      return "Recycle Bin";
+    case ".trash":
+    case ".trashes":
+      return "Trash";
+    default:
+      return name;
+  }
 }

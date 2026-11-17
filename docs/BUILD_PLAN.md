@@ -14,7 +14,7 @@ Claude what to build and tells you what only you can do.
 - A gate is a pass/fail test. Do not start the next phase until it passes;
   if it fails, the next day is spent on the failure and later days shift.
 
-Status: **Engine days 1–10 done (Gate A passed on Windows); app Days 11–14 done.** Next: Day 15 (MVP). The Mac half of Gate A waits for the MacBook.
+Status: **Engine days 1–10 done (Gate A passed on Windows); app Days 11–15 done: the MVP is ready to try on Windows.** Next: Day 16 (macOS Full Disk Access) when the MacBook is ready, otherwise Day 18–19. The Mac half of Gate A waits for the MacBook.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -84,7 +84,7 @@ of introducing them.
 | 12 ✅ | Opus | The ring: three levels on Canvas, slices under 0.4% folded into "smaller folders", hover shows the slice in the centre, click a slice to open it (any level), click the centre to go back, ring and list highlight each other, unfold animation, light and dark | — |
 | 13 ✅ | Opus | Tabs: Folders, Apps (per app: program / data / cache, expand to see where, open or show in Explorer/Finder), Largest Files (filter by kind), Show in Explorer / Finder everywhere | — |
 | 14 ✅ | Opus | Clean Up tab: suggestions by group (rebuildable ones pre-ticked, downloads not), review step listing every path, Move to Recycle Bin / Trash through the safety engine, result with anything left in place. The window can only name saved suggestions by number | Try a real cleanup on something you don't need. |
-| 15 | Opus | Windows: ask for administrator rights to use the fast scan; Recycle Bin shown as its own item. **MVP** | Use the MVP for a few days; list what to fix. |
+| 15 ✅ | Opus | Windows: ask for administrator rights to use the fast scan; Recycle Bin shown as its own item. **MVP** | Use the MVP for a few days; list what to fix. |
 | 16 | Opus | macOS: Full Disk Access check and setup screen | Once the MacBook is ready: install and scan. |
 | 17 | Opus | Fixes from your MVP notes | — |
 | 18 | Opus | Nightly CI: accuracy and benchmark jobs | — |

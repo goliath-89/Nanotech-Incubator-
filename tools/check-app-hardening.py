@@ -81,11 +81,16 @@ for manifest in list((root / "crates").glob("*/Cargo.toml")) + [app / "Cargo.tom
     deps = text.split("[dev-dependencies]")[0]
     if re.search(r'^trash\s*=', deps, re.M) and "strata-safety" not in str(manifest):
         problem(f"{manifest.relative_to(root)} depends on `trash`; only strata-safety may")
+# A line that removes a file Strata itself just created may say so with an
+# `// own-file:` comment; only remove_file qualifies, never a folder.
 for src in list((root / "crates").glob("*/src/**/*.rs")) + list((app / "src").glob("**/*.rs")):
-    text = src.read_text()
-    code = text.split("#[cfg(test)]")[0]
-    if re.search(r"\b(remove_file|remove_dir_all|remove_dir)\s*\(", code):
-        problem(f"{src.relative_to(root)} removes files directly; go through strata-safety")
+    code = src.read_text().split("#[cfg(test)]")[0]
+    for number, line in enumerate(code.splitlines(), 1):
+        if not re.search(r"\b(remove_file|remove_dir_all|remove_dir)\s*\(", line):
+            continue
+        if "remove_file(" in line and "// own-file:" in line:
+            continue
+        problem(f"{src.relative_to(root)}:{number} removes files directly; go through strata-safety")
 
 if problems:
     print("App hardening check FAILED:")

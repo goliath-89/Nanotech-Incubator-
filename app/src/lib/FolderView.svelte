@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Listing } from "./types";
   import { bytes, count, percent, share } from "./format";
-  import { kindColor, mainKind, KINDS } from "./kinds";
+  import { displayName, kindColor, mainKind, KINDS } from "./kinds";
 
   let {
     listing,
@@ -43,9 +43,9 @@
     {#each listing.breadcrumb as crumb, i (crumb.id)}
       {#if i > 0}<span class="sep">›</span>{/if}
       {#if i < listing.breadcrumb.length - 1}
-        <button onclick={() => onopen(crumb.id)}>{crumb.name}</button>
+        <button onclick={() => onopen(crumb.id)}>{displayName(crumb.name)}</button>
       {:else}
-        <span class="here">{crumb.name}</span>
+        <span class="here">{displayName(crumb.name)}</span>
       {/if}
     {/each}
   </nav>
@@ -55,7 +55,7 @@
       {@const k = mainKind(d.kindBytes)}
       <li><button class="row" class:hot={hovered === d.id} onmouseenter={() => onhover(d.id)} onmouseleave={() => onhover(null)} onfocus={() => onhover(d.id)} onblur={() => onhover(null)} onclick={() => onopen(d.id)} disabled={d.notScanned !== null && Number(d.allocBytes) === 0}>
         <span class="name">
-          <span class="title">{d.name}</span>
+          <span class="title">{displayName(d.name)}</span>
           <span class="sub">
             {#if d.notScanned}{reasons[d.notScanned]}{:else}{count(d.fileCount)} files · mostly {KINDS[k].name.toLowerCase()}{#if d.owner} · {d.owner.app}{#if d.owner.role !== "program"} {d.owner.role}{/if}{/if}{/if}
           </span>
