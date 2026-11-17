@@ -20,14 +20,15 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 37 / 90 (41%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 39 / 90 (43%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
 | **Sprint 3 · ring polish** | 9 / 10 (90%) | Days 21–24, 26–30 done; 25 waits for your notes |
 | **Sprint 4 · polish and testing** | 8 / 10 (80%) | Days 31–38 done; 39–40 wait for the test sessions |
-| **Sprint 5 · kinds and app rules (current)** | 3 / 10 (30%) | Days 41–43 done |
+| **Sprint 5 · kinds and app rules (current)** | 5 / 10 (50%) | Days 41–43, 46–47 done; 44–45 wait for the Mac |
 
 Log (newest first):
+- 17 Nov · Days 46–47 ✅ 58 Windows app rules; all 235 rule folders checked by a fixture test. Sprint 5 5/10 (50%), overall 39/90 (43%).
 - 17 Nov · Day 43 ✅ large unknown files recognised from their contents. Sprint 5 3/10 (30%), overall 37/90 (41%).
 - 17 Nov · Day 42 ✅ apps, libraries and games shown as one item. Sprint 5 2/10 (20%), overall 36/90 (40%).
 - 17 Nov · Day 41 ✅ ring by kind. Sprint 5 1/10 (10%), overall 35/90 (39%).
@@ -56,7 +57,7 @@ Log (newest first):
 - 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
 - 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
 
-Next: Days 46–47 (Windows app rules 1–50), Day 49 (installed-app discovery), then 44–45 (macOS rules) when the Mac is back. Days 39–40 need your usability sessions; 17 and 25 your MVP notes; 16 the MacBook.
+Next: Day 49 (installed-app discovery: uninstall registry, Store packages), Day 48 (rules for your "Other" list), Day 50 (attribution review). Days 44–45 and 16 need the MacBook; 39–40 your usability sessions; 17 and 25 your MVP notes.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -172,8 +173,8 @@ of introducing them.
 | 43 ✅ | Opus | After every scan (any method), the 200 largest files of unknown kind (50 MB+) are recognised from their first bytes: video (MP4/MOV, Matroska, AVI, MPEG), audio, photos (JPEG, PNG, HEIC, TIFF/raw, PSD), PDF, virtual-machine disks (VHDX, VHD, VMDK, QCOW2), ISO and DMG images, SQLite, programs; their space moves to that kind in every folder above. Never reads links or cloud-only files. 4 engine tests | — |
 | 44 | Opus | App rules 1–25 for macOS with fixtures | — |
 | 45 | Opus | App rules 26–50 for macOS | Scan your Mac; paste the 20 largest "Other" folders. |
-| 46 | Opus | App rules 1–25 for Windows | — |
-| 47 | Opus | App rules 26–50 for Windows | Scan your PC; paste the 20 largest "Other" folders. |
+| 46 ✅ | Opus | Windows app rules 22–40 (browsers, chat, cloud drives, phone backups, JetBrains, Android, Gradle, Maven, Rust, Go, Anaconda, Ollama, LM Studio, Cursor, Unity, Blender, DaVinci Resolve, OBS) | — |
+| 47 ✅ | Opus | Windows app rules 41–58 (Battle.net, EA, Ubisoft, GOG, Xbox, Riot, Minecraft, NVIDIA, AMD, VirtualBox, VMware, Hyper-V, Git…): 58 Windows apps in all. New test: all 235 built-in folder rules (both systems) claim their own folders in the right role. Rule loader accepts one specific folder at the top of a drive (C:/XboxGames) but never a system one. Safety: 11 reviewed cache locations added (other browsers, GPU shader caches, JetBrains, Unity, Go) | Scan your PC; paste the 20 largest "Other" folders. |
 | 48 | Opus | Rules for whatever your "Other" lists showed | — |
 | 49 | Opus | Installed-app discovery (LaunchServices, uninstall registry, Store packages) | — |
 | 50 | Fable or Opus | Review of attribution: nothing guessed, every rule has a fixture | — |

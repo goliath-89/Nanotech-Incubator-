@@ -128,6 +128,7 @@ Checked by `tools/check-app-hardening.py` on every push:
 | 2026-11-17 | Dependency updates (Dependabot PRs #2–#4): windows-sys 0.61, rusqlite 0.43 (SQLite 3.5x), toml 1.x; checkout, upload-artifact, setup-node v7; gitleaks-action v3 | — (maintenance) | Applied together on the branch; every action SHA checked against its release tag |
 | 2026-11-17 | picomatch ReDoS (GHSA-fc5q-39xc-vjpf), via vite and svelte-check; no fixed release yet | High (advisory) — not reachable: build tools only, our own patterns, not in the app | **Accepted until 2026-12-01** in `tools/npm-audit-exceptions.json`; update as soon as a fix ships |
 | 2026-11-17 | Repository made public | — (process) | History checked: no secrets (gitleaks, manual grep), no personal email addresses in commits |
+| 2026-11-17 | Days 46–47: what Clean Up may empty was widened by 11 cache locations (Brave, Vivaldi and Opera caches; NVIDIA and AMD shader caches; JetBrains, Unity and Go build caches) | — (reviewed change) | Each is rebuilt by its owner and holds nothing the person made; still only via the review step and the Trash. The contract test keeps every app "cache" rule inside what the safety policy allows |
 
 ## Your part
 

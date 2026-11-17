@@ -261,6 +261,11 @@ fn bad_rule_files_are_rejected_whole() {
         ("[[app]]\nname = \"A\"\nid = \"a\"\ndata = [\"~/Lib\\\\X\"]\n", "must use /"),
         ("[[app]]\nname = \"A\"\nid = \"a\"\ndata = [\"/Users\"]\n", "too broad"),
         ("[[app]]\nname = \"A\"\nid = \"a\"\ndata = [\"~/*\"]\n", "too broad"),
+        ("[[app]]\nname = \"A\"\nid = \"a\"\ndata = [\"C:/Windows\"]\n", "too broad"),
+        ("[[app]]\nname = \"A\"\nid = \"a\"\ndata = [\"C:/Users\"]\n", "too broad"),
+        ("[[app]]\nname = \"A\"\nid = \"a\"\ndata = [\"C:/ProgramData\"]\n", "too broad"),
+        ("[[app]]\nname = \"A\"\nid = \"a\"\ndata = [\"C:/Games*\"]\n", "too broad"),
+        ("[[app]]\nname = \"A\"\nid = \"a\"\ndata = [\"C:/Go\"]\n", "too broad"),
         ("[[app]]\nname = \"A\"\nid = \"a\"\ndata = [\"~/Library/*\"]\n", "bare *"),
         ("[[app]]\nname = \"A\"\nid = \"a\"\ndata = [\"~/Li*br*ary/X\"]\n", "one *"),
         ("[[app]]\nname = \"A\"\nid = \"a\"\nkind = \"Stuff\"\ndata = [\"~/Library/X\"]\n", "unknown kind"),
@@ -274,6 +279,8 @@ fn bad_rule_files_are_rejected_whole() {
         let err = RuleSet::from_toml(text).expect_err(text);
         assert!(err.contains(expected), "{text:?} gave {err:?}");
     }
+    // A specific folder at the top of a drive is fine.
+    RuleSet::from_toml("[[app]]\nname = \"A\"\nid = \"a\"\napp = [\"C:/XboxGames\"]\n").unwrap();
 }
 
 #[test]
@@ -594,4 +601,56 @@ fn attribution_on_a_real_scan() {
         scanned.dirs[a.cache_dirs[0] as usize].name,
         OsStr::new("cache")
     );
+}
+
+/// Every built-in rule has a working fixture: each folder it names, put
+/// alone in a scan, is credited to that app in that role. (Day 50's
+/// review: nothing guessed, every rule checked.)
+#[test]
+fn every_built_in_rule_claims_its_own_folders() {
+    let mut checked = 0;
+    for (os, home, drive, root) in [
+        (Os::MacOs, "/Users/sam", "", "/"),
+        (Os::Windows, "C:/Users/sam", "C:", r"C:\"),
+    ] {
+        let env = Env {
+            os,
+            home: if os == Os::Windows {
+                r"C:\Users\sam".into()
+            } else {
+                home.into()
+            },
+            system_drive: drive.into(),
+        };
+        let rules = RuleSet::builtin(os);
+        for app in &rules.apps {
+            let only = RuleSet {
+                apps: vec![app.clone()],
+            };
+            for (pattern, role) in &app.paths {
+                let full = instantiate(pattern, home, drive);
+                let relative = full.trim_start_matches(drive).trim_start_matches('/');
+                let t = tree(root, &[(relative, GB)]);
+                let a = attribute(&t, &only, &env);
+                let usage = a.apps.iter().find(|u| u.id == app.id).unwrap_or_else(|| {
+                    panic!(
+                        "{:?} {}: {pattern:?} ({full}) was not credited",
+                        os, app.name
+                    )
+                });
+                let got = match role {
+                    Role::App => usage.app_bytes,
+                    Role::Data => usage.data_bytes,
+                    Role::Cache => usage.cache_bytes,
+                };
+                assert_eq!(
+                    got, GB,
+                    "{:?} {}: {pattern:?} credited {got} bytes as {role:?}",
+                    os, app.name
+                );
+                checked += 1;
+            }
+        }
+    }
+    assert!(checked > 150, "only {checked} folder rules checked");
 }

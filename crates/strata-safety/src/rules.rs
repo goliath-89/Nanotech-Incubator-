@@ -162,6 +162,26 @@ pub(crate) const WINDOWS: &[(&str, Kind)] = &[
         Open,
     ),
     ("~/AppData/Local/Mozilla/Firefox/Profiles/*/cache2", Open),
+    // Day 46–47: other browsers' caches, GPU shader caches and developer
+    // build caches; each is rebuilt by its owner. Reviewed: none holds
+    // anything the person made.
+    (
+        "~/AppData/Local/BraveSoftware/Brave-Browser/User Data/*/Cache",
+        Open,
+    ),
+    (
+        "~/AppData/Local/BraveSoftware/Brave-Browser/User Data/*/Code Cache",
+        Open,
+    ),
+    ("~/AppData/Local/Vivaldi/User Data/*/Cache", Open),
+    ("~/AppData/Local/Opera Software/*/Cache", Open),
+    ("~/AppData/Local/NVIDIA/DXCache", Open),
+    ("~/AppData/Local/NVIDIA/GLCache", Open),
+    ("~/AppData/Local/AMD/DxCache", Open),
+    ("~/AppData/Local/AMD/DxcCache", Open),
+    ("~/AppData/Local/JetBrains/*/caches", Open),
+    ("~/AppData/Local/Unity/cache", Open),
+    ("~/AppData/Local/go-build", Open),
     ("~/AppData/Local/npm-cache", Open),
     ("~/AppData/Local/pip/Cache", Open),
     ("~/AppData/Local/NuGet/v3-cache", Open),

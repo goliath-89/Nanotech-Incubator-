@@ -162,7 +162,30 @@ fn validate_pattern(pattern: &str) -> Result<(), &'static str> {
         .iter()
         .filter(|p| **p != "~" && !p.ends_with(':') && p.trim_matches('*').len() >= 3)
         .count();
-    if literal < 2 && !(literal == 1 && pattern.starts_with("~/")) {
+    // One folder straight below a drive is specific enough (`C:/XboxGames`,
+    // `C:/Riot Games`) unless it is one of the system's own top folders.
+    const SYSTEM_TOP: &[&str] = &[
+        "windows",
+        "program files",
+        "program files (x86)",
+        "programdata",
+        "users",
+        "$recycle.bin",
+        "system volume information",
+        "recovery",
+        "perflogs",
+        "boot",
+        "documents and settings",
+        "intel",
+        "amd",
+        "nvidia",
+    ];
+    let drive_top = parts.len() == 2
+        && parts[0].ends_with(':')
+        && !parts[1].contains('*')
+        && parts[1].len() >= 6
+        && !SYSTEM_TOP.contains(&parts[1].to_ascii_lowercase().as_str());
+    if literal < 2 && !(literal == 1 && (pattern.starts_with("~/") || drive_top)) {
         return Err("is too broad");
     }
     if parts.last().is_some_and(|p| *p == "*") {

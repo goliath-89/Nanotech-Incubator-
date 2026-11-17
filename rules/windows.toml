@@ -154,3 +154,256 @@ name = "Temporary files"
 id = "Windows.Temp"
 kind = "Caches"
 cache = ["~/AppData/Local/Temp", "C:/Windows/Temp"]
+
+# ---- Days 46–47: rules 22–50 -------------------------------------------
+
+[[app]]
+name = "Brave"
+id = "Brave.Brave"
+app = ["C:/Program Files/BraveSoftware/Brave-Browser", "~/AppData/Local/BraveSoftware/Brave-Browser/Application"]
+data = ["~/AppData/Local/BraveSoftware/Brave-Browser/User Data"]
+cache = [
+  "~/AppData/Local/BraveSoftware/Brave-Browser/User Data/*/Cache",
+  "~/AppData/Local/BraveSoftware/Brave-Browser/User Data/*/Code Cache",
+]
+
+[[app]]
+name = "Opera"
+id = "Opera.Opera"
+app = ["~/AppData/Local/Programs/Opera"]
+data = ["~/AppData/Roaming/Opera Software"]
+cache = ["~/AppData/Local/Opera Software/*/Cache"]
+
+[[app]]
+name = "Vivaldi"
+id = "Vivaldi.Vivaldi"
+app = ["~/AppData/Local/Vivaldi/Application"]
+data = ["~/AppData/Local/Vivaldi/User Data"]
+cache = ["~/AppData/Local/Vivaldi/User Data/*/Cache"]
+
+[[app]]
+name = "Microsoft Teams"
+id = "Microsoft.Teams"
+data = ["~/AppData/Local/Packages/MSTeams_8wekyb3d8bbwe", "~/AppData/Roaming/Microsoft/Teams"]
+
+[[app]]
+name = "OneDrive"
+id = "Microsoft.OneDrive"
+app = ["~/AppData/Local/Microsoft/OneDrive", "C:/Program Files/Microsoft OneDrive"]
+
+[[app]]
+name = "Discord"
+id = "Discord.Discord"
+app = ["~/AppData/Local/Discord"]
+data = ["~/AppData/Roaming/discord"]
+cache = ["~/AppData/Roaming/discord/Cache", "~/AppData/Roaming/discord/Code Cache"]
+
+[[app]]
+name = "Telegram"
+id = "Telegram.TelegramDesktop"
+app = ["~/AppData/Roaming/Telegram Desktop"]
+
+[[app]]
+name = "WhatsApp"
+id = "WhatsApp.WhatsApp"
+data = ["~/AppData/Local/Packages/5319275A.WhatsAppDesktop_cv1g1gvanyjgm"]
+
+[[app]]
+name = "Dropbox"
+id = "Dropbox.Dropbox"
+app = ["C:/Program Files (x86)/Dropbox", "C:/Program Files/Dropbox"]
+data = ["~/AppData/Local/Dropbox"]
+
+[[app]]
+name = "Google Drive"
+id = "Google.GoogleDrive"
+app = ["C:/Program Files/Google/Drive File Stream"]
+data = ["~/AppData/Local/Google/DriveFS"]
+
+[[app]]
+name = "iPhone and iPad backups"
+id = "Apple.MobileSync"
+data = ["~/Apple/MobileSync/Backup", "~/AppData/Roaming/Apple Computer/MobileSync/Backup"]
+
+[[app]]
+name = "JetBrains IDEs"
+id = "JetBrains.Toolbox"
+kind = "Developer"
+app = ["C:/Program Files/JetBrains", "~/AppData/Local/Programs/JetBrains", "~/AppData/Local/JetBrains/Toolbox/apps"]
+data = ["~/AppData/Roaming/JetBrains"]
+cache = ["~/AppData/Local/JetBrains/*/caches"]
+
+[[app]]
+name = "Android Studio and SDK"
+id = "Google.AndroidStudio"
+kind = "Developer"
+app = ["C:/Program Files/Android"]
+data = ["~/AppData/Local/Android/Sdk", "~/.android"]
+
+[[app]]
+name = "Gradle"
+id = "Gradle.Gradle"
+kind = "Developer"
+cache = ["~/.gradle/caches"]
+data = ["~/.gradle/wrapper"]
+
+[[app]]
+name = "Maven"
+id = "Apache.Maven"
+kind = "Developer"
+data = ["~/.m2/repository"]
+
+[[app]]
+name = "Rust"
+id = "Rustlang.Rustup"
+kind = "Developer"
+app = ["~/.rustup"]
+data = ["~/.cargo"]
+cache = ["~/.cargo/registry/cache"]
+
+[[app]]
+name = "Go"
+id = "GoLang.Go"
+kind = "Developer"
+# "C:/Program Files/Go" is refused as too broad (a two-letter name), on purpose.
+data = ["~/go/pkg/mod"]
+cache = ["~/AppData/Local/go-build"]
+
+[[app]]
+name = "Anaconda"
+id = "Anaconda.Anaconda3"
+kind = "Developer"
+app = ["~/anaconda3", "~/miniconda3", "C:/ProgramData/anaconda3", "C:/ProgramData/miniconda3"]
+
+[[app]]
+name = "Ollama"
+id = "Ollama.Ollama"
+kind = "Developer"
+app = ["~/AppData/Local/Programs/Ollama"]
+data = ["~/.ollama"]
+
+[[app]]
+name = "LM Studio"
+id = "ElementLabs.LMStudio"
+kind = "Developer"
+app = ["~/AppData/Local/Programs/LM Studio"]
+data = ["~/.lmstudio", "~/.cache/lm-studio"]
+
+[[app]]
+name = "Cursor"
+id = "Anysphere.Cursor"
+kind = "Developer"
+app = ["~/AppData/Local/Programs/cursor"]
+data = ["~/AppData/Roaming/Cursor", "~/.cursor"]
+
+[[app]]
+name = "Unity"
+id = "Unity.UnityHub"
+kind = "Developer"
+app = ["C:/Program Files/Unity", "C:/Program Files/Unity Hub"]
+data = ["~/AppData/LocalLow/Unity", "~/AppData/Roaming/UnityHub"]
+cache = ["~/AppData/Local/Unity/cache"]
+
+[[app]]
+name = "Blender"
+id = "BlenderFoundation.Blender"
+app = ["C:/Program Files/Blender Foundation"]
+data = ["~/AppData/Roaming/Blender Foundation"]
+
+[[app]]
+name = "DaVinci Resolve"
+id = "Blackmagic.DaVinciResolve"
+kind = "Videos"
+app = ["C:/Program Files/Blackmagic Design"]
+data = ["~/AppData/Roaming/Blackmagic Design", "C:/ProgramData/Blackmagic Design"]
+
+[[app]]
+name = "OBS Studio"
+id = "OBSProject.OBSStudio"
+kind = "Videos"
+app = ["C:/Program Files/obs-studio"]
+data = ["~/AppData/Roaming/obs-studio"]
+
+[[app]]
+name = "Battle.net"
+id = "Blizzard.BattleNet"
+kind = "Games"
+app = ["C:/Program Files (x86)/Battle.net"]
+data = ["C:/ProgramData/Battle.net"]
+
+[[app]]
+name = "EA app"
+id = "ElectronicArts.EADesktop"
+kind = "Games"
+app = ["C:/Program Files/Electronic Arts", "C:/Program Files/EA Games"]
+
+[[app]]
+name = "Ubisoft Connect"
+id = "Ubisoft.Connect"
+kind = "Games"
+app = ["C:/Program Files (x86)/Ubisoft"]
+
+[[app]]
+name = "GOG Galaxy"
+id = "GOG.Galaxy"
+kind = "Games"
+app = ["C:/Program Files (x86)/GOG Galaxy", "C:/GOG Games"]
+
+[[app]]
+name = "Xbox games"
+id = "Microsoft.GamingApp"
+kind = "Games"
+app = ["C:/XboxGames"]
+
+[[app]]
+name = "Riot Games"
+id = "RiotGames.RiotClient"
+kind = "Games"
+app = ["C:/Riot Games"]
+
+[[app]]
+name = "Minecraft"
+id = "Mojang.MinecraftLauncher"
+kind = "Games"
+data = ["~/AppData/Roaming/.minecraft"]
+
+[[app]]
+name = "NVIDIA"
+id = "Nvidia.GeForceExperience"
+kind = "System"
+app = ["C:/Program Files/NVIDIA Corporation"]
+data = ["C:/ProgramData/NVIDIA Corporation"]
+cache = ["~/AppData/Local/NVIDIA/DXCache", "~/AppData/Local/NVIDIA/GLCache"]
+
+[[app]]
+name = "AMD Software"
+id = "AMD.AMDSoftware"
+kind = "System"
+app = ["C:/Program Files/AMD"]
+cache = ["~/AppData/Local/AMD/DxCache", "~/AppData/Local/AMD/DxcCache"]
+
+[[app]]
+name = "VirtualBox"
+id = "Oracle.VirtualBox"
+kind = "Developer"
+app = ["C:/Program Files/Oracle/VirtualBox"]
+data = ["~/VirtualBox VMs", "~/.VirtualBox"]
+
+[[app]]
+name = "VMware"
+id = "VMware.WorkstationPlayer"
+kind = "Developer"
+app = ["C:/Program Files (x86)/VMware", "C:/Program Files/VMware"]
+data = ["~/Documents/Virtual Machines"]
+
+[[app]]
+name = "Hyper-V virtual machines"
+id = "Microsoft.HyperV"
+kind = "Developer"
+data = ["C:/ProgramData/Microsoft/Windows/Virtual Hard Disks", "C:/ProgramData/Microsoft/Windows/Hyper-V"]
+
+[[app]]
+name = "Git"
+id = "Git.Git"
+kind = "Developer"
+app = ["C:/Program Files/Git"]
