@@ -20,13 +20,14 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 29 / 90 (32%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 30 / 90 (33%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
 | **Sprint 3 · ring polish** | 9 / 10 (90%) | Days 21–24, 26–30 done; 25 waits for your notes |
-| **Sprint 4 · polish and testing (current)** | 3 / 10 (30%) | Days 31–33 done |
+| **Sprint 4 · polish and testing (current)** | 4 / 10 (40%) | Days 31–34 done |
 
 Log (newest first):
+- 17 Nov · Day 34 ✅ high contrast, Increase Contrast, Reduce Motion; contrast bugs fixed. Sprint 4 4/10 (40%), overall 30/90 (33%).
 - 17 Nov · Day 33 ✅ exclusions and theme setting. Sprint 4 3/10 (30%), overall 29/90 (32%).
 - 17 Nov · Day 32 ✅ safe file preview (Quick Look on Mac, in-app on Windows). Sprint 4 2/10 (20%), overall 28/90 (31%).
 - 17 Nov · Day 31 ✅ right-click menu; macOS installer now nightly. Sprint 4 1/10 (10%), overall 27/90 (30%).
@@ -47,7 +48,7 @@ Log (newest first):
 - 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
 - 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
 
-Next: Day 34 (Reduce Motion and high contrast), Day 35 (scan history: what grew), Day 36 (very large drives, 4M files). Days 25 and 17 wait for your MVP notes; Day 16 for the MacBook.
+Next: Day 35 (scan history: pick an older scan, see what grew), Day 36 (very large drives, 4M files), Day 37 (UI tests for everything so far). Days 25 and 17 wait for your MVP notes; Day 16 for the MacBook.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -146,7 +147,7 @@ of introducing them.
 | 31 ✅ | Opus | Right-click menu on folder rows, ring slices, large files and app locations: Open, Show in Explorer/Finder, Copy Path (with a "Path copied" note); Menu key or Shift+F10 opens it from the keyboard, arrows move, Escape closes and returns focus. The webview's own menu is suppressed. Preview joins on Day 32 and Exclude on Day 33, with their back ends. CI: macOS installer moved to the nightly run. 3 UI tests (49 in all) | — |
 | 32 ✅ | Opus | Preview (menu or Space on a large file): Quick Look on macOS; on Windows images (decoded by the web view) and the first 64 KB of text/code in a dialog. Never runs or opens a file in another program, never follows links, never reads cloud-only files (no surprise downloads); path from the scan history, the window names only the file. Rust tests for the checks; the app's Rust tests now run in CI. 2 UI tests (51 in all) | Try Preview on a photo and a text file on your laptop. |
 | 33 ✅ | Opus | Exclusions: "Exclude from Scans" in the folder and ring menus, listed in Settings with "Scan again"; kept in the app's data folder. The walk skips them; after the Windows fast scan their contents are removed so nothing inside is shown or saved (engine test: removing afterwards equals skipping during the walk). Theme: same as the system, Light or Dark, remembered. 3 UI tests (54 in all), 3 engine tests | — |
-| 34 | Opus | Reduce Motion and high-contrast support | — |
+| 34 ✅ | Opus | Accessibility: Windows High Contrast keeps data colours (bars, dots, ring) with solid outlines, everything else takes the system colours; Increase Contrast lifts secondary text to AAA (7:1); Reduce Motion has no transitions at all. Found and fixed: secondary text was 4.15–4.3:1 on the sidebar and tab strip (below WCAG AA) in light, 3.95:1 in dark; now 4.9:1+ and 5.1:1+. 6 automated checks (tests/a11y.spec.ts) | — |
 | 35 | Opus | Scan history: pick an older scan, see what grew | — |
 | 36 | Opus | Performance pass on very large drives (4M files) | — |
 | 37 | Opus | UI tests for everything so far | Recruit 5 people for a 15-minute test next day. |

@@ -4,7 +4,7 @@
   --surface: #ffffff;
   --sidebar: #ececf0;
   --fg: #1d1d1f;
-  --muted: #6e6e73;
+  --muted: #636366; /* 4.9:1 or better on every light background (WCAG AA) */
   --line: #d9d9de;
   --track: #e8e8ed;
   --hover: rgba(120, 120, 135, 0.1);
@@ -48,7 +48,7 @@
     --surface: #232325;
     --sidebar: #2a2a2d;
     --fg: #f5f5f7;
-    --muted: #98989d;
+    --muted: #aeaeb2; /* 5.1:1 or better on every dark background (WCAG AA) */
     --line: #3a3a3c;
     --track: #3a3a3c;
     --hover: rgba(255, 255, 255, 0.06);
@@ -71,7 +71,7 @@
     --surface: #232325;
     --sidebar: #2a2a2d;
     --fg: #f5f5f7;
-    --muted: #98989d;
+    --muted: #aeaeb2; /* 5.1:1 or better on every dark background (WCAG AA) */
     --line: #3a3a3c;
     --track: #3a3a3c;
     --hover: rgba(255, 255, 255, 0.06);
@@ -121,3 +121,23 @@ button { font: inherit; color: inherit; }
   opacity: 0; transform: translateY(2px); transition: opacity 0.12s, transform 0.12s;
 }
 .tooltip.on { opacity: 1; transform: none; }
+
+/* Increase contrast (macOS) and More contrast (browsers): stronger muted
+   text and lines. */
+@media (prefers-contrast: more) {
+  :root { --muted: #48484d; --line: #a1a1a6; --track: #d1d1d6; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --muted: #c7c7cc; --line: #6e6e73; --track: #48484a; }
+  }
+  :root[data-theme="dark"] { --muted: #c7c7cc; --line: #6e6e73; --track: #48484a; }
+}
+
+/* Windows High Contrast themes force every colour. Data colours (size
+   bars, kind dots, the ring) carry meaning, so they keep theirs and get a
+   solid outline; everything else uses the system's colours. */
+@media (forced-colors: active) {
+  .bar, .bar span, i, .kinds .bar span, canvas, .capacity, .capacity span, .track, .track span { forced-color-adjust: none; }
+  .bar, .capacity, .track { outline: 1px solid CanvasText; }
+  i { outline: 1px solid CanvasText; }
+  .tooltip { forced-color-adjust: auto; border: 1px solid CanvasText; }
+}
