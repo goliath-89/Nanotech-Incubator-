@@ -71,6 +71,9 @@ export async function latestScan(volumeId: string): Promise<ScanSummary | null> 
 export async function startScan(_path: string, _volumeId: string) {
   const token = 1;
   let tick = 0;
+  // UI tests can ask for a scan stage message: ?demo-stage=permission
+  const stage = new URLSearchParams(location.search).get("demo-stage");
+  if (stage === "permission" || stage === "fileTable") setTimeout(() => handlers?.stage?.({ token, stage }), 0);
   timer = setInterval(() => {
     tick++;
     const f = Math.min(1, tick / 20);

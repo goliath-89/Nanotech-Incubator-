@@ -64,6 +64,34 @@ jobs:
           path: target/aarch64-pc-windows-msvc/release/strata.exe
           if-no-files-found: error
 
+  # The interface in a browser with example data (app/tests, Playwright).
+  ui-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install interface packages
+        working-directory: app
+        run: npm ci
+      - name: Install the test browser
+        working-directory: app
+        run: npx playwright install --with-deps chromium
+      - name: UI tests
+        working-directory: app
+        run: npm run test:ui
+      - name: Keep the report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ui-test-report
+          path: app/playwright-report
+
   # The desktop app: installers for Windows and macOS (unsigned until Day 75).
   app:
     strategy:
