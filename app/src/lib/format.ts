@@ -1,24 +1,39 @@
-// Sizes in decimal units (1 GB = 1,000,000,000 bytes), as macOS and drive
-// makers use. Windows Explorer shows binary units; a setting comes later.
+// Sizes, counts and percentages for display, in the system's language
+// (decimal separator, digit grouping) and the units chosen in Settings.
+import { settings } from "./settings.svelte";
 
-const UNITS = ["bytes", "KB", "MB", "GB", "TB"];
+const locale = typeof navigator !== "undefined" ? navigator.language : undefined;
+const formats = new Map<string, Intl.NumberFormat>();
+function fmt(digits: number): Intl.NumberFormat {
+  const key = String(digits);
+  let f = formats.get(key);
+  if (!f) formats.set(key, (f = new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits })));
+  return f;
+}
+
+const LABELS = {
+  decimal: ["bytes", "KB", "MB", "GB", "TB", "PB"],
+  windows: ["bytes", "KB", "MB", "GB", "TB", "PB"],
+  binary: ["bytes", "KiB", "MiB", "GiB", "TiB", "PiB"],
+} as const;
 
 export function bytes(value: string | number | bigint): string {
   let n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return "0 bytes";
+  const step = settings.units === "decimal" ? 1000 : 1024;
+  const labels = LABELS[settings.units];
   let unit = 0;
-  while (n >= 1000 && unit < UNITS.length - 1) {
-    n /= 1000;
+  // Switch unit just before the number would need four digits.
+  while (n >= 1000 && unit < labels.length - 1) {
+    n /= step;
     unit++;
   }
-  if (unit === 0) return `${Math.round(n)} bytes`;
-  return `${n >= 100 ? n.toFixed(0) : n.toFixed(1)} ${UNITS[unit]}`;
+  if (unit === 0) return `${fmt(0).format(Math.round(n))} bytes`;
+  return `${fmt(n >= 100 ? 0 : 1).format(n)} ${labels[unit]}`;
 }
 
-const grouping = new Intl.NumberFormat();
-
 export function count(value: string | number): string {
-  return grouping.format(Number(value));
+  return fmt(0).format(Number(value));
 }
 
 export function share(part: string | number, whole: string | number): number {
@@ -26,12 +41,15 @@ export function share(part: string | number, whole: string | number): number {
   return w > 0 ? Number(part) / w : 0;
 }
 
+const percentFormat = new Intl.NumberFormat(locale, { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const tiny = `<${percentFormat.format(0.001)}`;
+
 export function percent(part: string | number, whole: string | number): string {
-  const p = share(part, whole) * 100;
-  return p > 0 && p < 0.1 ? "<0.1%" : `${p.toFixed(1)}%`;
+  const p = share(part, whole);
+  return p > 0 && p < 0.001 ? tiny : percentFormat.format(p);
 }
 
 export function seconds(ms: string | number): string {
   const s = Number(ms) / 1000;
-  return s < 10 ? `${s.toFixed(1)} s` : `${Math.round(s)} s`;
+  return `${fmt(s < 10 ? 1 : 0).format(s)} s`;
 }

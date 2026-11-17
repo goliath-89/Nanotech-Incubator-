@@ -307,10 +307,43 @@ test.describe("on Windows", () => {
     await scanned(page);
     await expect(page.getByRole("button", { name: "Show this folder in Explorer" })).toBeVisible();
     await page.getByRole("tab", { name: "Clean Up" }).click();
-    await expect(page.getByText("The Recycle Bin holds 9.0 GB")).toBeVisible();
+    // Sizes count as Explorer does on Windows: 9,000,000,000 bytes is 8.4 GB.
+    await expect(page.getByText("The Recycle Bin holds 8.4 GB")).toBeVisible();
     await expect(page.getByRole("button", { name: "Open Recycle Bin" })).toBeVisible();
     await page.getByRole("button", { name: "Review…" }).click();
     await expect(page.getByRole("button", { name: "Move to Recycle Bin" })).toBeVisible();
+  });
+});
+
+test.describe("units and language", () => {
+  test("sizes can be shown as macOS, Windows Explorer or GiB count them, and it is remembered", async ({ page }) => {
+    await scanned(page);
+    const users = rows(page).filter({ hasText: "Users" });
+    await expect(users).toContainText("493 GB");
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("radio", { name: /Like Windows Explorer/ }).check();
+    await expect(users).toContainText("459 GB");
+    await page.getByRole("radio", { name: /In GiB/ }).check();
+    await expect(users).toContainText("459 GiB");
+    await expect(page.locator(".centre .size")).toHaveText("684 GiB");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+    // Remembered on the next start.
+    await page.reload();
+    await page.getByRole("button", { name: "Scan Macintosh HD" }).click();
+    await expect(page.getByRole("tablist", { name: "Views" })).toBeVisible({ timeout: 10_000 });
+    await expect(rows(page).filter({ hasText: "Users" })).toContainText("459 GiB");
+  });
+
+  test.describe("in German", () => {
+    test.use({ locale: "de-DE" });
+    test("numbers use the system's separators", async ({ page }) => {
+      await scanned(page);
+      await expect(page.getByText("742 GB used of 1,0 TB")).toBeVisible();
+      await expect(page.getByText("Scanned in 2,1 s")).toBeVisible();
+      await expect(rows(page).filter({ hasText: "Users" })).toContainText("246.500 files");
+      await expect(rows(page).filter({ hasText: "Users" })).toContainText("67,2 %");
+    });
   });
 });
 

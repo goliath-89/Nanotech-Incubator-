@@ -4,6 +4,7 @@
   import type { Done, Listing, Progress, RingNode, Volume } from "./lib/types";
   import { bytes, count, percent, seconds, share } from "./lib/format";
   import Sidebar from "./lib/Sidebar.svelte";
+  import SettingsMenu from "./lib/SettingsMenu.svelte";
   import KindBar from "./lib/KindBar.svelte";
   import FolderView from "./lib/FolderView.svelte";
   import Ring from "./lib/Ring.svelte";
@@ -139,6 +140,7 @@
 <div class="window">
   <aside>
     <Sidebar {volumes} selected={volume?.id ?? null} onselect={select} />
+    <SettingsMenu />
   </aside>
 
   <main>
@@ -265,7 +267,7 @@
 
 <style>
   .window { display: grid; grid-template-columns: 230px 1fr; height: 100%; }
-  aside { background: var(--sidebar); border-right: 1px solid var(--line); overflow-y: auto; }
+  aside { background: var(--sidebar); border-right: 1px solid var(--line); overflow-y: auto; display: flex; flex-direction: column; justify-content: space-between; }
   main { overflow-y: auto; padding: 26px 32px 40px; display: grid; align-content: start; gap: 18px; min-width: 0; }
   header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
   h1 { font: 600 26px/1.15 var(--font-display); letter-spacing: -0.02em; margin: 0; }
