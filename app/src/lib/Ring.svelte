@@ -425,9 +425,11 @@
       draw();
     };
     scheme.addEventListener("change", recolor);
+    addEventListener("strata-theme", recolor);
     return () => {
       resize.disconnect();
       scheme.removeEventListener("change", recolor);
+      removeEventListener("strata-theme", recolor);
       cancelAnimationFrame(frame);
     };
   });

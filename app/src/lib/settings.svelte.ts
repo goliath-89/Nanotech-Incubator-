@@ -30,3 +30,40 @@ export function setUnits(units: Units) {
     // Not remembered, but still applied for this session.
   }
 }
+
+/** Light or dark: follow the system, or choose. */
+export type Theme = "system" | "light" | "dark";
+const THEME_KEY = "strata.theme";
+
+function loadTheme(): Theme {
+  try {
+    const t = localStorage.getItem(THEME_KEY);
+    if (t === "light" || t === "dark" || t === "system") return t;
+  } catch {
+    // Fall back to the system.
+  }
+  return "system";
+}
+
+export const appearance = $state({ theme: loadTheme() });
+
+/** Apply the theme to the page; views that draw with colours redraw. */
+export function applyTheme() {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (appearance.theme === "system") delete root.dataset.theme;
+  else root.dataset.theme = appearance.theme;
+  dispatchEvent(new Event("strata-theme"));
+}
+
+export function setTheme(theme: Theme) {
+  appearance.theme = theme;
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    // Applied for this session only.
+  }
+  applyTheme();
+}
+
+applyTheme();

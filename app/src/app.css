@@ -41,8 +41,9 @@
   color-scheme: light;
 }
 
+/* Dark: follows the system unless Settings says Light; or chosen outright. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #1c1c1e;
     --surface: #232325;
     --sidebar: #2a2a2d;
@@ -65,6 +66,30 @@
     color-scheme: dark;
   }
 }
+:root[data-theme="dark"] {
+    --bg: #1c1c1e;
+    --surface: #232325;
+    --sidebar: #2a2a2d;
+    --fg: #f5f5f7;
+    --muted: #98989d;
+    --line: #3a3a3c;
+    --track: #3a3a3c;
+    --hover: rgba(255, 255, 255, 0.06);
+    --selected: rgba(255, 255, 255, 0.12);
+    --accent: #2997ff;
+    --warning: #ffb340;
+    --warning-bg: rgba(255, 159, 10, 0.12);
+    --kind-caches: #ffd60a;
+    --kind-other: #64d2ff;
+    --kind-trash: #b59a74;
+    --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --sidebar-material: rgba(32, 32, 32, 0.2);
+    --tooltip-bg: rgba(236, 236, 240, 0.96);
+    --tooltip-fg: #1d1d1f;
+    color-scheme: dark;
+  }
+/* Light chosen while the system is dark: the light tokens above apply; say so to form controls. */
+:root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 html, body, #app { height: 100%; margin: 0; }

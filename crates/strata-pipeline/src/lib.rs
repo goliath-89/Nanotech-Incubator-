@@ -5,6 +5,7 @@
 #![forbid(unsafe_code)]
 
 pub mod cleanup;
+pub mod exclude;
 pub mod ring;
 
 use std::path::Path;
@@ -34,6 +35,27 @@ pub struct Outcome {
 /// read the file table; if that is not possible (not NTFS, not running as
 /// administrator, refused), walk the folders instead and say why.
 pub fn scan_root(root: &Path, prefer_fast: bool, ctl: &ScanControl) -> std::io::Result<Outcome> {
+    scan_root_excluding(root, prefer_fast, ctl, &[])
+}
+
+/// [`scan_root`], leaving out the folders in `excludes` (see [`exclude`]).
+pub fn scan_root_excluding(
+    root: &Path,
+    prefer_fast: bool,
+    ctl: &ScanControl,
+    excludes: &[std::path::PathBuf],
+) -> std::io::Result<Outcome> {
+    let mut outcome = scan_root_inner(root, prefer_fast, ctl, excludes)?;
+    exclude::apply(&mut outcome.tree, excludes);
+    Ok(outcome)
+}
+
+fn scan_root_inner(
+    root: &Path,
+    prefer_fast: bool,
+    ctl: &ScanControl,
+    excludes: &[std::path::PathBuf],
+) -> std::io::Result<Outcome> {
     let mut fallback_reason = None;
     if prefer_fast {
         match fast_scan(root, ctl) {
@@ -54,7 +76,9 @@ pub fn scan_root(root: &Path, prefer_fast: bool, ctl: &ScanControl) -> std::io::
             None => {}
         }
     }
-    let tree = scan(&ScanOptions::new(root), &KindClassifier, ctl)?;
+    let mut opts = ScanOptions::new(root);
+    opts.excludes = excludes.to_vec();
+    let tree = scan(&opts, &KindClassifier, ctl)?;
     Ok(Outcome {
         tree,
         method: Method::Walk,

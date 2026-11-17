@@ -78,6 +78,21 @@ export function previewFile(scanId: number, dirId: number, file: string): Promis
   return inApp ? call("preview_file", { scanId, dirId, file }) : demo.previewFile(file);
 }
 
+/** Folders left out of scans. */
+export function listExclusions(): Promise<string[]> {
+  return inApp ? call("list_exclusions") : demo.listExclusions();
+}
+
+/** Leave a folder of a scan out of future scans; returns the new list. */
+export function excludeFolder(scanId: number, dirId: number): Promise<string[]> {
+  return inApp ? call("exclude_folder", { scanId, dirId }) : demo.excludeFolder(dirId);
+}
+
+/** Scan a folder again from now on; returns the new list. */
+export function includeFolder(path: string): Promise<string[]> {
+  return inApp ? call("include_folder", { path }) : demo.includeFolder(path);
+}
+
 /** "mica" when Windows 11 put its material behind the window, else "none". */
 export function windowMaterial(): Promise<string> {
   return inApp ? call("window_material") : Promise.resolve("none");

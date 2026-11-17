@@ -366,7 +366,7 @@ test.describe("right-click menu", () => {
     await rows(page).filter({ hasText: "Users" }).click({ button: "right" });
     const menu = page.getByRole("menu", { name: "Users" });
     await expect(menu).toBeVisible();
-    await expect(menu.getByRole("menuitem")).toHaveText(["Open", "Show in Finder", "Copy Path"]);
+    await expect(menu.getByRole("menuitem")).toHaveText(["Open", "Show in Finder", "Copy Path", "Exclude from Scans"]);
     await expect(menu.getByRole("menuitem", { name: "Open" })).toBeFocused();
     await menu.getByRole("menuitem", { name: "Copy Path" }).click();
     await expect(menu).toHaveCount(0);
@@ -387,7 +387,7 @@ test.describe("right-click menu", () => {
     await page.keyboard.press("ArrowDown");
     await expect(menu.getByRole("menuitem", { name: "Show in Finder" })).toBeFocused();
     await page.keyboard.press("End");
-    await expect(menu.getByRole("menuitem", { name: "Copy Path" })).toBeFocused();
+    await expect(menu.getByRole("menuitem", { name: "Exclude from Scans" })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
     await expect(users).toBeFocused();
@@ -453,6 +453,50 @@ test.describe("preview", () => {
     await page.keyboard.press("Space");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(reveal).toBeFocused();
+  });
+});
+
+test.describe("exclusions and theme", () => {
+  test("exclude a folder from the menu; it is listed in Settings and can be scanned again", async ({ page }) => {
+    await scanned(page);
+    await rows(page).filter({ hasText: "private" }).click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Exclude from Scans" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Left out of future scans" })).toBeVisible();
+    await page.getByRole("button", { name: "Settings" }).click();
+    const settings = page.getByRole("dialog", { name: "Settings" });
+    await expect(settings.getByText("/private")).toBeVisible();
+    await settings.getByRole("button", { name: "Scan /private again" }).click();
+    await expect(settings.getByText(/None\. Right-click a folder/)).toBeVisible();
+  });
+
+  test("the ring's menu can exclude too", async ({ page }) => {
+    await scanned(page);
+    await page.waitForTimeout(600);
+    const box = (await page.locator("canvas").boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2 + box.width * 0.12, box.y + box.height / 2 - box.height * 0.2, { button: "right" });
+    await page.getByRole("menuitem", { name: "Exclude from Scans" }).click();
+    await page.getByRole("button", { name: "Settings" }).click();
+    await expect(page.getByRole("dialog", { name: "Settings" }).getByText("/Users")).toBeVisible();
+  });
+
+  test("theme: dark or light regardless of the system, remembered", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "light" });
+    await scanned(page);
+    const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    const light = await bg();
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("radio", { name: "Dark" }).check();
+    const dark = await bg();
+    expect(dark).not.toBe(light);
+    await page.reload();
+    expect(await bg()).toBe(dark);
+    // Light chosen while the system is dark stays light.
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("radio", { name: "Light" }).check();
+    expect(await bg()).toBe(light);
+    await page.getByRole("radio", { name: "Same as the system" }).check();
+    expect(await bg()).toBe(dark);
   });
 });
 

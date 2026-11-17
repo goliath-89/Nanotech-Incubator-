@@ -1,5 +1,24 @@
 <script lang="ts">
-  import { settings, setUnits, type Units } from "./settings.svelte";
+  import { settings, setUnits, appearance, setTheme, type Units, type Theme } from "./settings.svelte";
+  import * as api from "./api";
+
+  let excluded = $state<string[]>([]);
+  async function refresh() {
+    try {
+      excluded = await api.listExclusions();
+    } catch {
+      excluded = [];
+    }
+  }
+  $effect(() => {
+    if (open) refresh();
+  });
+
+  const themes: { value: Theme; label: string }[] = [
+    { value: "system", label: "Same as the system" },
+    { value: "light", label: "Light" },
+    { value: "dark", label: "Dark" },
+  ];
 
   let open = $state(false);
   let box: HTMLDivElement;
@@ -29,6 +48,31 @@
           </label>
         {/each}
       </fieldset>
+      <fieldset>
+        <legend>Appearance</legend>
+        {#each themes as t (t.value)}
+          <label class="compact">
+            <input type="radio" name="theme" value={t.value} checked={appearance.theme === t.value} onchange={() => setTheme(t.value)} />
+            <span class="label">{t.label}</span>
+          </label>
+        {/each}
+      </fieldset>
+      <section aria-labelledby="excluded-title">
+        <h3 id="excluded-title">Left out of scans</h3>
+        {#if excluded.length === 0}
+          <p class="note">None. Right-click a folder and choose Exclude from Scans.</p>
+        {:else}
+          <ul>
+            {#each excluded as path (path)}
+              <li>
+                <span class="path" title={path}>{path}</span>
+                <button class="link" onclick={async () => (excluded = await api.includeFolder(path))} aria-label="Scan {path} again">Scan again</button>
+              </li>
+            {/each}
+          </ul>
+          <p class="note">Takes effect on the next scan.</p>
+        {/if}
+      </section>
     </div>
   {/if}
   <button class="gear" aria-expanded={open} aria-haspopup="dialog" onclick={() => (open = !open)}>
@@ -46,10 +90,18 @@
   .gear:focus-visible { outline: 2px solid var(--accent); }
   svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
   .panel {
-    position: absolute; bottom: calc(100% - 4px); left: 8px; right: 8px; z-index: 20;
+    position: absolute; bottom: calc(100% - 4px); left: 8px; right: 8px; z-index: 20; max-height: calc(100vh - 80px); overflow-y: auto;
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); padding: 12px;
   }
-  fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 4px; }
+  fieldset { border: 0; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; }
+  label.compact { grid-template-columns: 18px 1fr; align-items: center; padding: 4px 6px; }
+  section h3 { font-weight: 600; font-size: 12px; margin: 4px 0 6px; }
+  section ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 150px; overflow-y: auto; }
+  section li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 3px 6px; font-size: 12px; }
+  .path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+  .link { all: unset; color: var(--accent); cursor: pointer; font-size: 12px; }
+  .link:hover { text-decoration: underline; }
+  .link:focus-visible { outline: 2px solid var(--accent); border-radius: 3px; }
   legend { font-weight: 600; font-size: 12px; margin-bottom: 6px; padding: 0; }
   label { display: grid; grid-template-columns: 18px 1fr; gap: 8px; align-items: start; padding: 6px; border-radius: 6px; cursor: pointer; }
   label:hover { background: var(--hover); }

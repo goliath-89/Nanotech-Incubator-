@@ -17,6 +17,7 @@
     unscanned = "0",
     stopped = false,
     onreveal = () => {},
+    onexclude = () => {},
   }: {
     listing: Listing;
     onopen: (dirId: number) => void;
@@ -30,6 +31,8 @@
     stopped?: boolean;
     /** Show a folder of this scan in Explorer or Finder. */
     onreveal?: (dirId: number) => void;
+    /** Leave a folder out of future scans. */
+    onexclude?: (dirId: number) => void;
   } = $props();
 
   function rowMenu(e: MouseEvent | KeyboardEvent, d: { id: number; name: string; notScanned: string | null; allocBytes: string }) {
@@ -37,6 +40,7 @@
       { label: "Open", run: () => onopen(d.id), disabled: d.notScanned !== null && Number(d.allocBytes) === 0 },
       { label: `Show in ${fileManager}`, run: () => onreveal(d.id) },
       { label: "Copy Path", run: () => copyPath(pathOf(d.name)) },
+      { label: "Exclude from Scans", run: () => onexclude(d.id), disabled: d.notScanned === "excluded" },
     ]);
   }
 

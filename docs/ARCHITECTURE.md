@@ -163,6 +163,8 @@ a display string; the UI never builds a path itself.
 | `get_suggestions` | `{ scan_id }` | saved suggestions with their numbers |
 | `clean_up` | `{ scan_id, numbers[] }` | `{ done[], bytesFreed, refused[], failed[] }`; paths come from the history, never from the window (`strata_pipeline::cleanup`) |
 | `open_trash` | — | opens the Recycle Bin (Explorer) or Trash (Finder); never empties it |
+| `preview_file` | `{ scan_id, dir_id, file }` | `{ kind: native \| image \| text \| cloud \| none, … }`: Quick Look on macOS; images and the first 64 KB of text elsewhere; never runs a file, follows a link or reads a cloud-only file |
+| `list_exclusions` / `exclude_folder { scan_id, dir_id }` / `include_folder { path }` | | the list of folders left out of scans (`exclusions.json` in the data folder); applied to every scan method by `strata_pipeline::exclude` |
 | `get_ring` | `{ scan_id, dir_id }` | three levels below the folder for the ring: `{ id, slice: folder/files/smaller, name, bytes, mainKind, notScanned, children }`, slices under 0.4% folded (`strata_pipeline::ring`) |
 
 | Event | Payload | When |

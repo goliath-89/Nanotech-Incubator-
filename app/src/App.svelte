@@ -6,7 +6,7 @@
   import Sidebar from "./lib/Sidebar.svelte";
   import SettingsMenu from "./lib/SettingsMenu.svelte";
   import ContextMenu from "./lib/ContextMenu.svelte";
-  import { openMenu, copyPath } from "./lib/menu.svelte";
+  import { openMenu, copyPath, showToast } from "./lib/menu.svelte";
   import KindBar from "./lib/KindBar.svelte";
   import FolderView from "./lib/FolderView.svelte";
   import Ring from "./lib/Ring.svelte";
@@ -166,7 +166,18 @@
       { label: "Open", run: () => open(id) },
       { label: `Show in ${fileManager}`, run: () => api.reveal(scanId, id) },
       { label: "Copy Path", run: async () => copyPath((await api.getDir(scanId, id)).path) },
+      { label: "Exclude from Scans", run: () => exclude(id) },
     ]);
+  }
+
+  async function exclude(id: number) {
+    if (phase.name !== "result") return;
+    try {
+      await api.excludeFolder(phase.scanId, id);
+      showToast("Left out of future scans. Scan again to update the totals.");
+    } catch (e) {
+      showToast(String(e));
+    }
   }
 
   function findNode(n: RingNode, id: number): RingNode | null {
@@ -297,7 +308,7 @@
             {/if}
           </div>
           <div class="listside">
-            <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} kind={selectedKind} unscanned={String(unscannedBytes(phase.listing))} stopped={stoppedEarly()} onreveal={(id) => phase.name === "result" && api.reveal(phase.scanId, id)} />
+            <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} kind={selectedKind} unscanned={String(unscannedBytes(phase.listing))} stopped={stoppedEarly()} onreveal={(id) => phase.name === "result" && api.reveal(phase.scanId, id)} onexclude={exclude} />
             <button class="link" onclick={() => phase.name === "result" && api.reveal(phase.scanId, phase.listing.dir.id)}>Show this folder in {fileManager}</button>
           </div>
         </section>

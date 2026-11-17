@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use strata_core::{volumes, ScanControl, VolumeKind, KIND_COUNT};
 use strata_pipeline::ring::{ring_tree, RingNode, Slice};
-use strata_pipeline::{now, save_everything, scan_root, Method};
+use strata_pipeline::{now, save_everything, Method};
 use strata_store::{AppRole, DirRow, FileRow, ScanMeta, Store};
 use tauri::{AppHandle, Emitter, Manager, State};
 
@@ -20,6 +20,8 @@ pub struct AppState {
     data_folder: PathBuf,
     scans: Mutex<HashMap<u64, Arc<ScanControl>>>,
     next_token: AtomicU64,
+    /// Folders left out of scans, kept in `exclusions.json` in the data folder.
+    exclusions: Mutex<Vec<PathBuf>>,
 }
 
 impl AppState {
@@ -28,14 +30,21 @@ impl AppState {
         let folder = app.path().app_data_dir()?;
         std::fs::create_dir_all(&folder)?;
         let store = Store::open(&folder.join("history.sqlite"))?;
+        let exclusions = std::fs::read(folder.join(EXCLUSIONS_FILE))
+            .ok()
+            .and_then(|b| serde_json::from_slice::<Vec<PathBuf>>(&b).ok())
+            .unwrap_or_default();
         Ok(AppState {
             store: Arc::new(Mutex::new(store)),
             data_folder: folder,
             scans: Mutex::new(HashMap::new()),
             next_token: AtomicU64::new(1),
+            exclusions: Mutex::new(exclusions),
         })
     }
 }
+
+const EXCLUSIONS_FILE: &str = "exclusions.json";
 
 /// Errors reach the window as plain sentences.
 type Reply<T> = Result<T, String>;
@@ -186,6 +195,7 @@ pub fn start_scan(
     }
     let store = state.store.clone();
     let data_folder = state.data_folder.clone();
+    let excludes = state.exclusions.lock().map_err(text)?.clone();
 
     std::thread::Builder::new()
         .name(format!("strata-scan-{token}"))
@@ -222,8 +232,8 @@ pub fn start_scan(
                 })
             };
 
-            let result =
-                run_scan(&app, token, &root, fast, &ctl, &data_folder).and_then(|outcome| {
+            let result = run_scan(&app, token, &root, fast, &ctl, &data_folder, &excludes)
+                .and_then(|outcome| {
                     let meta = ScanMeta {
                         volume_id,
                         started_at,
@@ -284,6 +294,7 @@ fn run_scan(
     fast: bool,
     ctl: &ScanControl,
     data_folder: &std::path::Path,
+    excludes: &[PathBuf],
 ) -> Result<strata_pipeline::Outcome, String> {
     let stage = |stage| {
         let _ = app.emit("scan://stage", Stage { token, stage });
@@ -293,16 +304,19 @@ fn run_scan(
         if let Some(letter) = whole_drive(root) {
             stage("permission");
             match crate::elevated::scan_drive_elevated(letter, data_folder) {
-                Ok(tree) => {
+                Ok(mut tree) => {
+                    strata_pipeline::exclude::apply(&mut tree, excludes);
                     return Ok(strata_pipeline::Outcome {
                         tree,
                         method: Method::FileTable,
                         fallback_reason: None,
-                    })
+                    });
                 }
                 Err(e) => {
                     stage("walk");
-                    let mut outcome = scan_root(root, false, ctl).map_err(text)?;
+                    let mut outcome =
+                        strata_pipeline::scan_root_excluding(root, false, ctl, excludes)
+                            .map_err(text)?;
                     outcome.fallback_reason = Some(match e {
                         crate::elevated::ElevatedError::Declined => {
                             "Administrator access was not allowed, so folders were read one by one"
@@ -317,7 +331,7 @@ fn run_scan(
     }
     let _ = data_folder;
     stage(if fast { "fileTable" } else { "walk" });
-    scan_root(root, fast, ctl).map_err(text)
+    strata_pipeline::scan_root_excluding(root, fast, ctl, excludes).map_err(text)
 }
 
 /// `C:\` and the like.
@@ -836,4 +850,58 @@ pub fn open_trash() -> Reply<()> {
     result
         .map(|_| ())
         .map_err(|e| format!("could not open the {place}: {e}"))
+}
+
+// ---------------------------------------------------------------------------
+// Exclusions (Day 33)
+// ---------------------------------------------------------------------------
+
+fn save_exclusions(state: &AppState, list: &[PathBuf]) -> Reply<()> {
+    let json = serde_json::to_vec_pretty(list).map_err(text)?;
+    std::fs::write(state.data_folder.join(EXCLUSIONS_FILE), json).map_err(text)
+}
+
+/// Folders left out of scans, as paths for display.
+#[tauri::command]
+pub fn list_exclusions(state: State<'_, AppState>) -> Reply<Vec<String>> {
+    let list = state.exclusions.lock().map_err(text)?;
+    Ok(list
+        .iter()
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect())
+}
+
+/// Leave a folder of a saved scan out of future scans. The path comes from
+/// the scan history; the window names the folder by id. A whole drive
+/// cannot be excluded.
+#[tauri::command]
+pub fn exclude_folder(state: State<'_, AppState>, scan_id: i64, dir_id: u32) -> Reply<Vec<String>> {
+    if dir_id == 0 {
+        return Err("A whole drive cannot be excluded".into());
+    }
+    let path = path_in_scan(&state, scan_id, dir_id, None)?;
+    {
+        let mut list = state.exclusions.lock().map_err(text)?;
+        if !list.contains(&path) {
+            list.push(path);
+            list.sort();
+            save_exclusions(&state, &list)?;
+        }
+    }
+    list_exclusions(state)
+}
+
+/// Scan a folder again from now on. Only removes an entry that is on the
+/// list, matched exactly.
+#[tauri::command]
+pub fn include_folder(state: State<'_, AppState>, path: String) -> Reply<Vec<String>> {
+    {
+        let mut list = state.exclusions.lock().map_err(text)?;
+        let before = list.len();
+        list.retain(|p| p.to_string_lossy() != path);
+        if list.len() != before {
+            save_exclusions(&state, &list)?;
+        }
+    }
+    list_exclusions(state)
 }

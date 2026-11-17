@@ -225,3 +225,15 @@ export async function cleanUp(numbers: number[]): Promise<CleanupReport> {
   suggestions = suggestions.filter((s) => !numbers.includes(s.number));
   return { done: numbers, bytesFreed: String(chosen.reduce((t, s) => t + Number(s.bytes), 0)), refused: [], failed: [] };
 }
+
+let exclusions: string[] = [];
+export async function listExclusions() { return exclusions; }
+export async function excludeFolder(dirId: number) {
+  const listing = await getDir(1, dirId);
+  if (dirId !== 0 && !exclusions.includes(listing.path)) exclusions = [...exclusions, listing.path].sort();
+  return exclusions;
+}
+export async function includeFolder(path: string) {
+  exclusions = exclusions.filter((p) => p !== path);
+  return exclusions;
+}

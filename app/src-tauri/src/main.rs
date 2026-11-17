@@ -37,6 +37,9 @@ fn main() {
             bridge::clean_up,
             bridge::open_trash,
             preview::preview_file,
+            bridge::list_exclusions,
+            bridge::exclude_folder,
+            bridge::include_folder,
             window::window_material,
         ])
         .run(tauri::generate_context!())
