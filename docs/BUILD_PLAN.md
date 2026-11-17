@@ -14,7 +14,23 @@ Claude what to build and tells you what only you can do.
 - A gate is a pass/fail test. Do not start the next phase until it passes;
   if it fails, the next day is spent on the failure and later days shift.
 
-Status: **Engine days 1–10 done (Gate A passed on Windows); app Days 11–15 done: the MVP is ready to try on Windows.** Next: Day 16 (macOS Full Disk Access) when the MacBook is ready, otherwise Day 18–19. The Mac half of Gate A waits for the MacBook.
+## Progress
+
+Updated every time a day is done. Half-done days count as half.
+
+| Scope | Done | Note |
+| --- | --- | --- |
+| **Overall (90 days)** | 14 / 90 (16%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
+| **Sprint 2 · MVP (current)** | 5 / 10 (50%) | Days 11–15 done; MVP installed and both scan methods work on Windows ARM64 |
+
+Log (newest first):
+- 17 Nov · Day 15 ✅ MVP: elevated fast scan, Recycle Bin item. Sprint 2 5/10 (50%), overall 14/90 (16%). CodeQL gate fixed; all checks green.
+- 17 Nov · Days 13–14 ✅ Apps, Largest Files, Clean Up tabs; security process in CI. Sprint 2 4/10 (40%).
+- 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
+- 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
+
+Next: Day 18 (nightly accuracy and benchmark CI), Day 19 (UI tests), Day 20 (review + Dependabot updates). Day 16 waits for the MacBook; Day 17 waits for your MVP notes.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
