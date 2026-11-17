@@ -53,11 +53,11 @@ test.describe("scanning", () => {
     const errors = watchErrors(page);
     await page.goto("/");
     await page.getByRole("button", { name: "Scan Macintosh HD" }).click();
-    const live = page.getByRole("img", { name: /Ring chart of Macintosh HD: Users/ });
+    const live = page.getByRole("application", { name: /Ring chart of Macintosh HD: Users/ });
     await expect(live).toBeVisible();
     await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
     // Then the finished, clickable ring of the whole drive.
-    await expect(page.getByRole("img", { name: /Ring chart of \/: Users 493 GB/ })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("application", { name: /Ring chart of \/: Users 493 GB/ })).toBeVisible({ timeout: 10_000 });
     expect(errors).toEqual([]);
   });
 
@@ -148,7 +148,7 @@ test.describe("folders", () => {
 
   test("ring has a text description for screen readers", async ({ page }) => {
     await scanned(page);
-    await expect(page.getByRole("img", { name: /Ring chart of \/: Users 493 GB/ })).toBeVisible();
+    await expect(page.getByRole("application", { name: /Ring chart of \/: Users 493 GB/ })).toBeVisible();
   });
 });
 
@@ -312,6 +312,75 @@ test.describe("on Windows", () => {
     await expect(page.getByRole("button", { name: "Open Recycle Bin" })).toBeVisible();
     await page.getByRole("button", { name: "Review…" }).click();
     await expect(page.getByRole("button", { name: "Move to Recycle Bin" })).toBeVisible();
+  });
+});
+
+test.describe("keyboard", () => {
+  test("the ring: arrows move between slices, Down goes in, Up comes out, Enter opens", async ({ page }) => {
+    await scanned(page);
+    const ring = page.getByRole("application", { name: /Ring chart/ });
+    await ring.focus();
+    const centre = page.locator(".centre .what");
+    const live = ring.locator("[aria-live]");
+    await expect(centre).toHaveText("Users");
+    await expect(live).toHaveText(/Users, 493 GB, 67\.2%, ring 1 of 3/);
+    await expect(rows(page).filter({ hasText: "Users" })).toHaveClass(/hot/);
+    await page.keyboard.press("ArrowRight");
+    await expect(centre).toHaveText("Applications");
+    await page.keyboard.press("ArrowLeft");
+    await expect(centre).toHaveText("Users");
+    await page.keyboard.press("ArrowDown");
+    await expect(centre).toHaveText("sam");
+    await expect(live).toHaveText(/ring 2 of 3/);
+    await page.keyboard.press("ArrowUp");
+    await expect(centre).toHaveText("Users");
+    await page.keyboard.press("End");
+    await expect(live).toHaveText(/ring 1 of 3/);
+    await page.keyboard.press("Home");
+    await page.keyboard.press("Enter");
+    const here = page.getByRole("navigation", { name: "Location" }).locator(".here");
+    await expect(here).toHaveText("Users");
+    // Focus stays on the ring, on the new centre's first slice.
+    await expect(ring).toBeFocused();
+    await expect(centre).toHaveText("sam");
+    // Backspace once goes up once (not twice through the list's own shortcut).
+    await page.keyboard.press("Backspace");
+    await expect(here).toHaveText("/");
+  });
+
+  test("lists: Up and Down move between rows, Home and End jump", async ({ page }) => {
+    await scanned(page);
+    const first = rows(page).first();
+    await first.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(rows(page).nth(1)).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(rows(page).last()).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(first).toBeFocused();
+    await page.keyboard.press("ArrowUp");
+    await expect(first).toBeFocused();
+    await page.getByRole("tab", { name: "Apps" }).click();
+    const apps = page.locator("ul.apps > li > button.row");
+    await apps.first().focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(apps.nth(1)).toBeFocused();
+  });
+
+  test("tabs: arrow keys switch, only the open tab is in the Tab order", async ({ page }) => {
+    await scanned(page);
+    const folders = page.getByRole("tab", { name: "Folders" });
+    await expect(folders).toHaveAttribute("tabindex", "0");
+    await expect(page.getByRole("tab", { name: "Apps" })).toHaveAttribute("tabindex", "-1");
+    await folders.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("tab", { name: "Apps" })).toBeFocused();
+    await expect(page.getByRole("tab", { name: "Apps" })).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("ArrowLeft");
+    await expect(page.getByRole("tab", { name: "Clean Up" })).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("Home");
+    await expect(folders).toHaveAttribute("aria-selected", "true");
   });
 });
 

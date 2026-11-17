@@ -209,8 +209,21 @@
         {/if}
       {/if}
       <div class="tabs" role="tablist" aria-label="Views">
-        {#each tabs as t (t.key)}
-          <button role="tab" aria-selected={tab === t.key} class:on={tab === t.key} onclick={() => (tab = t.key)}>{t.label}</button>
+        {#each tabs as t, i (t.key)}
+          <button
+            role="tab"
+            aria-selected={tab === t.key}
+            tabindex={tab === t.key ? 0 : -1}
+            class:on={tab === t.key}
+            onclick={() => (tab = t.key)}
+            onkeydown={(e) => {
+              const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+              const to = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : step ? (i + step + tabs.length) % tabs.length : -1;
+              if (to < 0) return;
+              e.preventDefault();
+              tab = tabs[to].key;
+              ((e.currentTarget as HTMLElement).parentElement!.children[to] as HTMLElement).focus();
+            }}>{t.label}</button>
         {/each}
       </div>
 

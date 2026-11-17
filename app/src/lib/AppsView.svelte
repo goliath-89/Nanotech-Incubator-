@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tip } from "./tooltip";
+  import { listKeys } from "./keys";
   import type { AppUsage, PlacedDir } from "./types";
   import * as api from "./api";
   import { bytes, percent, share } from "./format";
@@ -47,10 +48,10 @@
     <span><i class="cache"></i>What it rebuilds (safe to clear)</span>
     <span class="quiet num">{bytes(total)} in {apps.length} apps</span>
   </div>
-  <ul>
+  <ul class="apps">
     {#each apps as a (a.index)}
       <li>
-        <button class="row" aria-expanded={open === a.index} onclick={() => toggle(a)}>
+        <button class="row" aria-expanded={open === a.index} onclick={() => toggle(a)} onkeydown={(e) => listKeys(e, ":scope > li > button.row")}>
           <span class="icon" aria-hidden="true">{a.name.slice(0, 1).toUpperCase()}</span>
           <span class="name">
             <span class="title">{a.name}</span>

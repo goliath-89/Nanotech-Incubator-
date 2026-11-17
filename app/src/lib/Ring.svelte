@@ -40,7 +40,10 @@
   let box: HTMLDivElement;
   let canvas: HTMLCanvasElement;
   let size = $state(320);
-  let pointer = $state<Segment | null>(null);
+  let pointer = $state.raw<Segment | null>(null);
+  /** The slice chosen with the keyboard while the ring has focus. */
+  let keyed = $state.raw<Segment | null>(null);
+  let focused = $state(false);
   let colors: Record<string, string> = {};
   const reduceMotion = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -71,7 +74,7 @@
 
   // What the centre says: the slice under the pointer, the folder hovered
   // in the list, or the folder itself.
-  const lit = $derived(pointer ?? (hovered !== null ? (layout.byId.get(hovered) ?? null) : null));
+  const lit = $derived(pointer ?? (focused ? keyed : null) ?? (hovered !== null ? (layout.byId.get(hovered) ?? null) : null));
   const focus = $derived(lit?.node ?? null);
 
   function geometry() {
@@ -269,6 +272,68 @@
     onhover(null);
   }
 
+  // Keyboard: arrows walk the slices, Enter opens, Backspace/Escape go up.
+  function announce(seg: Segment | null): string {
+    if (!seg) return "";
+    const n = seg.node;
+    const what = n.slice === "smaller" ? "Smaller folders" : n.slice === "files" ? "Files in this folder" : displayName(n.name);
+    return `${what}, ${bytes(n.bytes)}, ${percent(n.bytes, ring.bytes)}, ring ${seg.level} of ${LEVELS}`;
+  }
+
+  function choose(seg: Segment | null) {
+    if (!seg) return;
+    keyed = seg;
+    onhover(seg.node.id);
+  }
+
+  function key(e: KeyboardEvent) {
+    const list = keyed ? layout.byLevel[keyed.level - 1] : layout.byLevel[0];
+    const at = keyed ? list.indexOf(keyed) : -1;
+    const mid = keyed ? (keyed.a0 + keyed.a1) / 2 : 0;
+    let handled = true;
+    switch (e.key) {
+      case "ArrowRight":
+        choose(list[(at + 1) % list.length]);
+        break;
+      case "ArrowLeft":
+        choose(list[(at - 1 + list.length) % list.length]);
+        break;
+      case "ArrowDown": // outwards: the first slice inside this one
+        if (!keyed) choose(layout.byLevel[0][0]);
+        else if (keyed.level < LEVELS) choose(layout.byLevel[keyed.level].find((s) => s.a0 >= keyed!.a0 - 1e-9 && s.a0 < keyed!.a1) ?? null);
+        break;
+      case "ArrowUp": // inwards: the slice this one is in
+        if (keyed && keyed.level > 1) choose(find(keyed.level - 1, mid));
+        break;
+      case "Home":
+        choose(list[0]);
+        break;
+      case "End":
+        choose(list[list.length - 1]);
+        break;
+      case "Enter":
+      case " ":
+        if (keyed?.node.id != null && keyed.node.slice === "folder" && !keyed.node.notScanned) {
+          next = { kind: "in", from: (keyed.a0 + keyed.a1) / 2 / (Math.PI * 2) };
+          onopen(keyed.node.id);
+        }
+        break;
+      case "Backspace":
+      case "Escape":
+        if (canGoUp) {
+          next = { kind: "out", from: 0 };
+          onup();
+        }
+        break;
+      default:
+        handled = false;
+    }
+    if (handled) {
+      e.preventDefault();
+      e.stopPropagation(); // the folder list listens on the window too
+    }
+  }
+
   // How the next ring should arrive: opening from the slice clicked, or
   // settling back when going up.
   let next: { kind: "in" | "out"; from: number } = { kind: "in", from: 0 };
@@ -299,6 +364,7 @@
     if (ring.id !== lastCentre) {
       lastCentre = ring.id;
       pointer = null;
+      keyed = focused ? (layout.byLevel[0][0] ?? null) : null;
       animate(next.kind, next.from);
       next = { kind: "in", from: 0 };
     } else {
@@ -332,14 +398,32 @@
   });
 </script>
 
+<!-- role="application" is a focusable widget that handles its own keys
+     (WAI-ARIA); Svelte's checker does not count it as interactive. -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 <div
   class="ring"
   bind:this={box}
   style:height="{size}px"
-  role="img"
+  role="application"
   aria-label="Ring chart of {ring.name}: {ring.children.slice(0, 5).map((c) => `${c.name} ${bytes(c.bytes)}`).join(', ')}"
+  aria-roledescription="ring chart"
+  aria-describedby="ring-keys"
+  tabindex="0"
+  class:focused
+  onkeydown={key}
+  onfocus={() => {
+    focused = true;
+    if (!keyed) choose(layout.byLevel[0][0] ?? null);
+  }}
+  onblur={() => {
+    focused = false;
+    onhover(null);
+  }}
 >
-  <!-- Mouse only; the folder list beside it is the keyboard and screen-reader path. -->
+  <span id="ring-keys" class="sr">Arrow keys move between folders, Down goes into one, Up comes back out, Enter opens it, Backspace goes to the parent folder.</span>
+  <span class="sr" aria-live="polite">{focused ? announce(keyed) : ""}</span>
+  <!-- The canvas is drawn for the eye; the keyboard works on the ring itself and the list beside it. -->
   <canvas
     bind:this={canvas}
     style:width="{size}px"
@@ -362,7 +446,9 @@
 </div>
 
 <style>
-  .ring { position: relative; width: 100%; display: grid; place-items: center; }
+  .ring { position: relative; width: 100%; display: grid; place-items: center; border-radius: var(--radius-card); outline: none; }
+  .ring.focused:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   canvas { display: block; }
   .centre {
     position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none;

@@ -3,6 +3,7 @@
   import { bytes, count, percent, share } from "./format";
   import { displayName, kindColor, mainKind, KINDS } from "./kinds";
   import { tip } from "./tooltip";
+  import { listKeys } from "./keys";
   import { isWindows } from "./platform";
 
   let {
@@ -62,7 +63,7 @@
   <ul class="rows">
     {#each listing.children as d (d.id)}
       {@const k = mainKind(d.kindBytes)}
-      <li><button class="row" class:hot={hovered === d.id} use:tip={d.notScanned ? `${pathOf(d.name)}\n${reasons[d.notScanned]}` : `${pathOf(d.name)}\nClick to open`} onmouseenter={() => onhover(d.id)} onmouseleave={() => onhover(null)} onfocus={() => onhover(d.id)} onblur={() => onhover(null)} onclick={() => onopen(d.id)} disabled={d.notScanned !== null && Number(d.allocBytes) === 0}>
+      <li><button class="row" onkeydown={(e) => listKeys(e, "button.row:not(:disabled)")} class:hot={hovered === d.id} use:tip={d.notScanned ? `${pathOf(d.name)}\n${reasons[d.notScanned]}` : `${pathOf(d.name)}\nClick to open`} onmouseenter={() => onhover(d.id)} onmouseleave={() => onhover(null)} onfocus={() => onhover(d.id)} onblur={() => onhover(null)} onclick={() => onopen(d.id)} disabled={d.notScanned !== null && Number(d.allocBytes) === 0}>
         <span class="name">
           <span class="title">{displayName(d.name)}</span>
           <span class="sub">

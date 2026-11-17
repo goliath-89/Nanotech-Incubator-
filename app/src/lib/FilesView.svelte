@@ -4,6 +4,7 @@
   import { bytes } from "./format";
   import { KINDS, kindColor } from "./kinds";
   import { fileManager } from "./platform";
+  import { listKeys } from "./keys";
 
   let { scanId, kindBytes, selectedKind = null }: { scanId: number; kindBytes: string[]; selectedKind?: number | null } = $props();
 
@@ -47,7 +48,7 @@
           <span class="sub" title={f.folder}>{f.folder}</span>
         </span>
         <span class="num size">{bytes(f.allocBytes)}</span>
-        <button class="link" onclick={() => api.reveal(scanId, f.dirId, f.name)}>Show in {fileManager}</button>
+        <button class="link" onclick={() => api.reveal(scanId, f.dirId, f.name)} onkeydown={(e) => listKeys(e, "button.link")}>Show in {fileManager}</button>
       </li>
     {/each}
   </ul>
