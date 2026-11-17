@@ -30,6 +30,7 @@
       e.preventDefault();
       close();
     }
+    e.stopPropagation(); // the folder list's shortcuts are not for the dialog
   }
 </script>
 

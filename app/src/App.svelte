@@ -168,7 +168,7 @@
     const scanId = phase.scanId;
     const node = findNode(phase.ring, id);
     openMenu(e, node ? displayName(node.name) : "Folder", [
-      { label: "Open", run: () => open(id) },
+      { label: node?.bundle ? "Show Package Contents" : "Open", run: () => open(id) },
       { label: `Show in ${fileManager}`, run: () => api.reveal(scanId, id) },
       { label: "Copy Path", run: async () => copyPath((await api.getDir(scanId, id)).path) },
       { label: "Exclude from Scans", run: () => exclude(id) },

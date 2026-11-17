@@ -35,9 +35,9 @@
     onexclude?: (dirId: number) => void;
   } = $props();
 
-  function rowMenu(e: MouseEvent | KeyboardEvent, d: { id: number; name: string; notScanned: string | null; allocBytes: string }) {
+  function rowMenu(e: MouseEvent | KeyboardEvent, d: { id: number; name: string; notScanned: string | null; allocBytes: string; bundle?: string | null }) {
     openMenu(e, displayName(d.name), [
-      { label: "Open", run: () => onopen(d.id), disabled: d.notScanned !== null && Number(d.allocBytes) === 0 },
+      { label: d.bundle ? "Show Package Contents" : "Open", run: () => onopen(d.id), disabled: d.notScanned !== null && Number(d.allocBytes) === 0 },
       { label: `Show in ${fileManager}`, run: () => onreveal(d.id) },
       { label: "Copy Path", run: () => copyPath(pathOf(d.name)) },
       { label: "Exclude from Scans", run: () => onexclude(d.id), disabled: d.notScanned === "excluded" },
@@ -88,9 +88,9 @@
   <ul class="rows">
     {#each listing.children as d (d.id)}
       {@const k = mainKind(d.kindBytes)}
-      <li><button class="row" oncontextmenu={(e) => rowMenu(e, d)} onkeydown={(e) => (isMenuKey(e) ? rowMenu(e, d) : listKeys(e, "button.row:not(:disabled)"))} class:hot={hovered === d.id} use:tip={d.notScanned ? `${pathOf(d.name)}\n${reasons[d.notScanned]}` : `${pathOf(d.name)}\nClick to open`} onmouseenter={() => onhover(d.id)} onmouseleave={() => onhover(null)} onfocus={() => onhover(d.id)} onblur={() => onhover(null)} onclick={() => onopen(d.id)} disabled={d.notScanned !== null && Number(d.allocBytes) === 0}>
+      <li><button class="row" oncontextmenu={(e) => rowMenu(e, d)} onkeydown={(e) => (isMenuKey(e) ? rowMenu(e, d) : listKeys(e, "button.row:not(:disabled)"))} class:hot={hovered === d.id} use:tip={d.notScanned ? `${pathOf(d.name)}\n${reasons[d.notScanned]}` : d.bundle ? `${pathOf(d.name)}\n${d.bundle}: one item. Click for its contents and more.` : `${pathOf(d.name)}\nClick to open`} onmouseenter={() => onhover(d.id)} onmouseleave={() => onhover(null)} onfocus={() => onhover(d.id)} onblur={() => onhover(null)} onclick={(e) => (d.bundle ? rowMenu(e, d) : onopen(d.id))} disabled={d.notScanned !== null && Number(d.allocBytes) === 0}>
         <span class="name">
-          <span class="title">{displayName(d.name)}</span>
+          <span class="title">{displayName(d.name)}{#if d.bundle}<span class="badge">{d.bundle}</span>{/if}</span>
           <span class="sub">
             {#if d.notScanned}{reasons[d.notScanned]}{:else if kind !== null}{Number(d.kindBytes[kind] ?? 0) > 0 ? `${bytes(d.kindBytes[kind])} of ${KINDS[kind].name.toLowerCase()}` : `No ${KINDS[kind].name.toLowerCase()}`} · {count(d.fileCount)} files{:else}{count(d.fileCount)} files · mostly {KINDS[k].name.toLowerCase()}{#if d.owner} · {d.owner.app}{#if d.owner.role !== "program"} {d.owner.role}{/if}{/if}{/if}{#if Number(d.cloudOnlyBytes) > 0} · {bytes(d.cloudOnlyBytes)} in the cloud{/if}
           </span>
@@ -123,6 +123,7 @@
 </section>
 
 <style>
+  .badge { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--track); color: var(--muted); font-size: 10.5px; font-weight: 500; vertical-align: 1px; }
   .hatched { background: repeating-linear-gradient(135deg, var(--track) 0 3px, var(--muted) 3px 4px) !important; opacity: 0.8; }
   .crumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-bottom: 10px; font-size: 12.5px; }
   .crumbs button { all: unset; color: var(--accent); cursor: pointer; border-radius: 4px; padding: 1px 2px; }

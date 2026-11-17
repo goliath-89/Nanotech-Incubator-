@@ -17,7 +17,7 @@ const volumes: Volume[] = [
 type Node = [string, number, number, Node[]?];
 const tree: Node = ["/", 0, 8, [
   ["Users", 0, 0, [["sam", 0, 0, [
-    ["Movies", 0, 1, [["Final Cut Library.fcpbundle", 82, 1], ["Screen Recordings", 29, 1], ["Downloaded videos", 41, 1]]],
+    ["Movies", 0, 1, [["Final Cut Library.fcpbundle", 0, 1, [["Render Files", 51, 1], ["Original Media", 31, 1]]], ["Screen Recordings", 29, 1], ["Downloaded videos", 41, 1]]],
     ["Pictures", 0, 2, [["Photos Library.photoslibrary", 118, 2], ["Lightroom", 16, 2]]],
     ["Library", 0, 9, [["Caches", 31, 9], ["Application Support", 52, 0], ["Developer", 27, 7], ["Containers", 12, 7]]],
     ["Documents", 38, 4],
@@ -46,6 +46,12 @@ function add(node: Node, parent: number | null): number {
 }
 add(tree, null);
 
+/** As strata_classify::bundle_kind, for the example names. */
+function bundleOf(name: string): string | null {
+  const ext = name.split(".").pop()?.toLowerCase();
+  return ({ app: "App", photoslibrary: "Photos library", fcpbundle: "Video library" } as Record<string, string>)[ext ?? ""] ?? null;
+}
+
 function dirOf(f: Flat): Dir {
   const kindBytes = Array(11).fill("0");
   let cloud = 0;
@@ -58,7 +64,7 @@ function dirOf(f: Flat): Dir {
   return {
     id: f.id, name: f.name, allocBytes: String(f.bytes), fileCount: String(Math.round(f.bytes / 2e6)),
     dirCount: String(f.children.length), kindBytes, cloudOnlyBytes: String(cloud), ownFilesBytes: "0",
-    notScanned: null, owner: null,
+    notScanned: null, owner: null, bundle: bundleOf(f.name),
   };
 }
 
@@ -131,8 +137,8 @@ export async function getDir(_scanId: number, dirId: number): Promise<Listing> {
 
 function ringOf(f: Flat, levels: number): RingNode {
   return {
-    id: f.id, slice: "folder", name: f.name, bytes: String(f.bytes), mainKind: mainKind(dirOf(f).kindBytes), notScanned: false,
-    children: levels === 0 ? [] : f.children.map((c) => ringOf(flat[c], levels - 1)).sort((a, b) => Number(b.bytes) - Number(a.bytes)),
+    id: f.id, slice: "folder", name: f.name, bytes: String(f.bytes), mainKind: mainKind(dirOf(f).kindBytes), notScanned: false, bundle: bundleOf(f.name),
+    children: levels === 0 || bundleOf(f.name) ? [] : f.children.map((c) => ringOf(flat[c], levels - 1)).sort((a, b) => Number(b.bytes) - Number(a.bytes)),
   };
 }
 

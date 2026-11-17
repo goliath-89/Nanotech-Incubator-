@@ -20,14 +20,15 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 35 / 90 (39%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 36 / 90 (40%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
 | **Sprint 3 · ring polish** | 9 / 10 (90%) | Days 21–24, 26–30 done; 25 waits for your notes |
 | **Sprint 4 · polish and testing** | 8 / 10 (80%) | Days 31–38 done; 39–40 wait for the test sessions |
-| **Sprint 5 · kinds and app rules (current)** | 1 / 10 (10%) | Day 41 done |
+| **Sprint 5 · kinds and app rules (current)** | 2 / 10 (20%) | Days 41–42 done |
 
 Log (newest first):
+- 17 Nov · Day 42 ✅ apps, libraries and games shown as one item. Sprint 5 2/10 (20%), overall 36/90 (40%).
 - 17 Nov · Day 41 ✅ ring by kind. Sprint 5 1/10 (10%), overall 35/90 (39%).
 - 17 Nov · Day 38 ✅ usability test script ready. Sprint 4 8/10 (80%), overall 34/90 (38%).
 - 17 Nov · Day 37 ✅ test audit and gaps closed (65 UI tests). Sprint 4 7/10 (70%), overall 33/90 (37%).
@@ -54,7 +55,7 @@ Log (newest first):
 - 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
 - 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
 
-Next: Day 42 (bundles as single items: .app, photo libraries, game folders), Day 43 (file-signature check for large unknown files), Days 46–47 (Windows app rules). Days 39–40 need your usability sessions; 17 and 25 your MVP notes; 16 the MacBook.
+Next: Day 43 (file-signature check for large unknown files), Days 46–47 (Windows app rules), Day 49 (installed-app discovery). Days 39–40 need your usability sessions; 17 and 25 your MVP notes; 16 the MacBook.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -166,7 +167,7 @@ of introducing them.
 | Day | Model | Claude builds | You |
 | --- | --- | --- | --- |
 | 41 ✅ | Opus | The classifier already runs in every scan method (walk, fast scan, elevated copy). Ring "By kind" view (Folders / Kinds switch): kinds on the inner ring, the folders holding each kind outside; clicking a kind picks it for the whole window, clicking a folder opens it and stays in this view. 1 UI test (66 in all) | — |
-| 42 | Opus | Bundles as single items (`.app`, `.photoslibrary`, `.fcpbundle`, game folders) | — |
+| 42 ✅ | Opus | Bundles as one item: macOS packages (apps, Photos/Music/TV/iMovie/Final Cut libraries, Logic, Lightroom previews, Xcode archives, iWork files, sparse bundles…) by extension, and games by where they are (Steam, Epic, GOG, Xbox). A badge in the list; one slice in the ring with no insides; clicking shows a menu with Show Package Contents, as Finder does. Fixed on the way: Escape in a menu also went up a folder. 4 engine tests, 1 UI test (67 in all) | — |
 | 43 | Opus | File-signature check for the largest unknown files | — |
 | 44 | Opus | App rules 1–25 for macOS with fixtures | — |
 | 45 | Opus | App rules 26–50 for macOS | Scan your Mac; paste the 20 largest "Other" folders. |

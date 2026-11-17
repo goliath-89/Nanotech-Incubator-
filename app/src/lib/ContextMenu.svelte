@@ -38,6 +38,9 @@
       e.preventDefault();
       closeMenu();
     }
+    // Keys used by the menu stop here: Escape must not also reach the
+    // folder list's "go up" shortcut on the window.
+    e.stopPropagation();
   }
 
   async function choose(run: () => void | Promise<void>) {

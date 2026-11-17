@@ -382,6 +382,8 @@ pub struct DirDto {
     /// "unreadable", "otherVolume", "excluded", "cancelled" or null.
     not_scanned: Option<&'static str>,
     owner: Option<OwnerDto>,
+    /// A package or game shown as one item ("App", "Game"…), or null.
+    bundle: Option<&'static str>,
 }
 
 #[derive(Serialize)]
@@ -432,6 +434,7 @@ fn dir_dto(d: DirRow, app_names: &[String]) -> DirDto {
         cloud_only_bytes: d.cloud_only_bytes.to_string(),
         own_files_bytes: d.own_files_alloc.to_string(),
         not_scanned,
+        bundle: None,
         owner: d.owner.and_then(|o| {
             Some(OwnerDto {
                 app: app_names.get(o.app as usize)?.clone(),
@@ -465,6 +468,18 @@ pub fn get_dir(state: State<'_, AppState>, scan_id: i64, dir_id: u32) -> Reply<L
         .map(|a| a.name)
         .collect();
     let path: PathBuf = listing.breadcrumb.iter().map(|(_, n)| n).collect();
+    // Names above, for recognising bundles (games are known by where they are).
+    let names: Vec<String> = listing
+        .breadcrumb
+        .iter()
+        .map(|(_, n)| n.to_string_lossy().into_owned())
+        .collect();
+    let up = |k: usize| names.len().checked_sub(k).map(|i| names[i].as_str());
+    let bundle = |name: &std::ffi::OsStr, parent: Option<&str>, grandparent: Option<&str>| {
+        strata_classify::bundle_kind(&name.to_string_lossy(), parent, grandparent)
+            .map(|b| b.label())
+    };
+    let dir_bundle = bundle(&listing.dir.name, up(2), up(3));
     Ok(Listing {
         path: path.to_string_lossy().into_owned(),
         breadcrumb: listing
@@ -475,11 +490,20 @@ pub fn get_dir(state: State<'_, AppState>, scan_id: i64, dir_id: u32) -> Reply<L
                 name: name.to_string_lossy().into_owned(),
             })
             .collect(),
-        dir: dir_dto(listing.dir, &app_names),
+        dir: DirDto {
+            bundle: dir_bundle,
+            ..dir_dto(listing.dir, &app_names)
+        },
         children: listing
             .children
             .into_iter()
-            .map(|d| dir_dto(d, &app_names))
+            .map(|d| {
+                let b = bundle(&d.name, up(1), up(2));
+                DirDto {
+                    bundle: b,
+                    ..dir_dto(d, &app_names)
+                }
+            })
             .collect(),
         files: listing.files.into_iter().map(file_dto).collect(),
     })
@@ -521,6 +545,7 @@ pub struct RingDto {
     bytes: String,
     main_kind: u8,
     not_scanned: bool,
+    bundle: Option<&'static str>,
     children: Vec<RingDto>,
 }
 
@@ -537,6 +562,7 @@ fn ring_dto(n: RingNode) -> RingDto {
         bytes: n.bytes.to_string(),
         main_kind: n.kind,
         not_scanned: n.not_scanned,
+        bundle: n.bundle,
         children: n.children.into_iter().map(ring_dto).collect(),
     }
 }

@@ -55,6 +55,8 @@ export interface Dir {
   dirCount: string;
   kindBytes: string[];
   cloudOnlyBytes: string;
+  /** A package or game shown as one item ("App", "Game"…). */
+  bundle?: string | null;
   ownFilesBytes: string;
   notScanned: "unreadable" | "otherVolume" | "excluded" | "cancelled" | null;
   owner: Owner | null;
@@ -89,6 +91,7 @@ export interface RingNode {
   bytes: string;
   mainKind: number;
   notScanned: boolean;
+  bundle?: string | null;
   children: RingNode[];
 }
 

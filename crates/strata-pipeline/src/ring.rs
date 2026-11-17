@@ -1,6 +1,7 @@
 //! The shape the ring view draws: a folder and a few levels below it, with
 //! slices too thin to see folded together.
 
+use strata_classify::bundle_kind;
 use strata_core::KIND_COUNT;
 use strata_store::{DirRow, ScanId, Store, StoreError};
 
@@ -24,6 +25,8 @@ pub struct RingNode {
     pub kind: u8,
     /// The folder could not be read, or was not entered.
     pub not_scanned: bool,
+    /// A package or game shown as one item ("App", "Game"…); not opened up.
+    pub bundle: Option<&'static str>,
     /// Largest first; their bytes add up to this node's bytes (less the
     /// folder's own bytes, which the ring leaves as a gap).
     pub children: Vec<RingNode>,
@@ -52,7 +55,20 @@ pub fn ring_tree(
     let centre = listing.dir;
     let min_bytes = (centre.alloc_bytes as f64 * min_fraction) as u64;
     let mut node = node_for(&centre, Slice::Folder(centre.id));
-    node.children = level(store, scan, &centre, listing.children, levels, min_bytes)?;
+    let above = listing
+        .breadcrumb
+        .len()
+        .checked_sub(2)
+        .map(|i| listing.breadcrumb[i].1.to_string_lossy().into_owned());
+    node.children = level(
+        store,
+        scan,
+        &centre,
+        above.as_deref(),
+        listing.children,
+        levels,
+        min_bytes,
+    )?;
     Ok(node)
 }
 
@@ -63,6 +79,7 @@ fn node_for(d: &DirRow, slice: Slice) -> RingNode {
         bytes: d.alloc_bytes,
         kind: main_kind(&d.kind_bytes),
         not_scanned: d.flags.not_scanned(),
+        bundle: None,
         children: Vec::new(),
     }
 }
@@ -71,6 +88,7 @@ fn level(
     store: &Store,
     scan: ScanId,
     parent: &DirRow,
+    grandparent: Option<&str>,
     dirs: Vec<DirRow>,
     levels: u32,
     min_bytes: u64,
@@ -97,9 +115,21 @@ fn level(
             continue;
         }
         let mut node = node_for(&d, Slice::Folder(d.id));
-        if levels > 1 && !d.flags.not_scanned() {
+        let parent_name = parent.name.to_string_lossy();
+        node.bundle = bundle_kind(&d.name.to_string_lossy(), Some(&parent_name), grandparent)
+            .map(|b| b.label());
+        // Bundles are one item: their insides are not drawn.
+        if levels > 1 && !d.flags.not_scanned() && node.bundle.is_none() {
             let below = store.child_dirs(scan, d.id)?;
-            node.children = level(store, scan, &d, below, levels - 1, min_bytes)?;
+            node.children = level(
+                store,
+                scan,
+                &d,
+                Some(&parent_name),
+                below,
+                levels - 1,
+                min_bytes,
+            )?;
         }
         out.push(node);
     }
@@ -110,6 +140,7 @@ fn level(
             bytes: parent.own_files_alloc,
             kind: main_kind(&own_kinds),
             not_scanned: false,
+            bundle: None,
             children: Vec::new(),
         });
     }
@@ -125,6 +156,7 @@ fn level(
             bytes: small.1,
             kind: main_kind(&small.2),
             not_scanned: false,
+            bundle: None,
             children: Vec::new(),
         });
     }
@@ -269,5 +301,51 @@ mod tests {
             raw.children.iter().any(|n| n.name == "Deeper"),
             "a fourth level appears once Movies is the centre"
         );
+    }
+
+    #[test]
+    fn bundles_and_games_are_single_slices() {
+        let t = tree(&[
+            (None, "/", MB, Kind::System),                 // 0
+            (Some(0), "Applications", 0, Kind::Other),     // 1
+            (Some(1), "Final Cut Pro.app", 0, Kind::Apps), // 2
+            (Some(2), "Contents", 400 * MB, Kind::Apps),   // 3
+            (Some(0), "steamapps", 0, Kind::Other),        // 4
+            (Some(4), "common", 0, Kind::Other),           // 5
+            (Some(5), "Big Game", 0, Kind::Games),         // 6
+            (Some(6), "data", 600 * MB, Kind::Games),      // 7
+        ]);
+        let mut store = Store::open_in_memory().unwrap();
+        let meta = ScanMeta {
+            volume_id: "v".into(),
+            started_at: 0,
+            finished_at: 0,
+        };
+        let id = store.save(&t, &meta).unwrap();
+
+        let ring = ring_tree(&store, id, 0, 3, 0.005).unwrap();
+        let apps = ring
+            .children
+            .iter()
+            .find(|n| n.name == "Applications")
+            .unwrap();
+        let app = &apps.children[0];
+        assert_eq!(
+            (app.name.as_str(), app.bundle),
+            ("Final Cut Pro.app", Some("App"))
+        );
+        assert!(app.children.is_empty(), "the app's insides are not drawn");
+        let common = &ring
+            .children
+            .iter()
+            .find(|n| n.name == "steamapps")
+            .unwrap()
+            .children[0];
+        assert_eq!(common.children[0].bundle, Some("Game"));
+        assert!(common.children[0].children.is_empty());
+        // Opened directly, a bundle shows what is inside, as Finder's
+        // "Show Package Contents" does.
+        let inside = ring_tree(&store, id, 2, 3, 0.005).unwrap();
+        assert_eq!(inside.children[0].name, "Contents");
     }
 }

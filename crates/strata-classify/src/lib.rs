@@ -3,11 +3,13 @@
 #![forbid(unsafe_code)]
 
 mod attribute;
+mod bundle;
 mod context;
 mod extensions;
 mod rules;
 
 pub use attribute::{attribute, find_dirs, AppUsage, Attribution, Env, Owner};
+pub use bundle::{bundle_kind, Bundle};
 pub use context::folder_kind;
 pub use extensions::{kind_of_name, known_extensions};
 pub use rules::{AppRule, Os, Role, RuleSet};

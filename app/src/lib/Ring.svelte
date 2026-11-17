@@ -382,6 +382,8 @@
     if (h === "centre") {
       if (canGoUp) next = { kind: "out", from: 0 };
       onup();
+    } else if (h && h.node.bundle && h.node.id != null) {
+      onmenu(e, h.node.id); // a package or game: one item, its menu offers the contents
     } else if (h?.node.slice === "kind") {
       onkind(h.node.mainKind);
     } else if (h?.node.id != null && h.node.slice === "folder" && !h.node.notScanned) {

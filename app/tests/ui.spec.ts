@@ -253,6 +253,28 @@ test.describe("folders", () => {
     expect(errors).toEqual([]);
   });
 
+  test("apps, libraries and games are one item, opened only on request", async ({ page }) => {
+    await scanned(page);
+    await rows(page).filter({ hasText: "Applications" }).click();
+    const steam = rows(page).filter({ hasText: "Steam.app" });
+    await expect(steam.locator(".badge")).toHaveText("App");
+    await steam.click();
+    const menu = page.getByRole("menu", { name: "Steam.app" });
+    await expect(menu.getByRole("menuitem").first()).toHaveText("Show Package Contents");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("navigation", { name: "Location" }).locator(".here")).toHaveText("Applications");
+    // A library with insides: shown as one, opened on request.
+    await page.getByRole("navigation", { name: "Location" }).getByRole("button", { name: "/" }).click();
+    await rows(page).filter({ hasText: "Users" }).click();
+    await rows(page).filter({ hasText: "sam" }).click();
+    await rows(page).filter({ hasText: "Movies" }).click();
+    const library = rows(page).filter({ hasText: "Final Cut Library.fcpbundle" });
+    await expect(library.locator(".badge")).toHaveText("Video library");
+    await library.click();
+    await page.getByRole("menuitem", { name: "Show Package Contents" }).click();
+    await expect(rows(page).filter({ hasText: "Render Files" })).toBeVisible();
+  });
+
   test("ring has a text description for screen readers", async ({ page }) => {
     await scanned(page);
     await expect(page.getByRole("application", { name: /Ring chart of \/: Users 493 GB/ })).toBeVisible();
@@ -475,6 +497,8 @@ test.describe("right-click menu", () => {
     await page.keyboard.press("Escape");
     await expect(menu).toHaveCount(0);
     await expect(users).toBeFocused();
+    // Escape closed the menu only; it did not also go up a folder.
+    await expect(page.getByRole("navigation", { name: "Location" }).locator(".here")).toHaveText("/");
   });
 
   test("on a ring slice, on a large file, and nowhere else", async ({ page }) => {
