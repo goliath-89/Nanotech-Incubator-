@@ -11,6 +11,7 @@
     onopen,
     onup,
     canGoUp,
+    kind = null,
   }: {
     ring: RingNode;
     /** Folder id highlighted elsewhere (the list), or null. */
@@ -20,6 +21,8 @@
     /** Clicked the centre: go to the parent folder, if there is one. */
     onup: () => void;
     canGoUp: boolean;
+    /** A kind picked in the kind bar: other slices fade back. */
+    kind?: number | null;
   } = $props();
 
   const LEVELS = 3;
@@ -124,9 +127,10 @@
     const batches = new Map<string, { path: Path2D; color: string; alpha: number }>();
     for (const s of layout.all) {
       const color = colorOf(s.node);
-      const key = `${color}|${s.level}`;
+      const faded = kind !== null && (s.node.mainKind !== kind || s.node.slice !== "folder");
+      const key = `${color}|${s.level}|${faded}`;
       let b = batches.get(key);
-      if (!b) batches.set(key, (b = { path: new Path2D(), color, alpha: LEVEL_ALPHA[s.level - 1] }));
+      if (!b) batches.set(key, (b = { path: new Path2D(), color, alpha: LEVEL_ALPHA[s.level - 1] * (faded ? 0.22 : 1) }));
       addSlice(b.path, s, c);
     }
     for (const b of batches.values()) {
@@ -286,6 +290,7 @@
   $effect(() => {
     void layout;
     void size;
+    void kind;
     if (!canvas) return;
     const t = performance.now();
     void layout.all.length;

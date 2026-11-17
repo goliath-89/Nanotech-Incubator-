@@ -20,12 +20,13 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 20 / 90 (22%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 21 / 90 (23%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
-| **Sprint 3 · ring polish (current)** | 3 / 10 (30%) | Days 21–23 done |
+| **Sprint 3 · ring polish (current)** | 4 / 10 (40%) | Days 21–24 done |
 
 Log (newest first):
+- 17 Nov · Day 24 ✅ tooltips and shared kind selection. Sprint 3 4/10 (40%), overall 21/90 (23%).
 - 17 Nov · Day 23 ✅ design tokens; Mica sidebar on Windows 11. Sprint 3 3/10 (30%), overall 20/90 (22%).
 - 17 Nov · Day 22 ✅ ring fills in live during a scan. Sprint 3 2/10 (20%), overall 19/90 (21%).
 - 17 Nov · Day 21 ✅ ring at 60 fps with 100k folders, spring animation. Sprint 3 1/10 (10%), overall 18/90 (20%). Name decided: Strata.
@@ -37,7 +38,7 @@ Log (newest first):
 - 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
 - 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
 
-Next: Day 24 (hover tooltips everywhere; shared selection across views), Day 25 (fixes from your notes). Day 16 waits for the MacBook; Day 17 waits for your MVP notes.
+Next: Day 25 is "fixes from your notes", so it waits for your MVP list; meanwhile Day 26 (GB/GiB setting, locale number formats), Day 27 (keyboard navigation of the ring and lists). Day 16 waits for the MacBook; Day 17 waits for your MVP notes.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -121,7 +122,7 @@ of introducing them.
 | 21 ✅ | Opus | Ring drawn once into an image (fills batched by colour), hover redraws only the lit slice, hit-testing by binary search. With a 100,000-folder tree: built in ~8 ms once, frames under 2.1 ms, 61–62 fps while hovering (4 performance tests in CI). Spring animation: opens from the slice clicked, settles back when going up; off with Reduce Motion | — |
 | 22 ✅ | Opus | Ring fills in live during a scan: the scanner keeps lock-free running totals per top-level folder; the app sends them once a second; the ring grows clockwise against the drive's used space, with the uncounted part as a faint track. Totals end exactly at the final figures (2 new engine tests, 1 UI test) | — |
 | 23 ✅ | Opus | Design pass: shape and depth tokens (card, control, pill radii; raised shadow) used everywhere; window created in code; **Mica behind the sidebar on Windows 11** (build 22000+, content area stays solid; Windows 10 unchanged), light and dark. macOS vibrancy moved to Day 16: it needs Tauri's private-API switch, which rules out the Mac App Store | Check the Mica sidebar on your laptop (see BACKLOG). |
-| 24 | Opus | Hover tooltips everywhere; shared selection across views | Use it on your real drive for 10 minutes; list what confuses you. |
+| 24 ✅ | Opus | One shared tooltip (hover after a pause, keyboard focus at once, Escape hides, screen-reader description) on folder rows (full path), kind bar, drives, capacity bar and app bars. Shared selection: pick a kind in the kind bar and the ring fades the rest, folder bars show only that kind, Largest Files opens on it; click again or "Show all kinds" to clear. 4 UI tests | Use it on your real drive for 10 minutes; list what confuses you. |
 | 25 | Opus | Fixes from your notes | — |
 | 26 | Opus | Units setting (GB / GiB), number formatting by system locale | — |
 | 27 | Opus | Keyboard navigation of the ring and lists | — |

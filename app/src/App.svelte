@@ -12,6 +12,7 @@
   import ReclaimView from "./lib/ReclaimView.svelte";
   import { fileManager, isWindows } from "./lib/platform";
   import { displayName } from "./lib/kinds";
+  import { tip } from "./lib/tooltip";
 
   type Phase =
     | { name: "loading" }
@@ -26,6 +27,8 @@
   let root = $state<Listing | null>(null);
   let now = $state(Date.now());
   let hovered = $state<number | null>(null);
+  /** A kind picked in the kind bar, shared by the ring, the list and Largest Files. */
+  let selectedKind = $state<number | null>(null);
   type Tab = "folders" | "apps" | "files" | "reclaim";
   let tab = $state<Tab>("folders");
   const tabs: { key: Tab; label: string }[] = [
@@ -91,6 +94,7 @@
   async function select(v: Volume) {
     if (phase.name === "scanning") return;
     volume = v;
+    selectedKind = null;
     root = null;
     const last = await api.latestScan(v.id);
     if (last) {
@@ -153,7 +157,7 @@
         {/if}
       </header>
 
-      <div class="capacity" aria-hidden="true">
+      <div class="capacity" aria-hidden="true" use:tip={`${bytes(volume.used)} used, ${bytes(volume.free)} available\n${volume.fileSystem.toUpperCase()} · ${volume.mount}`}>
         <span style:width="{share(volume.used, volume.total) * 100}%"></span>
       </div>
     {/if}
@@ -218,19 +222,20 @@
               onopen={open}
               onup={up}
               canGoUp={phase.listing.breadcrumb.length > 1}
+              kind={selectedKind}
             />
             {#if phase.listing.breadcrumb.length > 1}
               <p class="hint">Click the centre to go back</p>
             {/if}
           </div>
           <div class="listside">
-            <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} />
+            <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} kind={selectedKind} />
             <button class="link" onclick={() => phase.name === "result" && api.reveal(phase.scanId, phase.listing.dir.id)}>Show this folder in {fileManager}</button>
           </div>
         </section>
         <section class="card">
           <h3>By kind <span class="quiet num">{bytes(phase.listing.dir.allocBytes)} in {displayName(phase.listing.dir.name)}{#if root && phase.listing.dir.id === 0 && volume}{" · "}{percent(root.dir.allocBytes, volume.used)} of used space{/if}</span></h3>
-          <KindBar kindBytes={phase.listing.dir.kindBytes} />
+          <KindBar kindBytes={phase.listing.dir.kindBytes} selected={selectedKind} onselect={(k) => (selectedKind = k)} />
         </section>
       {:else if tab === "apps"}
         <section class="card">
@@ -238,7 +243,7 @@
         </section>
       {:else if tab === "files"}
         <section class="card">
-          <FilesView scanId={phase.scanId} kindBytes={root?.dir.kindBytes ?? []} />
+          <FilesView scanId={phase.scanId} kindBytes={root?.dir.kindBytes ?? []} {selectedKind} />
         </section>
       {:else}
         <section class="card">

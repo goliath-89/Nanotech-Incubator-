@@ -2,21 +2,30 @@
   import type { Listing } from "./types";
   import { bytes, count, percent, share } from "./format";
   import { displayName, kindColor, mainKind, KINDS } from "./kinds";
+  import { tip } from "./tooltip";
+  import { isWindows } from "./platform";
 
   let {
     listing,
     onopen,
     hovered = null,
     onhover = () => {},
+    kind = null,
   }: {
     listing: Listing;
     onopen: (dirId: number) => void;
     hovered?: number | null;
     onhover?: (id: number | null) => void;
+    /** A kind picked in the kind bar: bars show only that kind. */
+    kind?: number | null;
   } = $props();
 
+  const sep = isWindows ? "\\" : "/";
+  const pathOf = (name: string) => (listing.path.endsWith(sep) || listing.path === "" ? listing.path : listing.path + sep) + name;
+  const measure = (d: { allocBytes: string; kindBytes: string[] }) => (kind === null ? Number(d.allocBytes) : Number(d.kindBytes[kind] ?? 0));
+
   const total = $derived(Number(listing.dir.allocBytes));
-  const largest = $derived(Math.max(1, ...listing.children.map((c) => Number(c.allocBytes)), Number(listing.dir.ownFilesBytes)));
+  const largest = $derived(Math.max(1, ...listing.children.map(measure), kind === null ? Number(listing.dir.ownFilesBytes) : 0));
 
   const reasons: Record<string, string> = {
     unreadable: "Not scanned: no permission",
@@ -53,14 +62,14 @@
   <ul class="rows">
     {#each listing.children as d (d.id)}
       {@const k = mainKind(d.kindBytes)}
-      <li><button class="row" class:hot={hovered === d.id} onmouseenter={() => onhover(d.id)} onmouseleave={() => onhover(null)} onfocus={() => onhover(d.id)} onblur={() => onhover(null)} onclick={() => onopen(d.id)} disabled={d.notScanned !== null && Number(d.allocBytes) === 0}>
+      <li><button class="row" class:hot={hovered === d.id} use:tip={d.notScanned ? `${pathOf(d.name)}\n${reasons[d.notScanned]}` : `${pathOf(d.name)}\nClick to open`} onmouseenter={() => onhover(d.id)} onmouseleave={() => onhover(null)} onfocus={() => onhover(d.id)} onblur={() => onhover(null)} onclick={() => onopen(d.id)} disabled={d.notScanned !== null && Number(d.allocBytes) === 0}>
         <span class="name">
           <span class="title">{displayName(d.name)}</span>
           <span class="sub">
-            {#if d.notScanned}{reasons[d.notScanned]}{:else}{count(d.fileCount)} files · mostly {KINDS[k].name.toLowerCase()}{#if d.owner} · {d.owner.app}{#if d.owner.role !== "program"} {d.owner.role}{/if}{/if}{/if}
+            {#if d.notScanned}{reasons[d.notScanned]}{:else if kind !== null}{Number(d.kindBytes[kind] ?? 0) > 0 ? `${bytes(d.kindBytes[kind])} of ${KINDS[kind].name.toLowerCase()}` : `No ${KINDS[kind].name.toLowerCase()}`} · {count(d.fileCount)} files{:else}{count(d.fileCount)} files · mostly {KINDS[k].name.toLowerCase()}{#if d.owner} · {d.owner.app}{#if d.owner.role !== "program"} {d.owner.role}{/if}{/if}{/if}
           </span>
         </span>
-        <span class="bar"><span style:width="{share(d.allocBytes, largest) * 100}%" style:background={kindColor(k)}></span></span>
+        <span class="bar"><span style:width="{share(measure(d), largest) * 100}%" style:background={kindColor(kind ?? k)}></span></span>
         <span class="num size">{bytes(d.allocBytes)}</span>
         <span class="num pct">{percent(d.allocBytes, total)}</span>
       </button></li>

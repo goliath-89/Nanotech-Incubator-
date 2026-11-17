@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tip } from "./tooltip";
   import type { AppUsage, PlacedDir } from "./types";
   import * as api from "./api";
   import { bytes, percent, share } from "./format";
@@ -56,9 +57,9 @@
             <span class="sub num">App {bytes(a.appBytes)} · Data {bytes(a.dataBytes)} · Cache {bytes(a.cacheBytes)}</span>
           </span>
           <span class="bar">
-            <span class="app" style:width="{share(a.appBytes, largest) * 100}%"></span>
-            <span class="data" style:width="{share(a.dataBytes, largest) * 100}%"></span>
-            <span class="cache" style:width="{share(a.cacheBytes, largest) * 100}%"></span>
+            <span class="app" style:width="{share(a.appBytes, largest) * 100}%" use:tip={`The app itself: ${bytes(a.appBytes)}`}></span>
+            <span class="data" style:width="{share(a.dataBytes, largest) * 100}%" use:tip={`What it created: ${bytes(a.dataBytes)}`}></span>
+            <span class="cache" style:width="{share(a.cacheBytes, largest) * 100}%" use:tip={`What it rebuilds (safe to clear): ${bytes(a.cacheBytes)}`}></span>
           </span>
           <span class="num size">{bytes(a.totalBytes)}</span>
           <span class="num pct">{percent(a.totalBytes, total)}</span>

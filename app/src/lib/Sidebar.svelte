@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Volume } from "./types";
   import { bytes, share } from "./format";
+  import { tip } from "./tooltip";
 
   let { volumes, selected, onselect }: {
     volumes: Volume[];
@@ -24,7 +25,7 @@
         class:on={v.id === selected}
         aria-current={v.id === selected}
         disabled={v.kind === "network"}
-        title={v.kind === "network" ? "Network drives are not scanned" : v.mount}
+        use:tip={v.kind === "network" ? "Network drives are not scanned" : `${v.mount}\n${bytes(v.free)} available · ${v.fileSystem.toUpperCase()}${v.readOnly ? " · read-only" : ""}`}
         onclick={() => onselect(v)}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="2" /><circle cx="17" cy="12" r="1" /></svg>

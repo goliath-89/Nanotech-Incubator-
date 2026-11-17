@@ -152,6 +152,69 @@ test.describe("folders", () => {
   });
 });
 
+test.describe("shared selection and tooltips", () => {
+  test("picking a kind follows through the list, the ring and Largest Files", async ({ page }) => {
+    const errors = watchErrors(page);
+    await scanned(page);
+    const kinds = page.locator("section.card").filter({ hasText: "By kind" });
+    const videos = kinds.getByRole("button", { name: /^Videos/ });
+    await videos.click();
+    await expect(videos).toHaveAttribute("aria-pressed", "true");
+    await expect(kinds.getByText(/Showing videos in the ring/)).toBeVisible();
+    // The list now speaks of videos.
+    await expect(rows(page).filter({ hasText: "Users" })).toContainText("152 GB of videos");
+    await expect(rows(page).filter({ hasText: "Applications" })).toContainText("No videos");
+    // Largest Files opens on videos.
+    await page.getByRole("tab", { name: "Largest Files" }).click();
+    const chips = page.getByRole("group", { name: "Show files of one kind" });
+    await expect(chips.getByRole("button", { name: "Videos" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("li .title")).toHaveText(["Wedding-raw.mov", "Final-cut-render.mov", "IMG_9356.mov"]);
+    // Clearing it from the kind bar.
+    await page.getByRole("tab", { name: "Folders" }).click();
+    await kinds.getByRole("button", { name: "Show all kinds" }).click();
+    await expect(rows(page).filter({ hasText: "Users" })).toContainText("mostly videos");
+    expect(errors).toEqual([]);
+  });
+
+  test("clicking the picked kind again clears it", async ({ page }) => {
+    await scanned(page);
+    const kinds = page.locator("section.card").filter({ hasText: "By kind" });
+    const photos = kinds.getByRole("button", { name: /^Photos/ });
+    await photos.click();
+    await photos.click();
+    await expect(photos).toHaveAttribute("aria-pressed", "false");
+    await expect(kinds.getByText(/Showing/)).toHaveCount(0);
+  });
+
+  test("tooltips: on hover after a pause, at once on keyboard focus", async ({ page }) => {
+    await scanned(page);
+    const tooltip = page.getByRole("tooltip");
+    await rows(page).filter({ hasText: "Users" }).hover();
+    await expect(tooltip).toHaveText(/\/Users\s*Click to open/);
+    await expect(tooltip).toHaveClass(/on/);
+    await page.mouse.move(0, 0);
+    await expect(tooltip).not.toHaveClass(/on/);
+    // Keyboard: focus a folder row with Tab and the tooltip describes it.
+    await rows(page).filter({ hasText: "Users" }).focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(tooltip).toHaveClass(/on/);
+    const described = await rows(page).filter({ hasText: "Users" }).getAttribute("aria-describedby");
+    expect(described).toBe("strata-tooltip");
+    await page.keyboard.press("Escape");
+    await expect(tooltip).not.toHaveClass(/on/);
+  });
+
+  test("drive and app tooltips give the details", async ({ page }) => {
+    await scanned(page);
+    await page.getByRole("button", { name: /Archive SSD/ }).hover();
+    await expect(page.getByRole("tooltip")).toHaveText(/\/Volumes\/Archive SSD\s*400 GB available · EXFAT/);
+    await page.getByRole("tab", { name: "Apps" }).click();
+    await page.locator(".bar .cache").first().hover();
+    await expect(page.getByRole("tooltip")).toHaveText(/What it rebuilds \(safe to clear\): /);
+  });
+});
+
 test.describe("apps", () => {
   test("lists apps with their parts and expands to show where", async ({ page }) => {
     const errors = watchErrors(page);

@@ -5,9 +5,13 @@
   import { KINDS, kindColor } from "./kinds";
   import { fileManager } from "./platform";
 
-  let { scanId, kindBytes }: { scanId: number; kindBytes: string[] } = $props();
+  let { scanId, kindBytes, selectedKind = null }: { scanId: number; kindBytes: string[]; selectedKind?: number | null } = $props();
 
+  // Starts on the kind picked in the kind bar, if any; can be changed here.
   let kind = $state<number | null>(null);
+  $effect.pre(() => {
+    kind = selectedKind;
+  });
   let files = $state<LargeFile[] | null>(null);
 
   $effect(() => {
