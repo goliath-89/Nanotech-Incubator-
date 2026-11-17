@@ -17,6 +17,12 @@ fn main() {
             bridge::get_dir,
             bridge::latest_scan,
             bridge::get_ring,
+            bridge::get_apps,
+            bridge::get_app_dirs,
+            bridge::largest_files,
+            bridge::reveal,
+            bridge::get_suggestions,
+            bridge::clean_up,
         ])
         .run(tauri::generate_context!())
         .expect("Strata could not start");

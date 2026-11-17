@@ -156,9 +156,12 @@ a display string; the UI never builds a path itself.
 | `largest_files` | `{ scan_id, kind?, limit }` | `[{ dir_id, name, path, alloc, kind }]` |
 | `by_app` | `{ scan_id }` | `[{ app, app_bytes, data_bytes, cache_bytes }]` |
 | `suggestions` | `{ scan_id }` | grouped Reclaim items |
-| `reveal` | `{ scan_id, dir_id, file? }` | none |
-| `trash` | `{ scan_id, items[] }` | `{ moved[], refused[{ item, reason }] }` |
+| `reveal` | `{ scan_id, dir_id, file? }` | none; path rebuilt from the history, file must be a bare name, no shell involved |
 | `growth` | `{ volume_id, from_scan, to_scan }` | `[{ path, delta }]` |
+| `get_apps` | `{ scan_id }` | apps largest first: `{ index, name, kind, appBytes, dataBytes, cacheBytes, totalBytes }` |
+| `get_app_dirs` | `{ scan_id, app }` | an app's outermost folders with paths (`Store::app_dirs`) |
+| `get_suggestions` | `{ scan_id }` | saved suggestions with their numbers |
+| `clean_up` | `{ scan_id, numbers[] }` | `{ done[], bytesFreed, refused[], failed[] }`; paths come from the history, never from the window (`strata_pipeline::cleanup`) |
 | `get_ring` | `{ scan_id, dir_id }` | three levels below the folder for the ring: `{ id, slice: folder/files/smaller, name, bytes, mainKind, notScanned, children }`, slices under 0.4% folded (`strata_pipeline::ring`) |
 
 | Event | Payload | When |

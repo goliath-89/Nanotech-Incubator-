@@ -1,7 +1,20 @@
 // The only file that talks to the Rust side. Outside the desktop app (a
 // plain browser, for design work and UI tests) it serves example data.
 
-import type { Done, Failed, Listing, Progress, RingNode, ScanSummary, Volume } from "./types";
+import type {
+  AppUsage,
+  CleanupReport,
+  Done,
+  Failed,
+  LargeFile,
+  Listing,
+  PlacedDir,
+  Progress,
+  RingNode,
+  ScanSummary,
+  Suggestion,
+  Volume,
+} from "./types";
 import * as demo from "./demo";
 
 export const inApp = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -29,6 +42,32 @@ export function getDir(scanId: number, dirId: number): Promise<Listing> {
 
 export function getRing(scanId: number, dirId: number): Promise<RingNode> {
   return inApp ? call("get_ring", { scanId, dirId }) : demo.getRing(scanId, dirId);
+}
+
+export function getApps(scanId: number): Promise<AppUsage[]> {
+  return inApp ? call("get_apps", { scanId }) : demo.getApps();
+}
+
+export function getAppDirs(scanId: number, app: number): Promise<PlacedDir[]> {
+  return inApp ? call("get_app_dirs", { scanId, app }) : demo.getAppDirs(app);
+}
+
+export function largestFiles(scanId: number, kind: number | null, limit = 200): Promise<LargeFile[]> {
+  return inApp ? call("largest_files", { scanId, kind, limit }) : demo.largestFiles(kind);
+}
+
+/** Show a folder (or a file in it) in Explorer or Finder. */
+export function reveal(scanId: number, dirId: number, file: string | null = null): Promise<void> {
+  return inApp ? call("reveal", { scanId, dirId, file }) : Promise.resolve();
+}
+
+export function getSuggestions(scanId: number): Promise<Suggestion[]> {
+  return inApp ? call("get_suggestions", { scanId }) : demo.getSuggestions();
+}
+
+/** Move the chosen suggestions to the Trash or Recycle Bin. */
+export function cleanUp(scanId: number, numbers: number[]): Promise<CleanupReport> {
+  return inApp ? call("clean_up", { scanId, numbers }) : demo.cleanUp(numbers);
 }
 
 export function latestScan(volumeId: string): Promise<ScanSummary | null> {

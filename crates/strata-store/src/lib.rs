@@ -5,6 +5,8 @@
 //! or none of it. Old scans can be pruned down to a small snapshot of folder
 //! sizes, which is all the Growth view needs.
 
+#![forbid(unsafe_code)]
+
 mod names;
 mod schema;
 
@@ -491,6 +493,27 @@ impl Store {
         Ok(dirs)
     }
 
+    /// The folders that belong to app number `app` (its position in
+    /// [`Store::apps`]), outermost only: a folder whose parent belongs to
+    /// the same app is left out. Largest first, at most `limit`.
+    pub fn app_dirs(&self, scan: ScanId, app: u32, limit: usize) -> Result<Vec<DirRow>> {
+        self.require_tree(scan)?;
+        let columns: String = DIR_COLUMNS
+            .split(", ")
+            .map(|c| format!("d.{}", c.trim()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let mut stmt = self.conn.prepare_cached(&format!(
+            "SELECT {columns} FROM dirs d
+             LEFT JOIN dirs p ON p.scan_id = d.scan_id AND p.id = d.parent_id
+             WHERE d.scan_id = ?1 AND d.app_idx = ?2 AND (p.app_idx IS NULL OR p.app_idx != ?2)
+             ORDER BY d.alloc_bytes DESC, d.id LIMIT ?3"
+        ))?;
+        let dirs =
+            collect_dirs(stmt.query(params![scan, app, limit.min(i64::MAX as usize) as i64])?)?;
+        Ok(dirs)
+    }
+
     /// Full path of a saved folder.
     pub fn dir_path(&self, scan: ScanId, dir: u32) -> Result<PathBuf> {
         Ok(self
@@ -747,6 +770,44 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
+    /// Suggestions with the number each was saved under, for acting on them
+    /// one by one.
+    pub fn numbered_suggestions(&self, scan: ScanId) -> Result<Vec<(u32, SuggestionRow)>> {
+        self.scan_info(scan)?;
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT seq, grp, contents_only, path, bytes, app, rebuildable, reason FROM suggestions
+             WHERE scan_id = ?1 ORDER BY seq",
+        )?;
+        let rows = stmt.query_map(params![scan], |r| {
+            Ok((
+                r.get::<_, u32>(0)?,
+                SuggestionRow {
+                    group: r.get(1)?,
+                    contents_only: r.get(2)?,
+                    path: PathBuf::from(names::decode(r.get(3)?)),
+                    bytes: r.get::<_, i64>(4)? as u64,
+                    app: r.get(5)?,
+                    rebuildable: r.get(6)?,
+                    reason: r.get(7)?,
+                },
+            ))
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Forget suggestions that have been acted on.
+    pub fn remove_suggestions(&mut self, scan: ScanId, numbers: &[u32]) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        for n in numbers {
+            tx.execute(
+                "DELETE FROM suggestions WHERE scan_id = ?1 AND seq = ?2",
+                params![scan, n],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
     fn require_tree(&self, scan: ScanId) -> Result<ScanInfo> {
         let info = self.scan_info(scan)?;
         if info.has_tree {
@@ -861,7 +922,7 @@ fn kinds_to_blob(kinds: &[u64; KIND_COUNT]) -> Vec<u8> {
 
 /// Accepts blobs written when there were fewer kinds; missing ones are zero.
 fn kinds_from_blob(blob: &[u8]) -> Option<[u64; KIND_COUNT]> {
-    if blob.len() % 8 != 0 {
+    if !blob.len().is_multiple_of(8) {
         return None;
     }
     let mut kinds = [0u64; KIND_COUNT];

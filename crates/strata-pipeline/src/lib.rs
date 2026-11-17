@@ -2,6 +2,9 @@
 //! both behave the same: choose the scanner, run it, then save the result
 //! together with app attribution and cleanup suggestions.
 
+#![forbid(unsafe_code)]
+
+pub mod cleanup;
 pub mod ring;
 
 use std::path::Path;

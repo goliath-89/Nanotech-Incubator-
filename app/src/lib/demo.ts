@@ -1,7 +1,7 @@
 // Example data for running the interface in a browser. Clearly fake
 // numbers on a made-up drive; never shown inside the desktop app.
 
-import type { Dir, Listing, RingNode, ScanSummary, Volume } from "./types";
+import type { AppUsage, CleanupReport, Dir, LargeFile, Listing, PlacedDir, RingNode, ScanSummary, Suggestion, Volume } from "./types";
 import { mainKind } from "./kinds";
 import type { ScanEvents } from "./api";
 
@@ -116,4 +116,52 @@ export async function getRing(_scanId: number, dirId: number): Promise<RingNode>
 export async function onScanEvents(h: ScanEvents) {
   handlers = h;
   return () => { handlers = null; };
+}
+
+const apps: AppUsage[] = [
+  ["Photos", 2, 0.4, 118, 2.1], ["Final Cut Pro", 1, 4.8, 82, 3.9], ["Steam", 6, 0.6, 63, 0.8],
+  ["Adobe Creative Cloud", 5, 38, 6.2, 7.4], ["Xcode", 7, 12.3, 14.7, 2.6], ["Docker", 7, 1.8, 12, 0],
+  ["Google Chrome", null, 1.2, 2.4, 9.6], ["Microsoft Office", 4, 11, 1.2, 0.6],
+].map(([name, kind, a, d, c], index) => ({
+  index, name: name as string, kind: kind as number | null,
+  appBytes: String((a as number) * GB), dataBytes: String((d as number) * GB), cacheBytes: String((c as number) * GB),
+  totalBytes: String(((a as number) + (d as number) + (c as number)) * GB),
+}));
+
+export async function getApps() { return apps; }
+
+export async function getAppDirs(app: number): Promise<PlacedDir[]> {
+  const a = apps[app];
+  return [
+    { path: `/Users/sam/Library/Application Support/${a.name}`, dir: { ...dirOf(flat[0]), id: 100 + app, name: a.name, allocBytes: a.dataBytes, owner: { app: a.name, role: "data" as const } } },
+    { path: `/Users/sam/Library/Caches/${a.name}`, dir: { ...dirOf(flat[0]), id: 200 + app, name: a.name, allocBytes: a.cacheBytes, owner: { app: a.name, role: "cache" as const } } },
+  ].filter((p) => Number(p.dir.allocBytes) > 0);
+}
+
+const files: LargeFile[] = [
+  ["Photos-export-2023.zip", "/Users/sam/Downloads", 20.4, 4], ["Wedding-raw.mov", "/Users/sam/Movies", 9.1, 1],
+  ["Docker.raw", "/Users/sam/Library/Containers/com.docker.docker/Data/vms/0", 8.8, 7],
+  ["Final-cut-render.mov", "/Users/sam/Movies/Final Cut Library.fcpbundle", 6.2, 1], ["sleepimage", "/private/var/vm", 6.0, 8],
+  ["IMG_9356.mov", "/Users/sam/Pictures", 1.0, 1], ["Installer.dmg", "/Users/sam/Downloads", 0.9, 5],
+].map(([name, folder, gb, kind], i) => ({ dirId: i, name: name as string, folder: folder as string, allocBytes: String((gb as number) * GB), kind: kind as number }));
+
+export async function largestFiles(kind: number | null) {
+  return kind === null ? files : files.filter((f) => f.kind === kind);
+}
+
+let suggestions: Suggestion[] = [
+  { number: 0, group: "app_cache", contentsOnly: true, path: "/Users/sam/Library/Caches/Google/Chrome", bytes: String(4.2 * GB), app: "Google Chrome", rebuildable: true, reason: "Cache kept by Google Chrome. It rebuilds what it needs." },
+  { number: 1, group: "app_cache", contentsOnly: true, path: "/Users/sam/Library/Caches/com.docker.docker", bytes: String(3 * GB), app: "Docker", rebuildable: true, reason: "Cache kept by Docker. It rebuilds what it needs." },
+  { number: 2, group: "developer_junk", contentsOnly: false, path: "/Users/sam/code/app/node_modules", bytes: String(1.4 * GB), app: null, rebuildable: true, reason: "Installed JavaScript packages. Running the project's install command restores them." },
+  { number: 3, group: "developer_junk", contentsOnly: true, path: "/Users/sam/Library/Developer/Xcode/DerivedData", bytes: String(9.8 * GB), app: "Xcode", rebuildable: true, reason: "Cache kept by Xcode. It rebuilds what it needs." },
+  { number: 4, group: "old_installer", contentsOnly: false, path: "/Users/sam/Downloads/Installer.dmg", bytes: String(0.9 * GB), app: null, rebuildable: false, reason: "Installer downloaded 41 days ago. Not needed once the app is installed." },
+  { number: 5, group: "old_download", contentsOnly: false, path: "/Users/sam/Downloads/Photos-export-2023.zip", bytes: String(20.4 * GB), app: null, rebuildable: false, reason: "In Downloads, unchanged for 210 days." },
+];
+
+export async function getSuggestions() { return suggestions; }
+
+export async function cleanUp(numbers: number[]): Promise<CleanupReport> {
+  const chosen = suggestions.filter((s) => numbers.includes(s.number));
+  suggestions = suggestions.filter((s) => !numbers.includes(s.number));
+  return { done: numbers, bytesFreed: String(chosen.reduce((t, s) => t + Number(s.bytes), 0)), refused: [], failed: [] };
 }

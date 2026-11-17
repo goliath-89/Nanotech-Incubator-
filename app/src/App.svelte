@@ -7,6 +7,10 @@
   import KindBar from "./lib/KindBar.svelte";
   import FolderView from "./lib/FolderView.svelte";
   import Ring from "./lib/Ring.svelte";
+  import AppsView from "./lib/AppsView.svelte";
+  import FilesView from "./lib/FilesView.svelte";
+  import ReclaimView from "./lib/ReclaimView.svelte";
+  import { fileManager, isWindows } from "./lib/platform";
 
   type Phase =
     | { name: "loading" }
@@ -21,8 +25,15 @@
   let root = $state<Listing | null>(null);
   let now = $state(Date.now());
   let hovered = $state<number | null>(null);
+  type Tab = "folders" | "apps" | "files" | "reclaim";
+  let tab = $state<Tab>("folders");
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "folders", label: "Folders" },
+    { key: "apps", label: "Apps" },
+    { key: "files", label: "Largest Files" },
+    { key: "reclaim", label: "Clean Up" },
+  ];
 
-  const isWindows = navigator.userAgent.includes("Windows");
 
   onMount(() => {
     let off: (() => void) | undefined;
@@ -84,6 +95,7 @@
 
   async function open(dirId: number) {
     if (phase.name !== "result") return;
+    tab = "folders";
     const scanId = phase.scanId;
     const [listing, ring] = await Promise.all([api.getDir(scanId, dirId), api.getRing(scanId, dirId)]);
     if (phase.name === "result" && phase.scanId === scanId) {
@@ -155,28 +167,49 @@
           <p class="note">The fast scan was not available, so folders were read one by one. {phase.done.fallbackReason}.</p>
         {/if}
       {/if}
-      <section class="card overview">
-        <div class="ringside">
-          <Ring
-            ring={phase.ring}
-            {hovered}
-            onhover={(id) => (hovered = id)}
-            onopen={open}
-            onup={up}
-            canGoUp={phase.listing.breadcrumb.length > 1}
-          />
-          {#if phase.listing.breadcrumb.length > 1}
-            <p class="hint">Click the centre to go back</p>
-          {/if}
-        </div>
-        <div class="listside">
-          <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} />
-        </div>
-      </section>
-      <section class="card">
-        <h3>By kind <span class="quiet num">{bytes(phase.listing.dir.allocBytes)} in {phase.listing.dir.name}{#if root && phase.listing.dir.id === 0 && volume}{" · "}{percent(root.dir.allocBytes, volume.used)} of used space{/if}</span></h3>
-        <KindBar kindBytes={phase.listing.dir.kindBytes} />
-      </section>
+      <div class="tabs" role="tablist" aria-label="Views">
+        {#each tabs as t (t.key)}
+          <button role="tab" aria-selected={tab === t.key} class:on={tab === t.key} onclick={() => (tab = t.key)}>{t.label}</button>
+        {/each}
+      </div>
+
+      {#if tab === "folders"}
+        <section class="card overview">
+          <div class="ringside">
+            <Ring
+              ring={phase.ring}
+              {hovered}
+              onhover={(id) => (hovered = id)}
+              onopen={open}
+              onup={up}
+              canGoUp={phase.listing.breadcrumb.length > 1}
+            />
+            {#if phase.listing.breadcrumb.length > 1}
+              <p class="hint">Click the centre to go back</p>
+            {/if}
+          </div>
+          <div class="listside">
+            <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} />
+            <button class="link" onclick={() => phase.name === "result" && api.reveal(phase.scanId, phase.listing.dir.id)}>Show this folder in {fileManager}</button>
+          </div>
+        </section>
+        <section class="card">
+          <h3>By kind <span class="quiet num">{bytes(phase.listing.dir.allocBytes)} in {phase.listing.dir.name}{#if root && phase.listing.dir.id === 0 && volume}{" · "}{percent(root.dir.allocBytes, volume.used)} of used space{/if}</span></h3>
+          <KindBar kindBytes={phase.listing.dir.kindBytes} />
+        </section>
+      {:else if tab === "apps"}
+        <section class="card">
+          <AppsView scanId={phase.scanId} onopendir={open} />
+        </section>
+      {:else if tab === "files"}
+        <section class="card">
+          <FilesView scanId={phase.scanId} kindBytes={root?.dir.kindBytes ?? []} />
+        </section>
+      {:else}
+        <section class="card">
+          <ReclaimView scanId={phase.scanId} onchanged={() => {}} />
+        </section>
+      {/if}
     {:else if phase.name === "error"}
       <div class="empty">
         <h2>Something went wrong</h2>
@@ -204,6 +237,12 @@
   .hint { margin: 0; color: var(--muted); font-size: 11.5px; }
   .listside { min-width: 0; }
   @media (max-width: 900px) { .overview { grid-template-columns: 1fr; } }
+  .tabs { display: flex; gap: 2px; background: var(--track); border-radius: 9px; padding: 2px; justify-self: start; }
+  .tabs button { border: 0; background: transparent; border-radius: 7px; padding: 5px 14px; font-weight: 500; color: var(--muted); cursor: pointer; }
+  .tabs button.on { background: var(--surface); color: var(--fg); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+  .link { all: unset; color: var(--accent); cursor: pointer; font-size: 12px; margin: 10px 10px 0; display: inline-block; }
+  .link:hover { text-decoration: underline; }
+  .link:focus-visible { outline: 2px solid var(--accent); border-radius: 3px; }
   .card { background: var(--surface); border-radius: 12px; padding: 18px 20px; border: 1px solid var(--line); }
   h3 { margin: 0 0 14px; font-size: 13px; font-weight: 600; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
   .empty { text-align: center; padding: 70px 20px; display: grid; justify-items: center; gap: 12px; }

@@ -16,6 +16,8 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 pub struct AppState {
     store: Arc<Mutex<Store>>,
+    /// Strata's own data folder: protected from cleanup.
+    data_folder: PathBuf,
     scans: Mutex<HashMap<u64, Arc<ScanControl>>>,
     next_token: AtomicU64,
 }
@@ -28,6 +30,7 @@ impl AppState {
         let store = Store::open(&folder.join("history.sqlite"))?;
         Ok(AppState {
             store: Arc::new(Mutex::new(store)),
+            data_folder: folder,
             scans: Mutex::new(HashMap::new()),
             next_token: AtomicU64::new(1),
         })
@@ -393,4 +396,263 @@ pub fn get_ring(state: State<'_, AppState>, scan_id: i64, dir_id: u32) -> Reply<
     let store = state.store.lock().map_err(text)?;
     let ring = ring_tree(&store, scan_id, dir_id, 3, 0.004).map_err(text)?;
     Ok(ring_dto(ring))
+}
+
+// ---------------------------------------------------------------------------
+// Apps, largest files, reveal (Day 13)
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppDto {
+    /// Position in the list; pass it back to `get_app_dirs`.
+    index: u32,
+    name: String,
+    kind: Option<u8>,
+    app_bytes: String,
+    data_bytes: String,
+    cache_bytes: String,
+    total_bytes: String,
+}
+
+/// Apps that own space in a scan, largest first.
+#[tauri::command]
+pub fn get_apps(state: State<'_, AppState>, scan_id: i64) -> Reply<Vec<AppDto>> {
+    let store = state.store.lock().map_err(text)?;
+    Ok(store
+        .apps(scan_id)
+        .map_err(text)?
+        .into_iter()
+        .enumerate()
+        .map(|(i, a)| AppDto {
+            index: i as u32,
+            kind: a.kind.map(|k| k as u8),
+            total_bytes: (a.app_bytes + a.data_bytes + a.cache_bytes).to_string(),
+            app_bytes: a.app_bytes.to_string(),
+            data_bytes: a.data_bytes.to_string(),
+            cache_bytes: a.cache_bytes.to_string(),
+            name: a.name,
+        })
+        .collect())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlacedDir {
+    dir: DirDto,
+    path: String,
+}
+
+/// Where an app's space is: its outermost folders, largest first.
+#[tauri::command]
+pub fn get_app_dirs(state: State<'_, AppState>, scan_id: i64, app: u32) -> Reply<Vec<PlacedDir>> {
+    let store = state.store.lock().map_err(text)?;
+    let names: Vec<String> = store
+        .apps(scan_id)
+        .map_err(text)?
+        .into_iter()
+        .map(|a| a.name)
+        .collect();
+    let dirs = store.app_dirs(scan_id, app, 40).map_err(text)?;
+    dirs.into_iter()
+        .map(|d| {
+            let path = store.dir_path(scan_id, d.id).map_err(text)?;
+            Ok(PlacedDir {
+                path: path.to_string_lossy().into_owned(),
+                dir: dir_dto(d, &names),
+            })
+        })
+        .collect()
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LargeFile {
+    dir_id: u32,
+    name: String,
+    folder: String,
+    alloc_bytes: String,
+    kind: u8,
+}
+
+/// The largest files of a scan, optionally of one kind.
+#[tauri::command]
+pub fn largest_files(
+    state: State<'_, AppState>,
+    scan_id: i64,
+    kind: Option<u8>,
+    limit: u32,
+) -> Reply<Vec<LargeFile>> {
+    let kind = match kind {
+        Some(k) => Some(strata_core::Kind::from_index(k).ok_or("unknown kind")?),
+        None => None,
+    };
+    let store = state.store.lock().map_err(text)?;
+    let files = store
+        .largest_files(scan_id, kind, limit.min(500) as usize)
+        .map_err(text)?;
+    let mut folders: HashMap<u32, String> = HashMap::new();
+    files
+        .into_iter()
+        .map(|f| {
+            let folder = match folders.get(&f.dir_id) {
+                Some(p) => p.clone(),
+                None => {
+                    let p = store
+                        .dir_path(scan_id, f.dir_id)
+                        .map_err(text)?
+                        .to_string_lossy()
+                        .into_owned();
+                    folders.insert(f.dir_id, p.clone());
+                    p
+                }
+            };
+            Ok(LargeFile {
+                dir_id: f.dir_id,
+                folder,
+                alloc_bytes: f.alloc_bytes.to_string(),
+                kind: f.kind as u8,
+                name: f.name.to_string_lossy().into_owned(),
+            })
+        })
+        .collect()
+}
+
+/// Show a folder, or a file in it, in Explorer or Finder. The path is
+/// rebuilt from the scan history; the window only names the folder by id
+/// and the file by its bare name.
+#[tauri::command]
+pub fn reveal(
+    state: State<'_, AppState>,
+    scan_id: i64,
+    dir_id: u32,
+    file: Option<String>,
+) -> Reply<()> {
+    let mut path = {
+        let store = state.store.lock().map_err(text)?;
+        store.dir_path(scan_id, dir_id).map_err(text)?
+    };
+    if let Some(name) = file {
+        if name.is_empty() || name == "." || name == ".." || name.contains(['/', '\\', '\0']) {
+            return Err("not a file name".into());
+        }
+        path.push(name);
+    }
+    if !path.exists() {
+        return Err(format!("{} is no longer there", path.display()));
+    }
+    open_in_file_manager(&path).map_err(|e| format!("could not open the file manager: {e}"))
+}
+
+#[cfg(windows)]
+fn open_in_file_manager(path: &std::path::Path) -> std::io::Result<()> {
+    // Arguments go straight to the program; no shell is involved.
+    let mut select = std::ffi::OsString::from("/select,");
+    select.push(path.as_os_str());
+    std::process::Command::new("explorer.exe")
+        .arg(select)
+        .spawn()
+        .map(|_| ())
+}
+
+#[cfg(target_os = "macos")]
+fn open_in_file_manager(path: &std::path::Path) -> std::io::Result<()> {
+    std::process::Command::new("open")
+        .arg("-R")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
+fn open_in_file_manager(path: &std::path::Path) -> std::io::Result<()> {
+    let folder = if path.is_dir() {
+        path
+    } else {
+        path.parent().unwrap_or(path)
+    };
+    std::process::Command::new("xdg-open")
+        .arg(folder)
+        .spawn()
+        .map(|_| ())
+}
+
+// ---------------------------------------------------------------------------
+// Reclaim (Day 14)
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SuggestionDto {
+    number: u32,
+    group: String,
+    contents_only: bool,
+    path: String,
+    bytes: String,
+    app: Option<String>,
+    rebuildable: bool,
+    reason: String,
+}
+
+/// What a scan found to clean up, in display order.
+#[tauri::command]
+pub fn get_suggestions(state: State<'_, AppState>, scan_id: i64) -> Reply<Vec<SuggestionDto>> {
+    let store = state.store.lock().map_err(text)?;
+    Ok(store
+        .numbered_suggestions(scan_id)
+        .map_err(text)?
+        .into_iter()
+        .map(|(number, s)| SuggestionDto {
+            number,
+            group: s.group,
+            contents_only: s.contents_only,
+            path: s.path.to_string_lossy().into_owned(),
+            bytes: s.bytes.to_string(),
+            app: s.app,
+            rebuildable: s.rebuildable,
+            reason: s.reason,
+        })
+        .collect())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupDto {
+    done: Vec<u32>,
+    bytes_freed: String,
+    refused: Vec<Problem>,
+    failed: Vec<Problem>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Problem {
+    path: String,
+    reason: String,
+}
+
+/// Move the chosen suggestions to the Trash or Recycle Bin. The window
+/// names suggestions by number only; paths come from the scan history and
+/// every item is checked again by the safety engine before it moves.
+#[tauri::command]
+pub fn clean_up(state: State<'_, AppState>, scan_id: i64, numbers: Vec<u32>) -> Reply<CleanupDto> {
+    let mut policy = strata_safety::Policy::for_current_user().map_err(|r| format!("{r:?}"))?;
+    let _ = policy.protect(&state.data_folder.to_string_lossy());
+    let mut store = state.store.lock().map_err(text)?;
+    let report =
+        strata_pipeline::cleanup::clean_up(&mut store, scan_id, &numbers, &policy).map_err(text)?;
+    let problems = |v: Vec<(PathBuf, String)>| {
+        v.into_iter()
+            .map(|(p, reason)| Problem {
+                path: p.to_string_lossy().into_owned(),
+                reason,
+            })
+            .collect()
+    };
+    Ok(CleanupDto {
+        done: report.done,
+        bytes_freed: report.bytes_freed.to_string(),
+        refused: problems(report.refused),
+        failed: problems(report.failed),
+    })
 }

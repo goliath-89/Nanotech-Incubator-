@@ -518,6 +518,20 @@ fn apps_and_folder_owners_are_saved_and_replaced() {
     );
     assert_same(&store.load(id).unwrap(), &t);
 
+    // An app's folders: outermost only.
+    let docker_dirs: Vec<_> = store
+        .app_dirs(id, 0, 10)
+        .unwrap()
+        .into_iter()
+        .map(|d| d.id)
+        .collect();
+    assert_eq!(
+        docker_dirs,
+        [1],
+        "the cache folder inside Docker's folder is not listed again"
+    );
+    assert!(store.app_dirs(id, 1, 10).unwrap().is_empty());
+
     // Saving again replaces everything, including owners that went away.
     let program = DirOwner {
         app: 0,
