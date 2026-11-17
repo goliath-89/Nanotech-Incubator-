@@ -358,6 +358,65 @@ test.describe("on Windows", () => {
   });
 });
 
+test.describe("right-click menu", () => {
+  test.use({ permissions: ["clipboard-read", "clipboard-write"] });
+
+  test("on a folder: Open, Show in Finder, Copy Path", async ({ page }) => {
+    await scanned(page);
+    await rows(page).filter({ hasText: "Users" }).click({ button: "right" });
+    const menu = page.getByRole("menu", { name: "Users" });
+    await expect(menu).toBeVisible();
+    await expect(menu.getByRole("menuitem")).toHaveText(["Open", "Show in Finder", "Copy Path"]);
+    await expect(menu.getByRole("menuitem", { name: "Open" })).toBeFocused();
+    await menu.getByRole("menuitem", { name: "Copy Path" }).click();
+    await expect(menu).toHaveCount(0);
+    await expect(page.getByRole("status").filter({ hasText: "Path copied" })).toBeVisible();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("/Users");
+    await rows(page).filter({ hasText: "Users" }).click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Open" }).click();
+    await expect(page.getByRole("navigation", { name: "Location" }).locator(".here")).toHaveText("Users");
+  });
+
+  test("from the keyboard: Shift+F10 opens, arrows move, Escape closes and returns focus", async ({ page }) => {
+    await scanned(page);
+    const users = rows(page).filter({ hasText: "Users" });
+    await users.focus();
+    await page.keyboard.press("Shift+F10");
+    const menu = page.getByRole("menu");
+    await expect(menu.getByRole("menuitem", { name: "Open" })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(menu.getByRole("menuitem", { name: "Show in Finder" })).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(menu.getByRole("menuitem", { name: "Copy Path" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(users).toBeFocused();
+  });
+
+  test("on a ring slice, on a large file, and nowhere else", async ({ page }) => {
+    await scanned(page);
+    await page.waitForTimeout(600);
+    const box = (await page.locator("canvas").boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2 + box.width * 0.12, box.y + box.height / 2 - box.height * 0.2, { button: "right" });
+    await expect(page.getByRole("menu", { name: "Users" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByRole("tab", { name: "Largest Files" }).click();
+    await page.locator("li").filter({ hasText: "Wedding-raw.mov" }).click({ button: "right" });
+    const menu = page.getByRole("menu", { name: "Wedding-raw.mov" });
+    await expect(menu.getByRole("menuitem")).toHaveText(["Show in Finder", "Copy Path"]);
+    await menu.getByRole("menuitem", { name: "Copy Path" }).click();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("/Users/sam/Movies/Wedding-raw.mov");
+    // Elsewhere the webview's own menu is suppressed.
+    const prevented = await page.evaluate(() => {
+      const e = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+      document.querySelector("h1")!.dispatchEvent(e);
+      return e.defaultPrevented;
+    });
+    expect(prevented).toBe(true);
+    await expect(page.getByRole("menu")).toHaveCount(0);
+  });
+});
+
 test.describe("keyboard", () => {
   test("the ring: arrows move between slices, Down goes in, Up comes out, Enter opens", async ({ page }) => {
     await scanned(page);

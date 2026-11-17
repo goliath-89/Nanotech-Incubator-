@@ -4,6 +4,8 @@
   import { displayName, kindColor, mainKind, KINDS } from "./kinds";
   import { tip } from "./tooltip";
   import { listKeys } from "./keys";
+  import { openMenu, isMenuKey, copyPath } from "./menu.svelte";
+  import { fileManager } from "./platform";
   import { isWindows } from "./platform";
 
   let {
@@ -14,6 +16,7 @@
     kind = null,
     unscanned = "0",
     stopped = false,
+    onreveal = () => {},
   }: {
     listing: Listing;
     onopen: (dirId: number) => void;
@@ -25,7 +28,17 @@
     unscanned?: string;
     /** The scan was stopped early: the gap is what was not reached yet. */
     stopped?: boolean;
+    /** Show a folder of this scan in Explorer or Finder. */
+    onreveal?: (dirId: number) => void;
   } = $props();
+
+  function rowMenu(e: MouseEvent | KeyboardEvent, d: { id: number; name: string; notScanned: string | null; allocBytes: string }) {
+    openMenu(e, displayName(d.name), [
+      { label: "Open", run: () => onopen(d.id), disabled: d.notScanned !== null && Number(d.allocBytes) === 0 },
+      { label: `Show in ${fileManager}`, run: () => onreveal(d.id) },
+      { label: "Copy Path", run: () => copyPath(pathOf(d.name)) },
+    ]);
+  }
 
   const sep = isWindows ? "\\" : "/";
   const pathOf = (name: string) => (listing.path.endsWith(sep) || listing.path === "" ? listing.path : listing.path + sep) + name;
@@ -71,7 +84,7 @@
   <ul class="rows">
     {#each listing.children as d (d.id)}
       {@const k = mainKind(d.kindBytes)}
-      <li><button class="row" onkeydown={(e) => listKeys(e, "button.row:not(:disabled)")} class:hot={hovered === d.id} use:tip={d.notScanned ? `${pathOf(d.name)}\n${reasons[d.notScanned]}` : `${pathOf(d.name)}\nClick to open`} onmouseenter={() => onhover(d.id)} onmouseleave={() => onhover(null)} onfocus={() => onhover(d.id)} onblur={() => onhover(null)} onclick={() => onopen(d.id)} disabled={d.notScanned !== null && Number(d.allocBytes) === 0}>
+      <li><button class="row" oncontextmenu={(e) => rowMenu(e, d)} onkeydown={(e) => (isMenuKey(e) ? rowMenu(e, d) : listKeys(e, "button.row:not(:disabled)"))} class:hot={hovered === d.id} use:tip={d.notScanned ? `${pathOf(d.name)}\n${reasons[d.notScanned]}` : `${pathOf(d.name)}\nClick to open`} onmouseenter={() => onhover(d.id)} onmouseleave={() => onhover(null)} onfocus={() => onhover(d.id)} onblur={() => onhover(null)} onclick={() => onopen(d.id)} disabled={d.notScanned !== null && Number(d.allocBytes) === 0}>
         <span class="name">
           <span class="title">{displayName(d.name)}</span>
           <span class="sub">

@@ -12,6 +12,7 @@
     onup,
     canGoUp,
     kind = null,
+    onmenu = () => {},
   }: {
     ring: RingNode;
     /** Folder id highlighted elsewhere (the list), or null. */
@@ -23,6 +24,8 @@
     canGoUp: boolean;
     /** A kind picked in the kind bar: other slices fade back. */
     kind?: number | null;
+    /** Right-click (or the Menu key) on a folder slice. */
+    onmenu?: (e: MouseEvent | KeyboardEvent, id: number) => void;
   } = $props();
 
   const LEVELS = 3;
@@ -308,7 +311,17 @@
     onhover(seg.node.id);
   }
 
+  function context(e: MouseEvent) {
+    const h = hit(e);
+    if (h && h !== "centre" && h.node.id != null && h.node.slice === "folder") onmenu(e, h.node.id);
+    else e.preventDefault();
+  }
+
   function key(e: KeyboardEvent) {
+    if ((e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) && keyed?.node.id != null && keyed.node.slice === "folder") {
+      onmenu(e, keyed.node.id);
+      return;
+    }
     const list = keyed ? layout.byLevel[keyed.level - 1] : layout.byLevel[0];
     const at = keyed ? list.indexOf(keyed) : -1;
     const mid = keyed ? (keyed.a0 + keyed.a1) / 2 : 0;
@@ -454,6 +467,7 @@
     onmousemove={move}
     onmouseleave={leave}
     onclick={click}
+    oncontextmenu={context}
   ></canvas>
   <div class="centre" aria-hidden="true">
     {#if focus}

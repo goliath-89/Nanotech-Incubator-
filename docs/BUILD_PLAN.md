@@ -20,12 +20,14 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 26 / 90 (29%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 27 / 90 (30%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
-| **Sprint 3 · ring polish (current)** | 9 / 10 (90%) | Days 21–24, 26–30 done; 25 waits for your notes |
+| **Sprint 3 · ring polish** | 9 / 10 (90%) | Days 21–24, 26–30 done; 25 waits for your notes |
+| **Sprint 4 · polish and testing (current)** | 1 / 10 (10%) | Day 31 done |
 
 Log (newest first):
+- 17 Nov · Day 31 ✅ right-click menu; macOS installer now nightly. Sprint 4 1/10 (10%), overall 27/90 (30%).
 - 17 Nov · Day 30 ✅ buffer: Not scanned edge cases, CI hygiene. Sprint 3 9/10 (90%), overall 26/90 (29%).
 - 17 Nov · Day 29 ✅ ring geometry, Reduce Motion and pixel-snapshot tests (44 UI tests). Sprint 3 8/10 (80%), overall 25/90 (28%).
 - 17 Nov · Day 28 ✅ "Not scanned" and cloud-only shown as their own items. Sprint 3 7/10 (70%), overall 24/90 (27%).
@@ -43,7 +45,7 @@ Log (newest first):
 - 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
 - 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
 
-Next: Sprint 4, Day 31 (right-click menu: Reveal, Preview, Copy Path, Exclude). Days 25 and 17 wait for your MVP notes; Day 16 for the MacBook.
+Next: Day 32 (preview: Quick Look on Mac, preview on Windows), Day 33 (exclusions and theme in Settings). Days 25 and 17 wait for your MVP notes; Day 16 for the MacBook.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -139,7 +141,7 @@ of introducing them.
 
 | Day | Model | Claude builds | You |
 | --- | --- | --- | --- |
-| 31 | Opus | Right-click menu: Reveal, Preview, Copy Path, Exclude | — |
+| 31 ✅ | Opus | Right-click menu on folder rows, ring slices, large files and app locations: Open, Show in Explorer/Finder, Copy Path (with a "Path copied" note); Menu key or Shift+F10 opens it from the keyboard, arrows move, Escape closes and returns focus. The webview's own menu is suppressed. Preview joins on Day 32 and Exclude on Day 33, with their back ends. CI: macOS installer moved to the nightly run. 3 UI tests (49 in all) | — |
 | 32 | Opus | Quick Look on Mac, preview on Windows | — |
 | 33 | Opus | Exclusions and theme in Settings | — |
 | 34 | Opus | Reduce Motion and high-contrast support | — |

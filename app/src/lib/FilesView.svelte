@@ -5,6 +5,17 @@
   import { KINDS, kindColor } from "./kinds";
   import { fileManager } from "./platform";
   import { listKeys } from "./keys";
+  import { openMenu, isMenuKey, copyPath } from "./menu.svelte";
+  import { isWindows } from "./platform";
+
+  const sep = isWindows ? "\\" : "/";
+  function fileMenu(e: MouseEvent | KeyboardEvent, f: LargeFile) {
+    const path = (f.folder.endsWith(sep) ? f.folder : f.folder + sep) + f.name;
+    openMenu(e, f.name, [
+      { label: `Show in ${fileManager}`, run: () => api.reveal(scanId, f.dirId, f.name) },
+      { label: "Copy Path", run: () => copyPath(path) },
+    ]);
+  }
 
   let { scanId, kindBytes, selectedKind = null }: { scanId: number; kindBytes: string[]; selectedKind?: number | null } = $props();
 
@@ -41,14 +52,14 @@
 {:else}
   <ul>
     {#each files as f, i (i)}
-      <li>
+      <li oncontextmenu={(e) => fileMenu(e, f)}>
         <i style:background={kindColor(f.kind)} title={KINDS[f.kind]?.name}></i>
         <span class="name">
           <span class="title" title={f.name}>{f.name}</span>
           <span class="sub" title={f.folder}>{f.folder}</span>
         </span>
         <span class="num size">{bytes(f.allocBytes)}</span>
-        <button class="link" onclick={() => api.reveal(scanId, f.dirId, f.name)} onkeydown={(e) => listKeys(e, "button.link")}>Show in {fileManager}</button>
+        <button class="link" onclick={() => api.reveal(scanId, f.dirId, f.name)} onkeydown={(e) => (isMenuKey(e) ? fileMenu(e, f) : listKeys(e, "button.link"))}>Show in {fileManager}</button>
       </li>
     {/each}
   </ul>

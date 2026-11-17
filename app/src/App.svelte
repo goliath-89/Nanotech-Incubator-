@@ -5,6 +5,8 @@
   import { bytes, count, percent, seconds, share } from "./lib/format";
   import Sidebar from "./lib/Sidebar.svelte";
   import SettingsMenu from "./lib/SettingsMenu.svelte";
+  import ContextMenu from "./lib/ContextMenu.svelte";
+  import { openMenu, copyPath } from "./lib/menu.svelte";
   import KindBar from "./lib/KindBar.svelte";
   import FolderView from "./lib/FolderView.svelte";
   import Ring from "./lib/Ring.svelte";
@@ -155,12 +157,37 @@
     };
   }
 
+  /** The ring's right-click menu for a folder slice. */
+  async function ringMenu(e: MouseEvent | KeyboardEvent, id: number) {
+    if (phase.name !== "result") return;
+    const scanId = phase.scanId;
+    const node = findNode(phase.ring, id);
+    openMenu(e, node ? displayName(node.name) : "Folder", [
+      { label: "Open", run: () => open(id) },
+      { label: `Show in ${fileManager}`, run: () => api.reveal(scanId, id) },
+      { label: "Copy Path", run: async () => copyPath((await api.getDir(scanId, id)).path) },
+    ]);
+  }
+
+  function findNode(n: RingNode, id: number): RingNode | null {
+    if (n.id === id) return n;
+    for (const c of n.children) {
+      const f = findNode(c, id);
+      if (f) return f;
+    }
+    return null;
+  }
+
   function up() {
     if (phase.name !== "result") return;
     const crumbs = phase.listing.breadcrumb;
     if (crumbs.length > 1) open(crumbs[crumbs.length - 2].id);
   }
 </script>
+
+<!-- The webview's own right-click menu (Reload, Inspect…) is not Strata's. -->
+<svelte:window oncontextmenu={(e) => e.preventDefault()} />
+<ContextMenu />
 
 <div class="window">
   <aside>
@@ -263,13 +290,14 @@
               onup={up}
               canGoUp={phase.listing.breadcrumb.length > 1}
               kind={selectedKind}
+              onmenu={(e, id) => ringMenu(e, id)}
             />
             {#if phase.listing.breadcrumb.length > 1}
               <p class="hint">Click the centre to go back</p>
             {/if}
           </div>
           <div class="listside">
-            <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} kind={selectedKind} unscanned={String(unscannedBytes(phase.listing))} stopped={stoppedEarly()} />
+            <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} kind={selectedKind} unscanned={String(unscannedBytes(phase.listing))} stopped={stoppedEarly()} onreveal={(id) => phase.name === "result" && api.reveal(phase.scanId, id)} />
             <button class="link" onclick={() => phase.name === "result" && api.reveal(phase.scanId, phase.listing.dir.id)}>Show this folder in {fileManager}</button>
           </div>
         </section>

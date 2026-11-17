@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tip } from "./tooltip";
   import { listKeys } from "./keys";
+  import { openMenu, copyPath } from "./menu.svelte";
   import type { AppUsage, PlacedDir } from "./types";
   import * as api from "./api";
   import { bytes, percent, share } from "./format";
@@ -68,7 +69,11 @@
         {#if open === a.index}
           <ul class="places">
             {#each places as p (p.dir.id)}
-              <li>
+              <li oncontextmenu={(e) => openMenu(e, p.path, [
+                { label: "Open", run: () => onopendir(p.dir.id) },
+                { label: `Show in ${fileManager}`, run: () => api.reveal(scanId, p.dir.id) },
+                { label: "Copy Path", run: () => copyPath(p.path) },
+              ])}>
                 <span class="role">{p.dir.owner ? roleName[p.dir.owner.role] : ""}</span>
                 <span class="path" title={p.path}>{p.path}</span>
                 <span class="num size">{bytes(p.dir.allocBytes)}</span>
