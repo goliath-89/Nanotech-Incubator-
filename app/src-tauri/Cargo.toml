@@ -3,8 +3,9 @@ name = "strata-app"
 description = "Strata desktop app"
 version = "0.1.0"
 edition = "2021"
-license = "UNLICENSED"
-rust-version = "1.82"
+license = "LicenseRef-Proprietary"
+rust-version = "1.89"
+publish = false
 
 # Kept out of the root workspace: building it needs the system webview
 # libraries, which the engine crates do not.
@@ -20,6 +21,7 @@ serde_json = "1"
 strata-core = { path = "../../crates/strata-core" }
 strata-store = { path = "../../crates/strata-store" }
 strata-pipeline = { path = "../../crates/strata-pipeline" }
+strata-safety = { path = "../../crates/strata-safety" }
 
 [profile.release]
 lto = "thin"

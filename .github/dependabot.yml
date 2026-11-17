@@ -1,0 +1,23 @@
+# Keeps dependencies current so security fixes arrive as pull requests.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      engine: { patterns: ["*"] }
+  - package-ecosystem: cargo
+    directory: /app/src-tauri
+    schedule: { interval: weekly, day: monday }
+    groups:
+      app-rust: { patterns: ["*"] }
+  - package-ecosystem: npm
+    directory: /app
+    schedule: { interval: weekly, day: monday }
+    groups:
+      app-npm: { patterns: ["*"] }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      actions: { patterns: ["*"] }

@@ -6,6 +6,8 @@
 //! anything. Every item they return has already passed the safety policy's
 //! text check, and `strata_safety::trash` checks again before moving it.
 
+#![forbid(unsafe_code)]
+
 mod duplicates;
 mod suggest;
 

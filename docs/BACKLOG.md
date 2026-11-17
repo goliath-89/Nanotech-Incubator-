@@ -15,6 +15,15 @@ go; Claude adds to this list when something new needs a person.
 - [ ] Open Strata, scan C:, click into folders. Note anything slow, wrong or confusing.
       (It uses the slower folder scan for now; the fast scan with an administrator prompt comes on Day 15.)
 
+## Security settings on GitHub (10 minutes, once)
+
+In the repository's **Settings**:
+
+- [ ] Code security → turn on **Dependabot alerts**, **Dependabot security updates**,
+      **Secret scanning**, **Push protection** and **Private vulnerability reporting**.
+- [ ] Branches → add a rule for the main branch: require the **CI** and **Security**
+      checks to pass and require a pull request before merging.
+
 ## Do soon (unblocks the Mac half of Gate A)
 
 - [ ] Download the `strata-cli-macos-latest` and `strata-cli-windows-latest`

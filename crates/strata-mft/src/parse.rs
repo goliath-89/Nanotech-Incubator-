@@ -199,7 +199,7 @@ pub(crate) fn attributes(record: &[u8]) -> impl Iterator<Item = Attribute<'_>> {
             return None;
         }
         let len = u32_at(header, 4)? as usize;
-        if len < 0x18 || len % 8 != 0 {
+        if len < 0x18 || !len.is_multiple_of(8) {
             return None;
         }
         let whole = header.get(..len)?;

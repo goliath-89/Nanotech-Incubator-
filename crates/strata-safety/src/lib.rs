@@ -8,6 +8,8 @@
 //! The policy is plain text matching with no file access, so the rules for
 //! macOS and Windows can be (and are) tested on any machine.
 
+#![forbid(unsafe_code)]
+
 mod path;
 mod rules;
 mod trash;

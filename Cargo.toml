@@ -6,8 +6,9 @@ members = ["crates/strata-core", "crates/strata-store", "crates/strata-safety", 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-license = "UNLICENSED"
-rust-version = "1.82"
+license = "LicenseRef-Proprietary"
+rust-version = "1.89"
+publish = false
 
 [profile.release]
 lto = "thin"

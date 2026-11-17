@@ -1,0 +1,102 @@
+name: Security
+
+# Runs on every push and pull request, every Monday (new advisories appear
+# for code that has not changed), and on demand. See docs/SECURITY_PROCESS.md.
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust-dependencies:
+    name: Rust dependencies (advisories, licences, sources)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        manifest: [Cargo.toml, app/src-tauri/Cargo.toml]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: EmbarkStudios/cargo-deny-action@70f81531115945ba6eb6b941ec9d39d063438eb9 # v2.1.2
+        with:
+          manifest-path: ${{ matrix.manifest }}
+          arguments: --all-features
+          command: check
+          command-arguments: advisories bans licenses sources
+
+  npm-dependencies:
+    name: Interface dependencies (advisories, signatures)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Install exactly what the lock file says, running no install scripts
+        working-directory: app
+        run: npm ci --ignore-scripts
+      - name: Known vulnerabilities (any severity fails)
+        working-directory: app
+        run: npm audit --audit-level=low
+      - name: Registry signatures and provenance
+        working-directory: app
+        run: npm audit signatures
+
+  secrets:
+    name: Secrets in the repository history
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  hardening:
+    name: App hardening and unsafe-code rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Tauri settings, capabilities, file removal confined to strata-safety
+        run: python3 tools/check-app-hardening.py
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          components: clippy
+      - name: Security lints (every unsafe block documented, no unsafe where forbidden)
+        run: cargo clippy --all-targets -- -D warnings -D clippy::undocumented_unsafe_blocks
+
+  codeql:
+    name: Code analysis (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [rust, javascript-typescript, actions]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:${{ matrix.language }}

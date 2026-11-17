@@ -1,5 +1,7 @@
 //! What things are: the kind of each file, and the app each folder belongs to.
 
+#![forbid(unsafe_code)]
+
 mod attribute;
 mod context;
 mod extensions;
