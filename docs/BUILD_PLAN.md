@@ -29,7 +29,7 @@ Status: **Days 1, 2, 4, 5, 7, 8 and 9 done; Day 6 and Day 10 half done.** Days 3
 | 7 ✅ | Fable | `strata-classify`: extension table (about 600), folder-context kinds, TOML rule format and loader, attribution engine, 20 starter apps per system, 11 tests | — |
 | 8 ✅ | Fable | Benchmark tool: `strata make-tree` and `strata bench`. On Linux (4 cores, warm cache): 2M files in 1.7 s, 107 MB peak. Mac and Windows tuning waits for your numbers | Run the 2M benchmark on both machines (about 10 minutes each), paste the `RESULT` lines. |
 | 9 ✅ | Fable | `strata-reclaim`: duplicate finder (size, partial hash, full hash) and cleanup suggestion engine on top of the safety rules, 8 tests; `strata scan --reclaim --duplicates` lists them | — |
-| 10 ◐ | Fable | Review done, 7 findings fixed (see below). **Gate A check** waits for your machines | **Gate A:** 2M-file scan under 60 s and total within 2% of the OS figure on both machines. |
+| 10 ◐ | Fable | Review done, 7 findings fixed. **Gate A passed on Windows** (fast scan 99.8%, 3.8 s). Mac part waits for the reinstalled MacBook | **Gate A on Mac:** scan and benchmark once the MacBook is set up again. |
 
 ### Day 10 review: what was found and fixed
 
@@ -58,6 +58,19 @@ real Windows drive, and benchmark numbers for Mac and Windows.
 | `~/.docker`, `C:\Program Files\WSL` and Claude's VM bundle were not attributed | Fixed: rules added |
 | 8.8 GB Recycle Bin counted as System | Open: show it as its own item and offer "Empty Recycle Bin" through Windows itself |
 | Error list printed every locked folder (500+ lines) | Fixed: grouped by the folder they are in |
+
+### Fast scan on real Windows (C:, administrator, Snapdragon ARM64 laptop)
+
+| Check | Result |
+| --- | --- |
+| Total | 440 of 441 GB used (99.8%) in **3.8 s** for 528,678 files. **Gate A passes on Windows** |
+| Hard links | 78,099 extra links (25.3 GB) counted once; the walk counts them twice and reaches 105% |
+| Walk, warm, administrator | 7.8 s for the same files; the earlier 61 s was a cold cache without administrator rights |
+| "Cloud-only 321 GB" | Bug, fixed: the on-disk "has extended attributes" bit (set by WSL and Docker) was read as "recall on open" |
+| WindowsApps reported as one 30 GB app | Fixed: each Store package is its own app, versions merged |
+| Edge's program files mostly counted under the vendor folder | Fixed: EdgeCore and EdgeUpdate belong to Edge; WebView2 is its own entry |
+| The laptop is ARM64 and ran the x64 build under emulation | CI now also builds `strata-cli-windows-arm64` |
+| Still open | Walk without administrator double-counts hard links (the app should ask for elevation and use the fast scan); Recycle Bin shown as System |
 
 ## Sprint 2 · weeks 3–4 · app shell
 

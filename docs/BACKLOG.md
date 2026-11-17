@@ -3,7 +3,11 @@
 Things only you can do, in the order they unblock work. Tick them off as you
 go; Claude adds to this list when something new needs a person.
 
-## Do soon (unblocks Day 3 and Gate A)
+## Done
+
+- [x] Windows: normal and fast scans of C: (Gate A passed on Windows, 17 Nov)
+
+## Do soon (unblocks the Mac half of Gate A)
 
 - [ ] Download the `strata-cli-macos-latest` and `strata-cli-windows-latest`
       builds from the latest run under the repo's **Actions** tab on GitHub.

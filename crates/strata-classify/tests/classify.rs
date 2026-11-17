@@ -517,6 +517,9 @@ fn windows_rules_use_the_system_drive_and_profile() {
             ("Program Files (x86)/Common Files/Oracle", GB),
             ("Program Files/Vendor X/bin", GB),
             ("Program Files (x86)/vendor x/bin", GB),
+            ("Program Files/WindowsApps/Microsoft.ImageGenerationExtension_1.0.221.0_arm64__8wekyb3d8bbwe/sdxl", 3 * GB),
+            ("Program Files/WindowsApps/Microsoft.ImageGenerationExtension_1.0.230.0_arm64__8wekyb3d8bbwe/sdxl", GB),
+            ("Program Files/WindowsApps/5319275A.WhatsAppDesktop_2.2.0.0_arm64__cv1g1gvanyjgm", GB),
         ],
     );
     let a = attribute(&t, &RuleSet::builtin(Os::Windows), &env);

@@ -168,7 +168,9 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
     // an applications folder is an app called by its own name.
     let programs_folders: &[&str] = match env.os {
         Os::MacOs => &["/Applications", "~/Applications"],
+        // WindowsApps first: its packages are apps, not the folder itself.
         Os::Windows => &[
+            "C:/Program Files/WindowsApps",
             "C:/Program Files",
             "C:/Program Files (x86)",
             "~/AppData/Local/Programs",
@@ -204,6 +206,19 @@ pub fn attribute(tree: &ScanTree, rules: &RuleSet, env: &Env) -> Attribution {
                             &name[..cut]
                         }
                         _ => continue, // loose folders in /Applications are not apps
+                    },
+                    // Store app folders hold packages, not one app each.
+                    _ if name.eq_ignore_ascii_case("WindowsApps")
+                        || name.eq_ignore_ascii_case("ModifiableWindowsApps") =>
+                    {
+                        continue
+                    }
+                    // `Microsoft.WindowsCalculator_11.2.0.0_x64__8wekyb3d8bbwe`:
+                    // name, version, architecture, publisher id. Versions and
+                    // architectures of one package are one app.
+                    _ if pattern.ends_with("/WindowsApps") => match name.split_once('_') {
+                        Some((package, _)) if !package.is_empty() => package,
+                        _ => name.as_str(),
                     },
                     // Shared libraries that many programs install into.
                     _ if name.eq_ignore_ascii_case("Common Files") => "Shared program files",

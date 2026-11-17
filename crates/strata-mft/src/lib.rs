@@ -40,8 +40,19 @@ const CHUNK_BYTES: usize = 4 * 1024 * 1024;
 /// Folders can nest thousands deep; building the tree recurses that far.
 const BUILD_STACK_BYTES: usize = 256 * 1024 * 1024;
 
-/// Cloud placeholder: OFFLINE, RECALL_ON_OPEN or RECALL_ON_DATA_ACCESS.
-const DOS_CLOUD_ONLY: u32 = 0x0000_1000 | 0x0004_0000 | 0x0040_0000;
+/// Attribute bits as NTFS stores them in a file's standard information.
+const DOS_REPARSE_POINT: u32 = 0x0000_0400;
+const DOS_OFFLINE: u32 = 0x0000_1000;
+const DOS_RECALL_ON_DATA_ACCESS: u32 = 0x0040_0000;
+
+/// A cloud placeholder (OneDrive and the like) whose contents are not on
+/// this disk. On disk, bit 0x40000 means "has extended attributes" (WSL and
+/// Docker set it on every file they write); Windows only reuses that value
+/// as RECALL_ON_OPEN when it reports attributes to programs, so it must
+/// not be read as cloud-only here. Placeholders are always reparse points.
+fn is_cloud_only(dos: u32) -> bool {
+    dos & DOS_REPARSE_POINT != 0 && dos & (DOS_OFFLINE | DOS_RECALL_ON_DATA_ACCESS) != 0
+}
 
 #[derive(Debug)]
 pub enum MftError {
@@ -259,7 +270,7 @@ fn parse_record(
         match (&attribute.body, attribute.kind) {
             (Body::Resident(value), parse::ATTR_STANDARD_INFORMATION) => {
                 let dos = parse::u32_at(value, 0x20).unwrap_or(0);
-                record.cloud_only = dos & DOS_CLOUD_ONLY != 0;
+                record.cloud_only = is_cloud_only(dos);
             }
             (Body::Resident(value), parse::ATTR_FILE_NAME) => {
                 if let Some(name) = parse::parse_file_name(value) {
@@ -638,4 +649,20 @@ pub fn is_elevated() -> bool {
     // SAFETY: `token` is a handle this function opened and owns.
     unsafe { CloseHandle(token) };
     ok != 0 && elevation.TokenIsElevated != 0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_cloud_only;
+
+    #[test]
+    fn extended_attributes_are_not_cloud_placeholders() {
+        // A file written by WSL or Docker: archive + has-EA.
+        assert!(!is_cloud_only(0x0000_0020 | 0x0004_0000));
+        // Offline without a reparse point is not a cloud placeholder either.
+        assert!(!is_cloud_only(0x0000_1000));
+        // OneDrive "online only": reparse point + recall on data access.
+        assert!(is_cloud_only(0x0000_0400 | 0x0040_0000));
+        assert!(is_cloud_only(0x0000_0400 | 0x0000_1000 | 0x0040_0000));
+    }
 }

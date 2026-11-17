@@ -14,12 +14,21 @@ cache = [
 [[app]]
 name = "Microsoft Edge"
 id = "Microsoft.Edge"
-app = ["C:/Program Files (x86)/Microsoft/Edge"]
+app = [
+  "C:/Program Files (x86)/Microsoft/Edge",
+  "C:/Program Files (x86)/Microsoft/EdgeCore",
+  "C:/Program Files (x86)/Microsoft/EdgeUpdate",
+]
 data = ["~/AppData/Local/Microsoft/Edge/User Data"]
 cache = [
   "~/AppData/Local/Microsoft/Edge/User Data/*/Cache",
   "~/AppData/Local/Microsoft/Edge/User Data/*/Code Cache",
 ]
+
+[[app]]
+name = "Microsoft Edge WebView2"
+id = "Microsoft.EdgeWebView2Runtime"
+app = ["C:/Program Files (x86)/Microsoft/EdgeWebView"]
 
 [[app]]
 name = "Firefox"

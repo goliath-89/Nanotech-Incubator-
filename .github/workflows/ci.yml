@@ -36,3 +36,22 @@ jobs:
             target/release/strata
             target/release/strata.exe
           if-no-files-found: error
+
+  # Windows on ARM (Snapdragon laptops). The x64 build runs there too, but
+  # under emulation.
+  windows-arm64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+      - name: Build release for ARM64
+        run: cargo build --release -p strata-cli --target aarch64-pc-windows-msvc
+      - name: Upload command-line build
+        uses: actions/upload-artifact@v4
+        with:
+          name: strata-cli-windows-arm64
+          path: target/aarch64-pc-windows-msvc/release/strata.exe
+          if-no-files-found: error
