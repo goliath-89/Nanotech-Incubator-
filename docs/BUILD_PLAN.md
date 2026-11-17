@@ -20,12 +20,13 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 21 / 90 (23%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 22 / 90 (24%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
-| **Sprint 3 · ring polish (current)** | 4 / 10 (40%) | Days 21–24 done |
+| **Sprint 3 · ring polish (current)** | 5 / 10 (50%) | Days 21–24 and 26 done; 25 waits for your notes |
 
 Log (newest first):
+- 17 Nov · Day 26 ✅ sizes setting (macOS / Explorer / GiB) and locale number formats. Sprint 3 5/10 (50%), overall 22/90 (24%).
 - 17 Nov · Day 24 ✅ tooltips and shared kind selection. Sprint 3 4/10 (40%), overall 21/90 (23%).
 - 17 Nov · Day 23 ✅ design tokens; Mica sidebar on Windows 11. Sprint 3 3/10 (30%), overall 20/90 (22%).
 - 17 Nov · Day 22 ✅ ring fills in live during a scan. Sprint 3 2/10 (20%), overall 19/90 (21%).
@@ -38,7 +39,7 @@ Log (newest first):
 - 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
 - 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
 
-Next: Day 25 is "fixes from your notes", so it waits for your MVP list; meanwhile Day 26 (GB/GiB setting, locale number formats), Day 27 (keyboard navigation of the ring and lists). Day 16 waits for the MacBook; Day 17 waits for your MVP notes.
+Next: Day 27 (keyboard navigation of the ring and lists), Day 28 ("not scanned" and cloud-only as their own segments), Day 29 (ring UI tests). Days 25 and 17 wait for your MVP notes; Day 16 for the MacBook.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -124,7 +125,7 @@ of introducing them.
 | 23 ✅ | Opus | Design pass: shape and depth tokens (card, control, pill radii; raised shadow) used everywhere; window created in code; **Mica behind the sidebar on Windows 11** (build 22000+, content area stays solid; Windows 10 unchanged), light and dark. macOS vibrancy moved to Day 16: it needs Tauri's private-API switch, which rules out the Mac App Store | Check the Mica sidebar on your laptop (see BACKLOG). |
 | 24 ✅ | Opus | One shared tooltip (hover after a pause, keyboard focus at once, Escape hides, screen-reader description) on folder rows (full path), kind bar, drives, capacity bar and app bars. Shared selection: pick a kind in the kind bar and the ring fades the rest, folder bars show only that kind, Largest Files opens on it; click again or "Show all kinds" to clear. 4 UI tests | Use it on your real drive for 10 minutes; list what confuses you. |
 | 25 | Opus | Fixes from your notes | — |
-| 26 | Opus | Units setting (GB / GiB), number formatting by system locale | — |
+| 26 ✅ | Opus | Sizes setting (Settings at the foot of the sidebar): like macOS (1 GB = 10⁹ bytes), like Windows Explorer (1 GB = 2³⁰ bytes) or GiB; defaults to the system's own convention and is remembered. Every number, percentage and time uses the system locale (e.g. 1,5 GB and 67,2 % in German). 2 UI tests | — |
 | 27 | Opus | Keyboard navigation of the ring and lists | — |
 | 28 | Opus | "Not scanned" and cloud-only items shown as their own segments | — |
 | 29 | Opus | UI tests for the ring | — |
