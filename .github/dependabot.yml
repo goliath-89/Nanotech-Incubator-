@@ -16,6 +16,11 @@ updates:
     schedule: { interval: weekly, day: monday }
     groups:
       app-npm: { patterns: ["*"] }
+    ignore:
+      # svelte-check does not support TypeScript 7 yet (peer dependency);
+      # revisit when it does. Security updates still come through.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly, day: monday }

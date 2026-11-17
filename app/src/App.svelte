@@ -71,7 +71,8 @@
           if (phase.name !== "scanning" || d.token !== phase.token) return;
           const [listing, ring] = await Promise.all([api.getDir(d.scanId, 0), api.getRing(d.scanId, 0)]);
           root = listing;
-          phase = { name: "result", scanId: d.scanId, done: d, listing, ring: withUnscanned(ring, listing) };
+          phase = { name: "result", scanId: d.scanId, done: d, listing, ring };
+          phase.ring = withUnscanned(ring, listing);
         },
         failed: (f) => {
           if (phase.name === "scanning" && f.token === phase.token) phase = { name: "error", message: f.message };
@@ -133,9 +134,15 @@
   /** At the top of a drive, the ring also shows what the scan could not read:
    *  the drive's used space minus what was counted, if more than 0.5%. */
   function unscannedBytes(listing: Listing): number {
-    if (!volume || listing.dir.id !== 0) return 0;
+    // Only for a scan made just now: an older saved scan cannot be compared
+    // with what the drive holds today.
+    if (!volume || listing.dir.id !== 0 || phase.name !== "result" || !phase.done) return 0;
     const gap = Number(volume.used) - Number(listing.dir.allocBytes);
     return gap > Number(volume.used) * 0.005 ? gap : 0;
+  }
+
+  function stoppedEarly(): boolean {
+    return phase.name === "result" && !!phase.done?.cancelled;
   }
 
   function withUnscanned(ring: RingNode, listing: Listing): RingNode {
@@ -144,7 +151,7 @@
     return {
       ...ring,
       bytes: String(Number(ring.bytes) + gap),
-      children: [...ring.children, { id: null, slice: "unscanned", name: "Not scanned", bytes: String(gap), mainKind: 0, notScanned: true, children: [] }],
+      children: [...ring.children, { id: null, slice: "unscanned", name: stoppedEarly() ? "Not counted (stopped early)" : "Not scanned", bytes: String(gap), mainKind: 0, notScanned: true, children: [] }],
     };
   }
 
@@ -262,7 +269,7 @@
             {/if}
           </div>
           <div class="listside">
-            <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} kind={selectedKind} unscanned={String(unscannedBytes(phase.listing))} />
+            <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} kind={selectedKind} unscanned={String(unscannedBytes(phase.listing))} stopped={stoppedEarly()} />
             <button class="link" onclick={() => phase.name === "result" && api.reveal(phase.scanId, phase.listing.dir.id)}>Show this folder in {fileManager}</button>
           </div>
         </section>

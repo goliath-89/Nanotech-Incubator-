@@ -13,6 +13,7 @@
     onhover = () => {},
     kind = null,
     unscanned = "0",
+    stopped = false,
   }: {
     listing: Listing;
     onopen: (dirId: number) => void;
@@ -22,6 +23,8 @@
     kind?: number | null;
     /** At the top of a drive: space the drive reports as used that the scan could not read. */
     unscanned?: string;
+    /** The scan was stopped early: the gap is what was not reached yet. */
+    stopped?: boolean;
   } = $props();
 
   const sep = isWindows ? "\\" : "/";
@@ -89,8 +92,8 @@
       </li>
     {/if}
     {#if Number(unscanned) > 0 && kind === null}
-      <li class="row loose unscanned" use:tip={"The drive reports this much more in use than the scan could read: usually folders Windows or macOS protect.\nOn Windows, allowing administrator access for the fast scan reads them too."}>
-        <span class="name"><span class="title">Not scanned</span><span class="sub">Used on the drive, but not readable by this scan</span></span>
+      <li class="row loose unscanned" use:tip={stopped ? "The scan was stopped before it reached this part of the drive. Scan again to count it." : "The drive reports this much more in use than the scan could read: usually folders Windows or macOS protect.\nOn Windows, allowing administrator access for the fast scan reads them too."}>
+        <span class="name"><span class="title">{stopped ? "Not counted" : "Not scanned"}</span><span class="sub">{stopped ? "The scan was stopped before reaching it" : "Used on the drive, but not readable by this scan"}</span></span>
         <span class="bar"><span class="hatched" style:width="{share(unscanned, largest) * 100}%"></span></span>
         <span class="num size">{bytes(unscanned)}</span>
         <span class="num pct">{percent(unscanned, total)}</span>

@@ -28,6 +28,7 @@ In the repository's **Settings**:
 
 - [x] Repository made public (17 Nov): Actions minutes are free.
 - [x] Dependabot turned on (17 Nov).
+- [ ] Close Dependabot PR #1 (TypeScript 7): it can't be taken until svelte-check supports TypeScript 7; Dependabot now skips that major version.
 - [ ] Code security → also turn on **Secret scanning**, **Push protection** and **Private vulnerability reporting** if not done (Dependabot alerts and security updates are on).
 - [ ] Branches → add a rule for the main branch: require the **CI** and **Security**
       checks to pass and require a pull request before merging.

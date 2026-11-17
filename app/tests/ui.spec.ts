@@ -129,6 +129,25 @@ test.describe("folders", () => {
     await expect(page.locator(".rows li.unscanned")).toHaveCount(0);
   });
 
+  test("after Stop, the uncounted part says so", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Scan Macintosh HD" }).click();
+    await page.getByRole("button", { name: "Stop" }).click();
+    await expect(page.getByText(/Stopped early/)).toBeVisible();
+    await expect(page.locator(".rows li.unscanned")).toContainText("Not counted");
+    await expect(page.locator(".rows li.unscanned")).toContainText("stopped before reaching it");
+  });
+
+  test("a saved scan reopened later shows no gap (the drive may have changed since)", async ({ page }) => {
+    await scanned(page);
+    await expect(page.locator(".rows li.unscanned")).toHaveCount(1);
+    // Reopen the drive: the app shows the latest saved scan.
+    await page.getByRole("button", { name: /Archive SSD/ }).click();
+    await page.getByRole("button", { name: /Macintosh HD/ }).click();
+    await expect(page.getByRole("tablist", { name: "Views" })).toBeVisible();
+    await expect(page.locator(".rows li.unscanned")).toHaveCount(0);
+  });
+
   test("cloud-only files are noted, not counted as space on the drive", async ({ page }) => {
     await scanned(page);
     await expect(page.getByText(/Also 6\.4 GB of files kept only in the cloud/)).toBeVisible();

@@ -20,12 +20,13 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 25 / 90 (28%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 26 / 90 (29%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
-| **Sprint 3 · ring polish (current)** | 8 / 10 (80%) | Days 21–24, 26–29 done; 25 waits for your notes |
+| **Sprint 3 · ring polish (current)** | 9 / 10 (90%) | Days 21–24, 26–30 done; 25 waits for your notes |
 
 Log (newest first):
+- 17 Nov · Day 30 ✅ buffer: Not scanned edge cases, CI hygiene. Sprint 3 9/10 (90%), overall 26/90 (29%).
 - 17 Nov · Day 29 ✅ ring geometry, Reduce Motion and pixel-snapshot tests (44 UI tests). Sprint 3 8/10 (80%), overall 25/90 (28%).
 - 17 Nov · Day 28 ✅ "Not scanned" and cloud-only shown as their own items. Sprint 3 7/10 (70%), overall 24/90 (27%).
 - 17 Nov · Day 27 ✅ keyboard navigation of the ring, lists and tabs. Sprint 3 6/10 (60%), overall 23/90 (26%).
@@ -42,7 +43,7 @@ Log (newest first):
 - 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
 - 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
 
-Next: Day 30 (buffer: open bugs), then Sprint 4 (Day 31: right-click menu). Days 25 and 17 wait for your MVP notes; Day 16 for the MacBook.
+Next: Sprint 4, Day 31 (right-click menu: Reveal, Preview, Copy Path, Exclude). Days 25 and 17 wait for your MVP notes; Day 16 for the MacBook.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -132,7 +133,7 @@ of introducing them.
 | 27 ✅ | Opus | Keyboard: the ring takes focus (Left/Right between slices, Down into a folder's ring, Up back out, Home/End, Enter opens, Backspace/Escape up), each step announced for screen readers and mirrored in the list. Up/Down/Home/End in the folder, app and file lists; tabs follow the standard pattern (arrows switch, one Tab stop). Fixed: slices stored as plain values so lookups match. 3 UI tests | — |
 | 28 ✅ | Opus | At the top of a drive, space in use that the scan could not read is its own hatched "Not scanned" slice and list row (with why, and how the fast scan reads it); shares are now of the whole drive in use, so rows add to 100%. Unreadable folders are hatched too. Cloud-only files (OneDrive, iCloud) are noted per folder and under the kinds, never counted as space on the drive. 2 UI tests | — |
 | 29 ✅ | Opus | Ring tests (`app/tests/ring.spec.ts`): every slice is where its share says, in list order, clockwise from 12 o'clock; Reduce Motion shows it complete at once; pixel snapshots in light, dark and one-kind-picked (centre text masked so fonts don't matter; a colour change fails it, checked). With Days 19–28, 44 UI tests in all. To approve a deliberate change: `npx playwright test ring --update-snapshots` | — |
-| 30 | Opus | Buffer day: open bugs | — |
+| 30 ✅ | Opus | Buffer: "Not scanned" only for a scan made in this session (a saved scan can't be compared with today's drive); after Stop it reads "Not counted (stopped early)"; a transient npm-registry signature error confirmed and cleared; Dependabot told to skip TypeScript 7 until svelte-check supports it (PR #1 can be closed). 2 UI tests (46 in all) | Close Dependabot PR #1 (TypeScript 7) on GitHub. |
 
 ## Sprint 4 · weeks 7–8 · polish and testing
 
