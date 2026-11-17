@@ -7,11 +7,25 @@
   import { listKeys } from "./keys";
   import { openMenu, isMenuKey, copyPath } from "./menu.svelte";
   import { isWindows } from "./platform";
+  import PreviewDialog from "./PreviewDialog.svelte";
+  import type { Preview } from "./types";
+
+  let previewing = $state<{ file: LargeFile; preview: Preview | null } | null>(null);
+  async function preview(f: LargeFile) {
+    previewing = { file: f, preview: null };
+    try {
+      const p = await api.previewFile(scanId, f.dirId, f.name);
+      if (previewing?.file === f) previewing.preview = p;
+    } catch {
+      if (previewing?.file === f) previewing.preview = { kind: "none" };
+    }
+  }
 
   const sep = isWindows ? "\\" : "/";
   function fileMenu(e: MouseEvent | KeyboardEvent, f: LargeFile) {
     const path = (f.folder.endsWith(sep) ? f.folder : f.folder + sep) + f.name;
     openMenu(e, f.name, [
+      { label: "Preview", run: () => preview(f) },
       { label: `Show in ${fileManager}`, run: () => api.reveal(scanId, f.dirId, f.name) },
       { label: "Copy Path", run: () => copyPath(path) },
     ]);
@@ -59,10 +73,25 @@
           <span class="sub" title={f.folder}>{f.folder}</span>
         </span>
         <span class="num size">{bytes(f.allocBytes)}</span>
-        <button class="link" onclick={() => api.reveal(scanId, f.dirId, f.name)} onkeydown={(e) => (isMenuKey(e) ? fileMenu(e, f) : listKeys(e, "button.link"))}>Show in {fileManager}</button>
+        <button class="link" onclick={() => api.reveal(scanId, f.dirId, f.name)} onkeydown={(e) => {
+          if (isMenuKey(e)) fileMenu(e, f);
+          else if (e.key === " ") {
+            e.preventDefault();
+            preview(f); // Space previews, as in Finder and Explorer's preview pane
+          } else listKeys(e, "button.link");
+        }}>Show in {fileManager}</button>
       </li>
     {/each}
   </ul>
+{/if}
+
+{#if previewing}
+  <PreviewDialog
+    name={previewing.file.name}
+    preview={previewing.preview}
+    onclose={() => (previewing = null)}
+    onreveal={() => previewing && api.reveal(scanId, previewing.file.dirId, previewing.file.name)}
+  />
 {/if}
 
 <style>

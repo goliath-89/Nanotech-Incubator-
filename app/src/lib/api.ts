@@ -10,6 +10,7 @@ import type {
   Listing,
   Partial,
   PlacedDir,
+  Preview,
   Progress,
   RingNode,
   ScanSummary,
@@ -70,6 +71,11 @@ export function getSuggestions(scanId: number): Promise<Suggestion[]> {
 /** Move the chosen suggestions to the Trash or Recycle Bin. */
 export function cleanUp(scanId: number, numbers: number[]): Promise<CleanupReport> {
   return inApp ? call("clean_up", { scanId, numbers }) : demo.cleanUp(numbers);
+}
+
+/** Preview a file of a scan: Quick Look on macOS, data for the window elsewhere. */
+export function previewFile(scanId: number, dirId: number, file: string): Promise<Preview> {
+  return inApp ? call("preview_file", { scanId, dirId, file }) : demo.previewFile(file);
 }
 
 /** "mica" when Windows 11 put its material behind the window, else "none". */

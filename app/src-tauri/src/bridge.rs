@@ -650,16 +650,15 @@ pub fn largest_files(
         .collect()
 }
 
-/// Show a folder, or a file in it, in Explorer or Finder. The path is
-/// rebuilt from the scan history; the window only names the folder by id
+/// A folder of a saved scan, or a file in it, as a path on disk. The path
+/// is rebuilt from the scan history; the window only names the folder by id
 /// and the file by its bare name.
-#[tauri::command]
-pub fn reveal(
-    state: State<'_, AppState>,
+pub(crate) fn path_in_scan(
+    state: &AppState,
     scan_id: i64,
     dir_id: u32,
     file: Option<String>,
-) -> Reply<()> {
+) -> Reply<PathBuf> {
     let mut path = {
         let store = state.store.lock().map_err(text)?;
         store.dir_path(scan_id, dir_id).map_err(text)?
@@ -675,6 +674,18 @@ pub fn reveal(
         }
         path.push(name);
     }
+    Ok(path)
+}
+
+/// Show a folder, or a file in it, in Explorer or Finder.
+#[tauri::command]
+pub fn reveal(
+    state: State<'_, AppState>,
+    scan_id: i64,
+    dir_id: u32,
+    file: Option<String>,
+) -> Reply<()> {
+    let path = path_in_scan(&state, scan_id, dir_id, file)?;
     if !path.exists() {
         return Err(format!("{} is no longer there", path.display()));
     }

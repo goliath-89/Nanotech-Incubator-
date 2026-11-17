@@ -92,6 +92,9 @@ Checked by `tools/check-app-hardening.py` on every push:
   scan comes from the system's drive list), folders by id, files by a bare
   name (no separators, drive or stream prefix), suggestions by number.
 - One scan at a time.
+- Preview never runs a file or opens it in another program: Quick Look on
+  macOS, otherwise images (decoded by the web view) and text only; links
+  are not followed and cloud-only files are not read.
 - `unsafe` is forbidden in `strata-store`, `strata-safety`,
   `strata-classify`, `strata-reclaim` and `strata-pipeline`; every other
   `unsafe` block carries a `// SAFETY:` comment.

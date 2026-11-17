@@ -129,6 +129,10 @@ jobs:
       - name: Check interface
         working-directory: app
         run: npm run check
+      - name: App's own Rust tests
+        if: matrix.name == 'windows-x64'
+        working-directory: app/src-tauri
+        run: cargo test
       - name: Build installers
         working-directory: app
         run: npx tauri build ${{ matrix.args }}

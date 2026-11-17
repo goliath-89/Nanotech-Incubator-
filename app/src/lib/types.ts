@@ -132,3 +132,11 @@ export interface CleanupReport {
   refused: { path: string; reason: string }[];
   failed: { path: string; reason: string }[];
 }
+
+/** What `preview_file` returns. */
+export type Preview =
+  | { kind: "native" }
+  | { kind: "image"; mime: string; data: string }
+  | { kind: "text"; text: string; truncated: boolean }
+  | { kind: "cloud" }
+  | { kind: "none" };

@@ -190,7 +190,20 @@ const files: LargeFile[] = [
   ["Docker.raw", "/Users/sam/Library/Containers/com.docker.docker/Data/vms/0", 8.8, 7],
   ["Final-cut-render.mov", "/Users/sam/Movies/Final Cut Library.fcpbundle", 6.2, 1], ["sleepimage", "/private/var/vm", 6.0, 8],
   ["IMG_9356.mov", "/Users/sam/Pictures", 1.0, 1], ["Installer.dmg", "/Users/sam/Downloads", 0.9, 5],
+  ["Panorama-2024.png", "/Users/sam/Pictures", 0.6, 2], ["server.log", "/Users/sam/code/app", 0.5, 0],
 ].map(([name, folder, gb, kind], i) => ({ dirId: i, name: name as string, folder: folder as string, allocBytes: String((gb as number) * GB), kind: kind as number }));
+
+export async function previewFile(name: string): Promise<import("./types").Preview> {
+  if (name.endsWith(".png")) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="300"><defs><linearGradient id="g" x2="1"><stop offset="0" stop-color="#ff9f0a"/><stop offset="1" stop-color="#bf5af2"/></linearGradient></defs><rect width="640" height="300" fill="url(#g)"/><path d="M0 230 L160 120 L300 210 L430 90 L640 220 V300 H0Z" fill="#1d1d1f" opacity=".55"/></svg>`;
+    return { kind: "image", mime: "image/svg+xml", data: btoa(svg) };
+  }
+  if (name.endsWith(".log")) {
+    const lines = Array.from({ length: 40 }, (_, i) => `2026-11-17 09:${String(i).padStart(2, "0")}:12 INFO request ${1000 + i} served in ${(i * 7) % 90} ms`);
+    return { kind: "text", text: lines.join("\n"), truncated: true };
+  }
+  return { kind: "none" };
+}
 
 export async function largestFiles(kind: number | null) {
   return kind === null ? files : files.filter((f) => f.kind === kind);

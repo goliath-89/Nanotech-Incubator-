@@ -280,13 +280,13 @@ test.describe("largest files", () => {
     await page.getByRole("tab", { name: "Largest Files" }).click();
     const list = page.locator("li .title");
     await expect(list.first()).toHaveText("Photos-export-2023.zip");
-    await expect(list).toHaveCount(7);
+    await expect(list).toHaveCount(9);
     const chips = page.getByRole("group", { name: "Show files of one kind" });
     await chips.getByRole("button", { name: "Videos" }).click();
     await expect(chips.getByRole("button", { name: "Videos" })).toHaveAttribute("aria-pressed", "true");
     await expect(list).toHaveText(["Wedding-raw.mov", "Final-cut-render.mov", "IMG_9356.mov"]);
     await chips.getByRole("button", { name: "All" }).click();
-    await expect(list).toHaveCount(7);
+    await expect(list).toHaveCount(9);
   });
 });
 
@@ -403,7 +403,7 @@ test.describe("right-click menu", () => {
     await page.getByRole("tab", { name: "Largest Files" }).click();
     await page.locator("li").filter({ hasText: "Wedding-raw.mov" }).click({ button: "right" });
     const menu = page.getByRole("menu", { name: "Wedding-raw.mov" });
-    await expect(menu.getByRole("menuitem")).toHaveText(["Show in Finder", "Copy Path"]);
+    await expect(menu.getByRole("menuitem")).toHaveText(["Preview", "Show in Finder", "Copy Path"]);
     await menu.getByRole("menuitem", { name: "Copy Path" }).click();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("/Users/sam/Movies/Wedding-raw.mov");
     // Elsewhere the webview's own menu is suppressed.
@@ -414,6 +414,45 @@ test.describe("right-click menu", () => {
     });
     expect(prevented).toBe(true);
     await expect(page.getByRole("menu")).toHaveCount(0);
+  });
+});
+
+test.describe("preview", () => {
+  test("images and text preview inside Strata; other files are never opened", async ({ page }) => {
+    const errors = watchErrors(page);
+    await scanned(page);
+    await page.getByRole("tab", { name: "Largest Files" }).click();
+    await page.locator("li").filter({ hasText: "Panorama-2024.png" }).click({ button: "right" });
+    await expect(page.getByRole("menu").getByRole("menuitem")).toHaveText(["Preview", "Show in Finder", "Copy Path"]);
+    await page.getByRole("menuitem", { name: "Preview" }).click();
+    const dialog = page.getByRole("dialog", { name: "Preview of Panorama-2024.png" });
+    await expect(dialog.getByRole("img", { name: "Preview of Panorama-2024.png" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Close" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+
+    await page.locator("li").filter({ hasText: "server.log" }).click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Preview" }).click();
+    await expect(page.getByRole("dialog").locator("pre")).toContainText("request 1000 served");
+    await expect(page.getByRole("dialog")).toContainText("Showing the beginning of the file.");
+    await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
+
+    await page.locator("li").filter({ hasText: "Installer.dmg" }).click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Preview" }).click();
+    await expect(page.getByRole("dialog")).toContainText("Strata never opens files in other programs");
+    expect(errors).toEqual([]);
+  });
+
+  test("Space previews the focused file and closes it again", async ({ page }) => {
+    await scanned(page);
+    await page.getByRole("tab", { name: "Largest Files" }).click();
+    const reveal = page.locator("li").filter({ hasText: "server.log" }).getByRole("button", { name: "Show in Finder" });
+    await reveal.focus();
+    await page.keyboard.press("Space");
+    await expect(page.getByRole("dialog", { name: "Preview of server.log" })).toBeVisible();
+    await page.keyboard.press("Space");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(reveal).toBeFocused();
   });
 });
 

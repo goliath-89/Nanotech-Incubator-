@@ -3,6 +3,7 @@
 
 mod bridge;
 mod elevated;
+mod preview;
 mod window;
 
 fn main() {
@@ -35,6 +36,7 @@ fn main() {
             bridge::get_suggestions,
             bridge::clean_up,
             bridge::open_trash,
+            preview::preview_file,
             window::window_material,
         ])
         .run(tauri::generate_context!())
