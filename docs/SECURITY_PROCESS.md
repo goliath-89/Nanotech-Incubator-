@@ -79,6 +79,15 @@ Checked by `tools/check-app-hardening.py` on every push:
   in the window. That copy accepts exactly one drive letter and one output
   file named `fast-scan-<digits>.sqlite` in Strata's own data folder, which
   it creates fresh (never following or overwriting an existing file).
+  Before writing it holds the folder open (so it cannot be renamed or
+  replaced), refuses links and junctions, and checks the real path of the
+  folder and the file through their handles. SQLite runs in memory there
+  and the bytes are written once, so no `-wal`, `-shm` or journal file is
+  ever created by an administrator process.
+- The window names things by id or number only: drives by id (the path to
+  scan comes from the system's drive list), folders by id, files by a bare
+  name (no separators, drive or stream prefix), suggestions by number.
+- One scan at a time.
 - `unsafe` is forbidden in `strata-store`, `strata-safety`,
   `strata-classify`, `strata-reclaim` and `strata-pipeline`; every other
   `unsafe` block carries a `// SAFETY:` comment.
@@ -102,6 +111,14 @@ Checked by `tools/check-app-hardening.py` on every push:
 | 2026-11-17 | CI actions referenced by movable tags; default token permissions | Low | Every action pinned to a commit; `contents: read` by default; checkout without stored credentials |
 | 2026-11-17 | First CI run: CodeQL could not report (missing `actions: read`); Rust 1.100 lint on manual byte chunking | — (process) | Permission added to the CodeQL job only; three spots changed to fixed-size chunks |
 | 2026-11-17 | CodeQL upload refused: code scanning is not switched on for the repository | — (process) | CodeQL now writes its results to a file and `tools/codeql-gate.py` fails the job on any finding; results are kept as a run artifact. Works with or without GitHub code scanning |
+| 2026-11-17 | Day 20 review: the elevated fast-scan copy wrote into a folder in the user's profile by path. Anything running as the user could replace that folder (or plant SQLite's `-wal`/`-shm` files) with links to system locations and have an administrator process write there | High | Folder held open and checked through its handle (no links, real path matches); file created without following links and checked the same way; SQLite in memory, bytes written once. Exit code 7 if the folder is not safe; the app then walks the folders |
+| 2026-11-17 | Day 20 review: `start_scan` accepted any path from the window | Medium | Takes a drive id only; the path comes from the system's drive list; network drives refused |
+| 2026-11-17 | Day 20 review: "Show in Explorer" accepted a file name such as `C:x`, which on Windows replaces the whole path | Medium | Only a single plain name: no separators, no `:` |
+| 2026-11-17 | Day 20 review: Clean Up carried on if protecting Strata's own data folder failed | Medium | Fails closed with a message |
+| 2026-11-17 | Day 20 review: any number of scans could be started at once | Low | One scan at a time |
+| 2026-11-17 | Day 20 review: Content Security Policy did not set `base-uri`, `form-action`, `object-src`, `frame-ancestors` | Low | All set to `'none'` |
+| 2026-11-17 | Day 20 review: the per-user install puts Strata's program files where the user can write; malware running as the user could swap the exe before the administrator prompt for the fast scan | Medium — **accepted until Day 75** (review 2026-12-17) | The prompt shows an unverified publisher until signing. Day 75: signed builds, and the elevated copy refuses to run unless its own signature checks out; consider a per-machine install |
+| 2026-11-17 | Dependency updates (Dependabot PRs #2–#4): windows-sys 0.61, rusqlite 0.43 (SQLite 3.5x), toml 1.x; checkout, upload-artifact, setup-node v7; gitleaks-action v3 | — (maintenance) | Applied together on the branch; every action SHA checked against its release tag |
 
 ## Your part
 

@@ -90,7 +90,7 @@
     if (!volume) return;
     try {
       // On Windows a whole drive is read from its file table when allowed.
-      const token = await api.startScan(volume.mount, volume.id, isWindows);
+      const token = await api.startScan(volume.id, isWindows);
       phase = { name: "scanning", token, progress: null, started: Date.now(), stage: null };
     } catch (e) {
       phase = { name: "error", message: String(e) };

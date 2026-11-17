@@ -624,3 +624,30 @@ fn suggestions_round_trip_in_order_and_follow_the_scan() {
     store.delete(new).unwrap();
     assert!(matches!(store.suggestions(new), Err(StoreError::NotFound)));
 }
+
+#[test]
+fn a_store_in_memory_round_trips_through_its_bytes() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join("a/b")).unwrap();
+    std::fs::write(dir.path().join("a/b/f.txt"), vec![1u8; 5000]).unwrap();
+    let tree = strata_core::scan(
+        &strata_core::ScanOptions::new(dir.path()),
+        &NoClassify,
+        &strata_core::ScanControl::new(),
+    )
+    .unwrap();
+    let mut memory = Store::open_in_memory().unwrap();
+    let meta = ScanMeta {
+        volume_id: "v".into(),
+        started_at: 1,
+        finished_at: 2,
+    };
+    memory.save(&tree, &meta).unwrap();
+    let file = dir.path().join("copy.sqlite");
+    std::fs::write(&file, memory.to_bytes().unwrap()).unwrap();
+    let copy = Store::open(&file).unwrap();
+    let id = copy.scans(None).unwrap()[0].id;
+    let loaded = copy.load(id).unwrap();
+    assert_eq!(loaded.root().alloc_bytes, tree.root().alloc_bytes);
+    assert_eq!(loaded.root().file_count, tree.root().file_count);
+}

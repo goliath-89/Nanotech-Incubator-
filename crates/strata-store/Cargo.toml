@@ -9,7 +9,7 @@ publish.workspace = true
 
 [dependencies]
 strata-core = { path = "../strata-core" }
-rusqlite = { version = "0.41", features = ["bundled"] }
+rusqlite = { version = "0.43", features = ["bundled", "serialize"] }
 
 [dev-dependencies]
 tempfile = "3"

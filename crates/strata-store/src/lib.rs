@@ -221,6 +221,14 @@ impl Store {
         Store::init(Connection::open_in_memory()?)
     }
 
+    /// The whole database as the bytes of a SQLite file. Used by the
+    /// elevated Windows scan, which must not let SQLite create files (or
+    /// their -wal and -shm companions) by path: it saves to a store in
+    /// memory and writes these bytes through a handle it has checked.
+    pub fn to_bytes(&mut self) -> Result<Vec<u8>> {
+        Ok(self.conn.serialize(rusqlite::MAIN_DB)?.to_vec())
+    }
+
     fn init(mut conn: Connection) -> Result<Store> {
         conn.pragma_update(None, "foreign_keys", true)?;
         conn.busy_timeout(std::time::Duration::from_secs(5))?;

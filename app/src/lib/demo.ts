@@ -68,7 +68,7 @@ export async function latestScan(volumeId: string): Promise<ScanSummary | null> 
   return volumeId === "demo-1" && scanned ? { scanId: 1, finishedAt: 0, allocBytes: String(flat[0].bytes), fileCount: "1840000" } : null;
 }
 
-export async function startScan(_path: string, _volumeId: string) {
+export async function startScan(_volumeId: string) {
   const token = 1;
   let tick = 0;
   // UI tests can ask for a scan stage message: ?demo-stage=permission

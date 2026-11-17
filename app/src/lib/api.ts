@@ -28,8 +28,9 @@ export function listVolumes(): Promise<Volume[]> {
   return inApp ? call("list_volumes") : demo.listVolumes();
 }
 
-export function startScan(path: string, volumeId: string, fast: boolean): Promise<number> {
-  return inApp ? call("start_scan", { path, volumeId, fast }) : demo.startScan(path, volumeId);
+/** Scan a drive from the list. The app looks up its path itself. */
+export function startScan(volumeId: string, fast: boolean): Promise<number> {
+  return inApp ? call("start_scan", { volumeId, fast }) : demo.startScan(volumeId);
 }
 
 export function cancelScan(token: number): Promise<void> {

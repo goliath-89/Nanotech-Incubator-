@@ -150,7 +150,7 @@ a display string; the UI never builds a path itself.
 | Command | Arguments | Returns |
 | --- | --- | --- |
 | `list_volumes` | none | `[{ id, name, mount, total, used, free, kind }]` |
-| `start_scan` | `{ volume_id \| path, fast }` | `{ scan_token }` |
+| `start_scan` | `{ volume_id, fast }` (the path comes from `volumes()`, never from the window; one scan at a time) | `{ scan_token }` |
 | `cancel_scan` | `{ scan_token }` | none |
 | `get_dir` | `{ scan_id, dir_id }` | `{ dir, children[], files[], breadcrumb[] }` |
 | `largest_files` | `{ scan_id, kind?, limit }` | `[{ dir_id, name, path, alloc, kind }]` |

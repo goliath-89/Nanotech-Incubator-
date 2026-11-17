@@ -119,20 +119,36 @@ struct Failed {
 pub fn start_scan(
     app: AppHandle,
     state: State<'_, AppState>,
-    path: String,
     volume_id: String,
     fast: bool,
 ) -> Reply<u64> {
+    // The window names a drive by its id; the path to scan comes from the
+    // system's own list of drives, never from the window.
+    let volume = volumes()
+        .map_err(text)?
+        .into_iter()
+        .find(|v| v.id == volume_id)
+        .ok_or("That drive is no longer connected")?;
+    if volume.kind == VolumeKind::Network {
+        return Err("Network drives are not scanned".into());
+    }
+    let path = volume.mount;
     let token = state.next_token.fetch_add(1, Ordering::Relaxed);
     let ctl = Arc::new(ScanControl::new());
-    state.scans.lock().map_err(text)?.insert(token, ctl.clone());
+    {
+        let mut scans = state.scans.lock().map_err(text)?;
+        if !scans.is_empty() {
+            return Err("A scan is already running".into());
+        }
+        scans.insert(token, ctl.clone());
+    }
     let store = state.store.clone();
     let data_folder = state.data_folder.clone();
 
     std::thread::Builder::new()
         .name(format!("strata-scan-{token}"))
         .spawn(move || {
-            let root = PathBuf::from(&path);
+            let root = path;
             let started_at = now();
             let finished = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
@@ -599,7 +615,12 @@ pub fn reveal(
         store.dir_path(scan_id, dir_id).map_err(text)?
     };
     if let Some(name) = file {
-        if name.is_empty() || name == "." || name == ".." || name.contains(['/', '\\', '\0']) {
+        // One plain name inside the folder: no separators, no drive or
+        // stream prefix (a name like `C:x` would replace the whole path).
+        let plain = std::path::Path::new(&name)
+            .file_name()
+            .is_some_and(|n| n == std::ffi::OsStr::new(&name));
+        if !plain || name == "." || name == ".." || name.contains(['/', '\\', '\0', ':']) {
             return Err("not a file name".into());
         }
         path.push(name);
@@ -703,7 +724,11 @@ pub struct Problem {
 #[tauri::command]
 pub fn clean_up(state: State<'_, AppState>, scan_id: i64, numbers: Vec<u32>) -> Reply<CleanupDto> {
     let mut policy = strata_safety::Policy::for_current_user().map_err(|r| format!("{r:?}"))?;
-    let _ = policy.protect(&state.data_folder.to_string_lossy());
+    // Strata's own history must never be offered for cleanup; stop if it
+    // cannot be protected.
+    policy
+        .protect(&state.data_folder.to_string_lossy())
+        .map_err(|r| format!("could not protect Strata's own data folder: {r:?}"))?;
     let mut store = state.store.lock().map_err(text)?;
     let report =
         strata_pipeline::cleanup::clean_up(&mut store, scan_id, &numbers, &policy).map_err(text)?;

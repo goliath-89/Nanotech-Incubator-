@@ -5,7 +5,8 @@
 //! elevating the whole app (and its web view), Strata starts a second copy
 //! of itself through the Windows permission prompt. That copy only reads
 //! the file table of one drive, writes the result to a new file in Strata's
-//! own data folder, and exits. It opens no window and takes no other
+//! own data folder (checked not to be a link, and held open while writing;
+//! SQLite runs in memory so it creates no files of its own), and exits. It opens no window and takes no other
 //! instructions; its arguments are checked strictly because they cross a
 //! privilege boundary.
 
@@ -40,6 +41,8 @@ mod code {
     pub const NOT_NTFS: i32 = 4;
     pub const REFUSED: i32 = 5;
     pub const FAILED: i32 = 6;
+    /// The output folder is a link or is not where it should be.
+    pub const UNSAFE_OUTPUT: i32 = 7;
 }
 
 #[cfg(windows)]
@@ -54,13 +57,24 @@ pub fn run_elevated_copy(_args: &[String]) -> i32 {
 mod imp {
     use super::{code, ElevatedError, FLAG};
     use std::ffi::OsStr;
+    use std::io::Write;
     use std::os::windows::ffi::OsStrExt;
+    use std::os::windows::fs::OpenOptionsExt;
+    use std::os::windows::io::AsRawHandle;
     use std::path::{Path, PathBuf};
     use strata_classify::KindClassifier;
     use strata_core::{ScanControl, ScanTree};
     use strata_mft::{open_drive, scan_volume, MftError, MftOptions};
     use strata_store::{ScanMeta, Store};
-    use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, ERROR_CANCELLED};
+    use windows_sys::Win32::Foundation::{
+        CloseHandle, GetLastError, ERROR_CANCELLED, HANDLE, INVALID_HANDLE_VALUE,
+    };
+    use windows_sys::Win32::Storage::FileSystem::{
+        CreateFileW, GetFileInformationByHandle, GetFinalPathNameByHandleW,
+        BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_REPARSE_POINT,
+        FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT, FILE_NAME_NORMALIZED,
+        FILE_READ_ATTRIBUTES, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING, VOLUME_NAME_DOS,
+    };
     use windows_sys::Win32::System::Threading::{
         GetExitCodeProcess, WaitForSingleObject, INFINITE,
     };
@@ -107,14 +121,26 @@ mod imp {
         if !strata_mft::is_elevated() {
             return code::NOT_ELEVATED;
         }
-        // A fresh file only: never follow or overwrite something already there.
-        if std::fs::OpenOptions::new()
+        // The output folder is in the user's profile, where anything running
+        // as the user could swap it for a link to a system folder. Hold it
+        // open (so it cannot be renamed or replaced), refuse links, and check
+        // where it really is before writing anything as administrator.
+        let Some(folder) = output.parent().and_then(hold_folder) else {
+            return code::UNSAFE_OUTPUT;
+        };
+        // A fresh file only, never through a link, and nobody else may open it.
+        let mut file = match std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
+            .share_mode(0)
+            .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
             .open(&output)
-            .is_err()
         {
-            return code::BAD_ARGUMENTS;
+            Ok(file) => file,
+            Err(_) => return code::BAD_ARGUMENTS,
+        };
+        if !final_path(file.as_raw_handle() as HANDLE).is_some_and(|p| same_path(&p, &output)) {
+            return code::UNSAFE_OUTPUT;
         }
         let tree = match open_drive(letter).and_then(|drive| {
             let name = format!("{}:\\", letter.to_ascii_uppercase());
@@ -135,10 +161,99 @@ mod imp {
             started_at: 0,
             finished_at: 0,
         };
-        match Store::open(&output).and_then(|mut s| s.save(&tree, &meta)) {
-            Ok(_) => code::OK,
-            Err(_) => code::FAILED,
+        // SQLite works in memory only: it creates no files of its own here.
+        let bytes = Store::open_in_memory()
+            .and_then(|mut s| s.save(&tree, &meta).map(|_| s))
+            .and_then(|mut s| s.to_bytes());
+        let written = match bytes {
+            Ok(bytes) => file.write_all(&bytes).and_then(|_| file.sync_all()).is_ok(),
+            Err(_) => false,
+        };
+        drop(file);
+        drop(folder);
+        if written {
+            code::OK
+        } else {
+            code::FAILED
         }
+    }
+
+    /// An open handle on a folder; while it is held the folder cannot be
+    /// deleted, renamed or replaced.
+    struct HeldFolder(HANDLE);
+
+    impl Drop for HeldFolder {
+        fn drop(&mut self) {
+            // SAFETY: the handle came from CreateFileW and is closed once.
+            unsafe { CloseHandle(self.0) };
+        }
+    }
+
+    /// Open `dir` without following links and check that it is a real
+    /// folder at exactly that path.
+    fn hold_folder(dir: &Path) -> Option<HeldFolder> {
+        let name = wide(dir.as_os_str());
+        // SAFETY: `name` is a NUL-terminated wide string that outlives the
+        // call; the null pointers are the documented "none" values.
+        let handle = unsafe {
+            CreateFileW(
+                name.as_ptr(),
+                FILE_READ_ATTRIBUTES,
+                FILE_SHARE_READ | FILE_SHARE_WRITE, // not delete: no renaming
+                std::ptr::null(),
+                OPEN_EXISTING,
+                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                std::ptr::null_mut(),
+            )
+        };
+        if handle == INVALID_HANDLE_VALUE {
+            return None;
+        }
+        let held = HeldFolder(handle);
+        // SAFETY: plain data; all-zero is a valid starting value.
+        let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+        // SAFETY: `handle` is open and `info` is writable.
+        if unsafe { GetFileInformationByHandle(handle, &mut info) } == 0 {
+            return None;
+        }
+        let attributes = info.dwFileAttributes;
+        let real_folder = attributes & FILE_ATTRIBUTE_DIRECTORY != 0
+            && attributes & FILE_ATTRIBUTE_REPARSE_POINT == 0;
+        (real_folder && final_path(handle).is_some_and(|p| same_path(&p, dir))).then_some(held)
+    }
+
+    /// Where an open handle really points, without the \\?\ prefix.
+    fn final_path(handle: HANDLE) -> Option<PathBuf> {
+        let mut buffer = vec![0u16; 1024];
+        // SAFETY: `handle` is open; the buffer is writable for its length.
+        let n = unsafe {
+            GetFinalPathNameByHandleW(
+                handle,
+                buffer.as_mut_ptr(),
+                buffer.len() as u32,
+                FILE_NAME_NORMALIZED | VOLUME_NAME_DOS,
+            )
+        } as usize;
+        if n == 0 || n >= buffer.len() {
+            return None;
+        }
+        let text = String::from_utf16(&buffer[..n]).ok()?;
+        let text = match text.strip_prefix(r"\\?\UNC\") {
+            Some(rest) => format!(r"\\{rest}"),
+            None => text.strip_prefix(r"\\?\").unwrap_or(&text).to_string(),
+        };
+        Some(PathBuf::from(text))
+    }
+
+    /// Same path, ignoring letter case and a trailing separator.
+    fn same_path(a: &Path, b: &Path) -> bool {
+        let norm = |p: &Path| {
+            p.to_string_lossy()
+                .replace('/', "\\")
+                .trim_end_matches('\\')
+                .to_lowercase()
+        };
+        norm(a) == norm(b)
     }
 
     fn wide(text: &OsStr) -> Vec<u16> {
@@ -201,6 +316,9 @@ mod imp {
         let result = match exit as i32 {
             code::OK => read_result(&output),
             code::NOT_NTFS => Err(ElevatedError::Failed("the drive is not NTFS".into())),
+            code::UNSAFE_OUTPUT => Err(ElevatedError::Failed(
+                "Strata's data folder is a link to somewhere else, so the fast scan did not write its result".into(),
+            )),
             code::REFUSED => Err(ElevatedError::Failed(
                 "Windows refused direct access to the drive even with administrator rights (security software can do this)".into(),
             )),
