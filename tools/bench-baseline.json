@@ -1,6 +1,18 @@
 {
-  "_note": "Regression guards for the nightly benchmark on GitHub's runners (warm cache). Set loose on purpose; tighten after a week of nightly numbers. Limits are files per second at the median run and peak memory.",
-  "linux": { "files": 500000, "min_files_per_s": 150000, "max_peak_mb": 150 },
-  "macos": { "files": 500000, "min_files_per_s": 40000, "max_peak_mb": 150 },
-  "windows": { "files": 200000, "min_files_per_s": 15000, "max_peak_mb": 150 }
+  "_note": "Regression guards for the nightly benchmark on GitHub's runners (warm cache). Set loose on purpose; tighten after a week of nightly numbers. Limits are files per second at the median run and peak memory. Windows tightened 17 Nov from the first run on GitHub's runner: 259,740 files/s median, 34 MB peak.",
+  "linux": {
+    "files": 500000,
+    "min_files_per_s": 150000,
+    "max_peak_mb": 150
+  },
+  "macos": {
+    "files": 500000,
+    "min_files_per_s": 40000,
+    "max_peak_mb": 150
+  },
+  "windows": {
+    "files": 200000,
+    "min_files_per_s": 130000,
+    "max_peak_mb": 70
+  }
 }
