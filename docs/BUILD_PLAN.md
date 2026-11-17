@@ -20,17 +20,18 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 14 / 90 (16%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 15 / 90 (17%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
-| **Sprint 2 · MVP (current)** | 5 / 10 (50%) | Days 11–15 done; MVP installed and both scan methods work on Windows ARM64 |
+| **Sprint 2 · MVP (current)** | 6 / 10 (60%) | Days 11–15 and 18 done; MVP installed and both scan methods work on Windows ARM64 |
 
 Log (newest first):
+- 17 Nov · Day 18 ✅ nightly accuracy and benchmark CI on all three systems. Sprint 2 6/10 (60%), overall 15/90 (17%).
 - 17 Nov · Day 15 ✅ MVP: elevated fast scan, Recycle Bin item. Sprint 2 5/10 (50%), overall 14/90 (16%). CodeQL gate fixed; all checks green.
 - 17 Nov · Days 13–14 ✅ Apps, Largest Files, Clean Up tabs; security process in CI. Sprint 2 4/10 (40%).
 - 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
 - 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
 
-Next: Day 18 (nightly accuracy and benchmark CI), Day 19 (UI tests), Day 20 (review + Dependabot updates). Day 16 waits for the MacBook; Day 17 waits for your MVP notes.
+Next: Day 19 (UI tests), Day 20 (review + Dependabot updates). Day 16 waits for the MacBook; Day 17 waits for your MVP notes.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -103,7 +104,7 @@ of introducing them.
 | 15 ✅ | Opus | Windows: ask for administrator rights to use the fast scan; Recycle Bin shown as its own item. **MVP** | Use the MVP for a few days; list what to fix. |
 | 16 | Opus | macOS: Full Disk Access check and setup screen | Once the MacBook is ready: install and scan. |
 | 17 | Opus | Fixes from your MVP notes | — |
-| 18 | Opus | Nightly CI: accuracy and benchmark jobs | — |
+| 18 ✅ | Opus | Nightly CI (`.github/workflows/nightly.yml`, 02:23 UTC and on demand): a known 100k-file tree must match an independent count exactly on all three systems (hard links included); the whole system drive must be 97% (Linux walk) or 98% (Windows fast scan) covered and never over 100.5%; macOS reported only until Day 3. Benchmark with speed and memory limits per system (`tools/bench-baseline.json`); Windows peak memory now measured | — |
 | 19 | Opus | UI tests (Playwright on the browser build with example data) | — |
 | 20 | Fable or Opus | Review of the bridge and app; fix findings | Decide: keep the name "Strata"? |
 

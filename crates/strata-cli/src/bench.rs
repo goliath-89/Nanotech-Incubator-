@@ -136,7 +136,27 @@ fn peak_memory_mb() -> Option<f64> {
     Some(usage.ru_maxrss as f64 / (1024.0 * 1024.0)) // bytes on macOS
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+#[cfg(windows)]
+fn peak_memory_mb() -> Option<f64> {
+    use windows_sys::Win32::System::ProcessStatus::{
+        GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS,
+    };
+    use windows_sys::Win32::System::Threading::GetCurrentProcess;
+    let size = std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32;
+    // SAFETY: GetCurrentProcess returns a pseudo-handle that needs no closing;
+    // `counters` is a zeroed, writable struct and `size` is its exact size.
+    let counters = unsafe {
+        let mut counters: PROCESS_MEMORY_COUNTERS = std::mem::zeroed();
+        counters.cb = size;
+        if GetProcessMemoryInfo(GetCurrentProcess(), &mut counters, size) == 0 {
+            return None;
+        }
+        counters
+    };
+    Some(counters.PeakWorkingSetSize as f64 / (1024.0 * 1024.0))
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
 fn peak_memory_mb() -> Option<f64> {
     None
 }

@@ -1,0 +1,114 @@
+name: Nightly
+
+# Accuracy and speed on all three systems, every night and on demand.
+# Results are in each job's summary and kept as artifacts for 90 days.
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/nightly.yml
+      - tools/nightly-check.py
+      - tools/bench-baseline.json
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  PYTHONIOENCODING: utf-8
+
+jobs:
+  accuracy:
+    name: Accuracy (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, name: linux, exe: target/release/strata, py: python3 }
+          - { os: macos-latest, name: macos, exe: target/release/strata, py: python3 }
+          - { os: windows-latest, name: windows, exe: target/release/strata.exe, py: python }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Build
+        run: cargo build --release -p strata-cli
+      - name: Known tree matches an independent count
+        run: |
+          tree="$RUNNER_TEMP/tree"
+          ${{ matrix.exe }} make-tree "$tree" 100000
+          # Hard links: counted as names, their bytes once.
+          if [ "${{ matrix.name }}" != windows ]; then
+            ln "$tree/top00/mid00/sub00/leaf0/f0.jpg" "$tree/top01/hard-link.jpg"
+          fi
+          mkdir -p results
+          ${{ matrix.exe }} scan "$tree" --json --quiet > results/tree-${{ matrix.name }}.json
+          ${{ matrix.py }} tools/nightly-check.py tree "$tree" results/tree-${{ matrix.name }}.json
+      - name: Whole system drive (Linux, walk as root)
+        if: matrix.name == 'linux'
+        run: |
+          sudo ${{ matrix.exe }} scan / --json --quiet > results/volume-linux.json
+          ${{ matrix.py }} tools/nightly-check.py volume results/volume-linux.json 97
+      - name: Whole system drive (Windows, fast scan as administrator)
+        if: matrix.name == 'windows'
+        run: |
+          ${{ matrix.exe }} scan C: --fast --json --quiet > results/volume-windows.json
+          ${{ matrix.py }} tools/nightly-check.py volume results/volume-windows.json 98
+      - name: Whole data volume (macOS, report only until Day 3)
+        if: matrix.name == 'macos'
+        run: |
+          sudo ${{ matrix.exe }} scan /System/Volumes/Data --json --quiet > results/volume-macos.json || true
+          ${{ matrix.py }} tools/nightly-check.py volume results/volume-macos.json 95 --report-only
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: nightly-accuracy-${{ matrix.name }}
+          path: results
+          if-no-files-found: ignore
+
+  benchmark:
+    name: Benchmark (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, name: linux, exe: target/release/strata, files: 500000, py: python3 }
+          - { os: macos-latest, name: macos, exe: target/release/strata, files: 500000, py: python3 }
+          - { os: windows-latest, name: windows, exe: target/release/strata.exe, files: 200000, py: python }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Build
+        run: cargo build --release -p strata-cli
+      - name: Benchmark
+        run: |
+          tree="$RUNNER_TEMP/bench"
+          ${{ matrix.exe }} make-tree "$tree" ${{ matrix.files }}
+          mkdir -p results
+          ${{ matrix.exe }} bench "$tree" 5 | tee results/bench-${{ matrix.name }}.txt
+          ${{ matrix.py }} tools/nightly-check.py bench results/bench-${{ matrix.name }}.txt tools/bench-baseline.json ${{ matrix.name }}
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: nightly-benchmark-${{ matrix.name }}
+          path: results
+          if-no-files-found: ignore
