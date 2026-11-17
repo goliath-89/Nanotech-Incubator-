@@ -20,12 +20,13 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 23 / 90 (26%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 24 / 90 (27%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
-| **Sprint 3 · ring polish (current)** | 6 / 10 (60%) | Days 21–24, 26–27 done; 25 waits for your notes |
+| **Sprint 3 · ring polish (current)** | 7 / 10 (70%) | Days 21–24, 26–28 done; 25 waits for your notes |
 
 Log (newest first):
+- 17 Nov · Day 28 ✅ "Not scanned" and cloud-only shown as their own items. Sprint 3 7/10 (70%), overall 24/90 (27%).
 - 17 Nov · Day 27 ✅ keyboard navigation of the ring, lists and tabs. Sprint 3 6/10 (60%), overall 23/90 (26%).
 - 17 Nov · Day 26 ✅ sizes setting (macOS / Explorer / GiB) and locale number formats. Sprint 3 5/10 (50%), overall 22/90 (24%).
 - 17 Nov · Day 24 ✅ tooltips and shared kind selection. Sprint 3 4/10 (40%), overall 21/90 (23%).
@@ -40,7 +41,7 @@ Log (newest first):
 - 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
 - 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
 
-Next: Day 28 ("not scanned" and cloud-only as their own segments), Day 29 (ring UI tests), Day 30 (buffer: open bugs). Days 25 and 17 wait for your MVP notes; Day 16 for the MacBook.
+Next: Day 29 (ring UI tests), Day 30 (buffer: open bugs), then Sprint 4. Days 25 and 17 wait for your MVP notes; Day 16 for the MacBook.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -128,7 +129,7 @@ of introducing them.
 | 25 | Opus | Fixes from your notes | — |
 | 26 ✅ | Opus | Sizes setting (Settings at the foot of the sidebar): like macOS (1 GB = 10⁹ bytes), like Windows Explorer (1 GB = 2³⁰ bytes) or GiB; defaults to the system's own convention and is remembered. Every number, percentage and time uses the system locale (e.g. 1,5 GB and 67,2 % in German). 2 UI tests | — |
 | 27 ✅ | Opus | Keyboard: the ring takes focus (Left/Right between slices, Down into a folder's ring, Up back out, Home/End, Enter opens, Backspace/Escape up), each step announced for screen readers and mirrored in the list. Up/Down/Home/End in the folder, app and file lists; tabs follow the standard pattern (arrows switch, one Tab stop). Fixed: slices stored as plain values so lookups match. 3 UI tests | — |
-| 28 | Opus | "Not scanned" and cloud-only items shown as their own segments | — |
+| 28 ✅ | Opus | At the top of a drive, space in use that the scan could not read is its own hatched "Not scanned" slice and list row (with why, and how the fast scan reads it); shares are now of the whole drive in use, so rows add to 100%. Unreadable folders are hatched too. Cloud-only files (OneDrive, iCloud) are noted per folder and under the kinds, never counted as space on the drive. 2 UI tests | — |
 | 29 | Opus | UI tests for the ring | — |
 | 30 | Opus | Buffer day: open bugs | — |
 

@@ -99,7 +99,8 @@ test.describe("folders", () => {
     const gb = sizes.map((s) => parseFloat(s));
     expect([...gb].sort((a, b) => b - a)).toEqual(gb);
     await expect(rows(page).first()).toContainText("493 GB");
-    await expect(rows(page).first()).toContainText("67.2%");
+    // Shares are of the whole drive in use (742 GB), including what was not scanned.
+    await expect(rows(page).first()).toContainText("66.4%");
     expect(errors).toEqual([]);
   });
 
@@ -110,6 +111,29 @@ test.describe("folders", () => {
     await expect(trash).toContainText("mostly trash");
     await expect(page.getByText(".Trashes")).toHaveCount(0);
     await expect(page.locator("section.card").filter({ hasText: "By kind" })).toContainText("Trash");
+  });
+
+  test("space the scan could not read is shown as its own item", async ({ page }) => {
+    await scanned(page);
+    // The drive reports 742 GB in use; the scan counted 734 GB.
+    const unscanned = page.locator(".rows li.unscanned");
+    await expect(unscanned).toContainText("Not scanned");
+    await expect(unscanned).toContainText("8.0 GB");
+    await expect(unscanned).toContainText("1.1%");
+    await expect(page.getByRole("application", { name: /Ring chart/ })).toBeVisible();
+    await expect(page.locator(".centre .size")).toHaveText("742 GB");
+    await unscanned.hover();
+    await expect(page.getByRole("tooltip")).toHaveText(/could read/);
+    // Not shown inside folders, where the drive total does not apply.
+    await rows(page).filter({ hasText: "Users" }).click();
+    await expect(page.locator(".rows li.unscanned")).toHaveCount(0);
+  });
+
+  test("cloud-only files are noted, not counted as space on the drive", async ({ page }) => {
+    await scanned(page);
+    await expect(page.getByText(/Also 6\.4 GB of files kept only in the cloud/)).toBeVisible();
+    await rows(page).filter({ hasText: "Users" }).click();
+    await expect(rows(page).filter({ hasText: "sam" })).toContainText("6.4 GB in the cloud");
   });
 
   test("click into a folder, breadcrumb and keyboard back", async ({ page }) => {
@@ -323,7 +347,7 @@ test.describe("keyboard", () => {
     const centre = page.locator(".centre .what");
     const live = ring.locator("[aria-live]");
     await expect(centre).toHaveText("Users");
-    await expect(live).toHaveText(/Users, 493 GB, 67\.2%, ring 1 of 3/);
+    await expect(live).toHaveText(/Users, 493 GB, 66\.4%, ring 1 of 3/);
     await expect(rows(page).filter({ hasText: "Users" })).toHaveClass(/hot/);
     await page.keyboard.press("ArrowRight");
     await expect(centre).toHaveText("Applications");
@@ -394,7 +418,7 @@ test.describe("units and language", () => {
     await expect(users).toContainText("459 GB");
     await page.getByRole("radio", { name: /In GiB/ }).check();
     await expect(users).toContainText("459 GiB");
-    await expect(page.locator(".centre .size")).toHaveText("684 GiB");
+    await expect(page.locator(".centre .size")).toHaveText("691 GiB");
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
     // Remembered on the next start.
@@ -411,7 +435,7 @@ test.describe("units and language", () => {
       await expect(page.getByText("742 GB used of 1,0 TB")).toBeVisible();
       await expect(page.getByText("Scanned in 2,1 s")).toBeVisible();
       await expect(rows(page).filter({ hasText: "Users" })).toContainText("246.500 files");
-      await expect(rows(page).filter({ hasText: "Users" })).toContainText("67,2 %");
+      await expect(rows(page).filter({ hasText: "Users" })).toContainText("66,4 %");
     });
   });
 });

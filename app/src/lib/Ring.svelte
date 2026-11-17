@@ -86,12 +86,34 @@
 
   function readColors() {
     const style = getComputedStyle(canvas);
-    colors = { track: style.getPropertyValue("--track").trim(), bg: style.getPropertyValue("--surface").trim() };
+    colors = { track: style.getPropertyValue("--track").trim(), bg: style.getPropertyValue("--surface").trim(), muted: style.getPropertyValue("--muted").trim() };
+    hatch = null;
     for (const k of KINDS) colors[k.key] = style.getPropertyValue(`--kind-${k.key}`).trim();
   }
 
-  function colorOf(n: RingNode): string {
-    if (n.notScanned || n.slice === "smaller") return colors.track;
+  // Diagonal stripes for space that was not scanned.
+  let hatch: CanvasPattern | null = null;
+  function hatchPattern(): CanvasPattern | string {
+    if (hatch) return hatch;
+    const tile = document.createElement("canvas");
+    tile.width = tile.height = 6;
+    const t = tile.getContext("2d")!;
+    t.fillStyle = colors.track;
+    t.fillRect(0, 0, 6, 6);
+    t.strokeStyle = colors.muted || "#999";
+    t.globalAlpha = 0.45;
+    t.lineWidth = 1;
+    t.beginPath();
+    t.moveTo(-1, 7);
+    t.lineTo(7, -1);
+    t.stroke();
+    hatch = canvas.getContext("2d")!.createPattern(tile, "repeat");
+    return hatch ?? colors.track;
+  }
+
+  function colorOf(n: RingNode): string | CanvasPattern {
+    if (n.notScanned || n.slice === "unscanned") return hatchPattern();
+    if (n.slice === "smaller") return colors.track;
     return colors[KINDS[n.mainKind]?.key ?? "other"];
   }
 
@@ -127,11 +149,11 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, size, size);
     const c = size / 2;
-    const batches = new Map<string, { path: Path2D; color: string; alpha: number }>();
+    const batches = new Map<string, { path: Path2D; color: string | CanvasPattern; alpha: number }>();
     for (const s of layout.all) {
       const color = colorOf(s.node);
       const faded = kind !== null && (s.node.mainKind !== kind || s.node.slice !== "folder");
-      const key = `${color}|${s.level}|${faded}`;
+      const key = `${typeof color === "string" ? color : "hatch"}|${s.level}|${faded}`;
       let b = batches.get(key);
       if (!b) batches.set(key, (b = { path: new Path2D(), color, alpha: LEVEL_ALPHA[s.level - 1] * (faded ? 0.22 : 1) }));
       addSlice(b.path, s, c);
@@ -276,7 +298,7 @@
   function announce(seg: Segment | null): string {
     if (!seg) return "";
     const n = seg.node;
-    const what = n.slice === "smaller" ? "Smaller folders" : n.slice === "files" ? "Files in this folder" : displayName(n.name);
+    const what = n.slice === "smaller" ? "Smaller folders" : n.slice === "files" ? "Files in this folder" : n.slice === "unscanned" ? "Not scanned" : displayName(n.name);
     return `${what}, ${bytes(n.bytes)}, ${percent(n.bytes, ring.bytes)}, ring ${seg.level} of ${LEVELS}`;
   }
 

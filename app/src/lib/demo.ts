@@ -46,14 +46,16 @@ add(tree, null);
 
 function dirOf(f: Flat): Dir {
   const kindBytes = Array(11).fill("0");
+  let cloud = 0;
   const sum = (x: Flat) => {
     if (x.children.length === 0) kindBytes[x.kind] = String(Number(kindBytes[x.kind]) + x.bytes);
+    if (x.name === "Documents") cloud += 6.4 * GB; // files kept only in iCloud
     x.children.forEach((c) => sum(flat[c]));
   };
   sum(f);
   return {
     id: f.id, name: f.name, allocBytes: String(f.bytes), fileCount: String(Math.round(f.bytes / 2e6)),
-    dirCount: String(f.children.length), kindBytes, cloudOnlyBytes: "0", ownFilesBytes: "0",
+    dirCount: String(f.children.length), kindBytes, cloudOnlyBytes: String(cloud), ownFilesBytes: "0",
     notScanned: null, owner: null,
   };
 }

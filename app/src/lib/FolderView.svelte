@@ -12,6 +12,7 @@
     hovered = null,
     onhover = () => {},
     kind = null,
+    unscanned = "0",
   }: {
     listing: Listing;
     onopen: (dirId: number) => void;
@@ -19,13 +20,17 @@
     onhover?: (id: number | null) => void;
     /** A kind picked in the kind bar: bars show only that kind. */
     kind?: number | null;
+    /** At the top of a drive: space the drive reports as used that the scan could not read. */
+    unscanned?: string;
   } = $props();
 
   const sep = isWindows ? "\\" : "/";
   const pathOf = (name: string) => (listing.path.endsWith(sep) || listing.path === "" ? listing.path : listing.path + sep) + name;
   const measure = (d: { allocBytes: string; kindBytes: string[] }) => (kind === null ? Number(d.allocBytes) : Number(d.kindBytes[kind] ?? 0));
 
-  const total = $derived(Number(listing.dir.allocBytes));
+  // At the top of a drive, shares are of everything the drive has in use,
+  // including what could not be scanned, so the rows add up to 100%.
+  const total = $derived(Number(listing.dir.allocBytes) + Number(unscanned));
   const largest = $derived(Math.max(1, ...listing.children.map(measure), kind === null ? Number(listing.dir.ownFilesBytes) : 0));
 
   const reasons: Record<string, string> = {
@@ -67,7 +72,7 @@
         <span class="name">
           <span class="title">{displayName(d.name)}</span>
           <span class="sub">
-            {#if d.notScanned}{reasons[d.notScanned]}{:else if kind !== null}{Number(d.kindBytes[kind] ?? 0) > 0 ? `${bytes(d.kindBytes[kind])} of ${KINDS[kind].name.toLowerCase()}` : `No ${KINDS[kind].name.toLowerCase()}`} · {count(d.fileCount)} files{:else}{count(d.fileCount)} files · mostly {KINDS[k].name.toLowerCase()}{#if d.owner} · {d.owner.app}{#if d.owner.role !== "program"} {d.owner.role}{/if}{/if}{/if}
+            {#if d.notScanned}{reasons[d.notScanned]}{:else if kind !== null}{Number(d.kindBytes[kind] ?? 0) > 0 ? `${bytes(d.kindBytes[kind])} of ${KINDS[kind].name.toLowerCase()}` : `No ${KINDS[kind].name.toLowerCase()}`} · {count(d.fileCount)} files{:else}{count(d.fileCount)} files · mostly {KINDS[k].name.toLowerCase()}{#if d.owner} · {d.owner.app}{#if d.owner.role !== "program"} {d.owner.role}{/if}{/if}{/if}{#if Number(d.cloudOnlyBytes) > 0} · {bytes(d.cloudOnlyBytes)} in the cloud{/if}
           </span>
         </span>
         <span class="bar"><span style:width="{share(measure(d), largest) * 100}%" style:background={kindColor(kind ?? k)}></span></span>
@@ -83,6 +88,14 @@
         <span class="num pct">{percent(listing.dir.ownFilesBytes, total)}</span>
       </li>
     {/if}
+    {#if Number(unscanned) > 0 && kind === null}
+      <li class="row loose unscanned" use:tip={"The drive reports this much more in use than the scan could read: usually folders Windows or macOS protect.\nOn Windows, allowing administrator access for the fast scan reads them too."}>
+        <span class="name"><span class="title">Not scanned</span><span class="sub">Used on the drive, but not readable by this scan</span></span>
+        <span class="bar"><span class="hatched" style:width="{share(unscanned, largest) * 100}%"></span></span>
+        <span class="num size">{bytes(unscanned)}</span>
+        <span class="num pct">{percent(unscanned, total)}</span>
+      </li>
+    {/if}
     {#if listing.children.length === 0 && Number(listing.dir.ownFilesBytes) === 0}
       <li class="empty">This folder is empty.</li>
     {/if}
@@ -90,6 +103,7 @@
 </section>
 
 <style>
+  .hatched { background: repeating-linear-gradient(135deg, var(--track) 0 3px, var(--muted) 3px 4px) !important; opacity: 0.8; }
   .crumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-bottom: 10px; font-size: 12.5px; }
   .crumbs button { all: unset; color: var(--accent); cursor: pointer; border-radius: 4px; padding: 1px 2px; }
   .crumbs button:hover { text-decoration: underline; }

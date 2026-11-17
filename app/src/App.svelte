@@ -71,7 +71,7 @@
           if (phase.name !== "scanning" || d.token !== phase.token) return;
           const [listing, ring] = await Promise.all([api.getDir(d.scanId, 0), api.getRing(d.scanId, 0)]);
           root = listing;
-          phase = { name: "result", scanId: d.scanId, done: d, listing, ring };
+          phase = { name: "result", scanId: d.scanId, done: d, listing, ring: withUnscanned(ring, listing) };
         },
         failed: (f) => {
           if (phase.name === "scanning" && f.token === phase.token) phase = { name: "error", message: f.message };
@@ -101,7 +101,7 @@
     if (last) {
       const [listing, ring] = await Promise.all([api.getDir(last.scanId, 0), api.getRing(last.scanId, 0)]);
       root = listing;
-      phase = { name: "result", scanId: last.scanId, done: null, listing, ring };
+      phase = { name: "result", scanId: last.scanId, done: null, listing, ring: withUnscanned(ring, listing) };
     } else {
       phase = { name: "idle" };
     }
@@ -125,9 +125,27 @@
     const [listing, ring] = await Promise.all([api.getDir(scanId, dirId), api.getRing(scanId, dirId)]);
     if (phase.name === "result" && phase.scanId === scanId) {
       phase.listing = listing;
-      phase.ring = ring;
+      phase.ring = withUnscanned(ring, listing);
       hovered = null;
     }
+  }
+
+  /** At the top of a drive, the ring also shows what the scan could not read:
+   *  the drive's used space minus what was counted, if more than 0.5%. */
+  function unscannedBytes(listing: Listing): number {
+    if (!volume || listing.dir.id !== 0) return 0;
+    const gap = Number(volume.used) - Number(listing.dir.allocBytes);
+    return gap > Number(volume.used) * 0.005 ? gap : 0;
+  }
+
+  function withUnscanned(ring: RingNode, listing: Listing): RingNode {
+    const gap = unscannedBytes(listing);
+    if (gap === 0) return ring;
+    return {
+      ...ring,
+      bytes: String(Number(ring.bytes) + gap),
+      children: [...ring.children, { id: null, slice: "unscanned", name: "Not scanned", bytes: String(gap), mainKind: 0, notScanned: true, children: [] }],
+    };
   }
 
   function up() {
@@ -244,13 +262,18 @@
             {/if}
           </div>
           <div class="listside">
-            <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} kind={selectedKind} />
+            <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} kind={selectedKind} unscanned={String(unscannedBytes(phase.listing))} />
             <button class="link" onclick={() => phase.name === "result" && api.reveal(phase.scanId, phase.listing.dir.id)}>Show this folder in {fileManager}</button>
           </div>
         </section>
         <section class="card">
           <h3>By kind <span class="quiet num">{bytes(phase.listing.dir.allocBytes)} in {displayName(phase.listing.dir.name)}{#if root && phase.listing.dir.id === 0 && volume}{" · "}{percent(root.dir.allocBytes, volume.used)} of used space{/if}</span></h3>
           <KindBar kindBytes={phase.listing.dir.kindBytes} selected={selectedKind} onselect={(k) => (selectedKind = k)} />
+          {#if Number(phase.listing.dir.cloudOnlyBytes) > 0}
+            <p class="cloud">
+              Also {bytes(phase.listing.dir.cloudOnlyBytes)} of files kept only in the cloud (OneDrive, iCloud and similar). They take no space on this drive until they are opened.
+            </p>
+          {/if}
         </section>
       {:else if tab === "apps"}
         <section class="card">
@@ -314,6 +337,7 @@
   .status { margin: 0; color: var(--muted); }
   .note { margin: 0; padding: 10px 14px; border-radius: var(--radius-control); background: var(--warning-bg); color: var(--warning); }
   .demo { color: var(--muted); font-size: 11.5px; margin: 0; }
+  .cloud { color: var(--muted); font-size: 12px; margin: 12px 0 0; }
   button.primary, button.secondary {
     border: 0; border-radius: var(--radius-control); padding: 7px 16px; font-weight: 500; cursor: pointer; white-space: nowrap;
   }

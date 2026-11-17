@@ -83,7 +83,8 @@ export interface ScanSummary {
 
 export interface RingNode {
   id: number | null;
-  slice: "folder" | "files" | "smaller";
+  /** "unscanned": space the drive reports as used that the scan could not read. */
+  slice: "folder" | "files" | "smaller" | "unscanned";
   name: string;
   bytes: string;
   mainKind: number;
