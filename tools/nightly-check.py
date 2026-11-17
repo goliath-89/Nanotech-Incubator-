@@ -10,6 +10,9 @@
       space, and never more than 100.5% (more would mean double counting).
   nightly-check.py bench <bench-output.txt> <baseline.json> <name>
       Compare the RESULT line with the limits for <name>.
+  nightly-check.py app <bench-app-output.txt>
+      Browsing a large saved scan must feel instant: opening folders and
+      building the ring under 0.1 s, comparing scans under 1 s.
 
 Each check prints a short Markdown table, also appended to the GitHub job
 summary when run in Actions, and exits non-zero when it fails.
@@ -134,11 +137,44 @@ def check_bench(output_file, baseline_file, name):
     return ok
 
 
+APP_LIMITS = [("open ", 0.1), ("ring", 0.1), ("largest files", 0.1), ("compare", 1.0)]
+
+
+def check_app(output_file):
+    rows = ["| App with a large scan | Time | Limit | |", "| --- | ---: | ---: | --- |"]
+    ok = True
+    seen = 0
+    for line in open(output_file, encoding="utf-8"):
+        parts = line.rsplit(" s ", 1)
+        if len(parts) != 2:
+            continue
+        name, secs = parts[0][:34].strip(), parts[0][34:].strip()
+        try:
+            t = float(secs)
+        except ValueError:
+            continue
+        limit = next((l for prefix, l in APP_LIMITS if name.startswith(prefix)), None)
+        if limit is None:
+            rows.append(f"| {name} | {t:.2f} s | | |")
+            continue
+        seen += 1
+        good = t <= limit
+        ok &= good
+        rows.append(f"| {name} | {t:.2f} s | ≤ {limit} s | {'✅' if good else '❌'} |")
+    if seen == 0:
+        rows.append("| no timings found | | | ❌ |")
+        ok = False
+    summary(rows)
+    return ok
+
+
 def main(argv):
     if len(argv) >= 3 and argv[0] == "tree":
         return check_tree(argv[1], argv[2])
     if len(argv) >= 3 and argv[0] == "volume":
         return check_volume(argv[1], float(argv[2]), "--report-only" in argv)
+    if len(argv) >= 2 and argv[0] == "app":
+        return check_app(argv[1])
     if len(argv) >= 4 and argv[0] == "bench":
         return check_bench(argv[1], argv[2], argv[3])
     sys.exit(__doc__)

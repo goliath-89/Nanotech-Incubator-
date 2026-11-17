@@ -20,13 +20,14 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 31 / 90 (34%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 32 / 90 (36%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
 | **Sprint 3 · ring polish** | 9 / 10 (90%) | Days 21–24, 26–30 done; 25 waits for your notes |
-| **Sprint 4 · polish and testing (current)** | 5 / 10 (50%) | Days 31–35 done |
+| **Sprint 4 · polish and testing (current)** | 6 / 10 (60%) | Days 31–36 done |
 
 Log (newest first):
+- 17 Nov · Day 36 ✅ 4M-file performance pass; ring 50–100× faster on big drives. Sprint 4 6/10 (60%), overall 32/90 (36%).
 - 17 Nov · Day 35 ✅ Changes tab (what grew since an earlier scan); history pruned to 5 full scans per drive. Sprint 4 5/10 (50%), overall 31/90 (34%).
 - 17 Nov · Day 34 ✅ high contrast, Increase Contrast, Reduce Motion; contrast bugs fixed. Sprint 4 4/10 (40%), overall 30/90 (33%).
 - 17 Nov · Day 33 ✅ exclusions and theme setting. Sprint 4 3/10 (30%), overall 29/90 (32%).
@@ -49,7 +50,7 @@ Log (newest first):
 - 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
 - 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
 
-Next: Day 36 (very large drives, 4M files), Day 37 (UI tests for everything so far), Days 38–39 (usability test with 5 people: needs you). Days 25 and 17 wait for your MVP notes; Day 16 for the MacBook.
+Next: Day 37 (UI tests for everything so far; you recruit 5 people), Day 38 (usability test script and tester build), Day 39 (fixes), Day 40 (review, Gate B). Days 25 and 17 wait for your MVP notes; Day 16 for the MacBook.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -150,7 +151,7 @@ of introducing them.
 | 33 ✅ | Opus | Exclusions: "Exclude from Scans" in the folder and ring menus, listed in Settings with "Scan again"; kept in the app's data folder. The walk skips them; after the Windows fast scan their contents are removed so nothing inside is shown or saved (engine test: removing afterwards equals skipping during the walk). Theme: same as the system, Light or Dark, remembered. 3 UI tests (54 in all), 3 engine tests | — |
 | 34 ✅ | Opus | Accessibility: Windows High Contrast keeps data colours (bars, dots, ring) with solid outlines, everything else takes the system colours; Increase Contrast lifts secondary text to AAA (7:1); Reduce Motion has no transitions at all. Found and fixed: secondary text was 4.15–4.3:1 on the sidebar and tab strip (below WCAG AA) in light, 3.95:1 in dark; now 4.9:1+ and 5.1:1+. 6 automated checks (tests/a11y.spec.ts) | — |
 | 35 ✅ | Opus | Changes tab: pick an earlier scan of the drive and see what grew or shrank, largest changes first, with the total. History now kept in check: the newest 5 scans per drive keep every folder, older ones keep totals and the comparison snapshot. Commands `list_scans`, `compare_scans`. 1 UI test (61 in all) | Scan C: again in a few days to see Changes fill in. |
-| 36 | Opus | Performance pass on very large drives (4M files) | — |
+| 36 ✅ | Opus | Very large drives. New `strata bench-app` times everything after a scan at 4M files: save 1.8 s, compare 0.11 s, slim old scans 0.7 s, exclude 0.2 s. **Found and fixed:** SQLite scanned every folder of a scan on each folder lookup (no statistics), so the ring took 0.5–1.0 s and each folder 30 ms at 4M files; queries now pinned to their indexes and statistics refreshed after saving: ring and folders under 10 ms. Real 3M-file walk: 5.0 s best, 160 MB peak (≈215 MB at 4M). Nightly now checks browsing stays under 0.1 s at 1M files | — |
 | 37 | Opus | UI tests for everything so far | Recruit 5 people for a 15-minute test next day. |
 | 38 | Opus | Usability test script and a build for testers | Run the 5 tests; write down clicks to find the largest folder. |
 | 39 | Opus | Fixes from the tests | — |

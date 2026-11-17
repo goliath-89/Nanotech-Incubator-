@@ -17,6 +17,8 @@ Usage: strata scan <folder> [options]
        strata growth <file>      What changed between the last two saved scans
        strata make-tree <folder> <files>   Create a test tree with that many files
        strata bench <folder> [runs]        Time the scanner on a folder (default 3 runs)
+       strata bench-app <files> <history-file>   Time saving, browsing and comparing a scan
+                                    of that many files (built in memory)
 
 Options for scan:
   --fast               Read the NTFS file table instead of walking folders. Give a
@@ -108,6 +110,20 @@ fn main() -> ExitCode {
                 Some(files) => report_io(bench::make_tree(&PathBuf::from(folder), files)),
                 None => {
                     eprintln!("strata: make-tree needs a number of files\n\n{USAGE}");
+                    ExitCode::from(2)
+                }
+            }
+        }
+        (Some("bench-app"), Some(files)) => {
+            let files = files
+                .to_str()
+                .and_then(|s| s.replace(['_', ','], "").parse().ok());
+            match (files, argv.next()) {
+                (Some(files), Some(db)) => report_io(bench::bench_app(files, &PathBuf::from(db))),
+                _ => {
+                    eprintln!(
+                        "strata: bench-app needs a number of files and a history file\n\n{USAGE}"
+                    );
                     ExitCode::from(2)
                 }
             }

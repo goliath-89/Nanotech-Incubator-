@@ -332,6 +332,10 @@ impl Store {
         }
 
         tx.commit()?;
+        // Keep the query planner's statistics current (cheap: sampled).
+        let _ = self
+            .conn
+            .execute_batch("PRAGMA analysis_limit = 1000; PRAGMA optimize;");
         Ok(scan)
     }
 
@@ -475,7 +479,7 @@ impl Store {
         let children = self.child_dirs(scan, dir)?;
 
         let mut stmt = self.conn.prepare_cached(&format!(
-            "SELECT {FILE_COLUMNS} FROM files WHERE scan_id = ?1 AND dir_id = ?2 ORDER BY rank"
+            "SELECT {FILE_COLUMNS} FROM files INDEXED BY files_by_dir WHERE scan_id = ?1 AND dir_id = ?2 ORDER BY rank"
         ))?;
         let files = stmt
             .query_map(params![scan, dir], file_from_row)?
@@ -494,7 +498,9 @@ impl Store {
     /// ring several levels deep).
     pub fn child_dirs(&self, scan: ScanId, dir: u32) -> Result<Vec<DirRow>> {
         let mut stmt = self.conn.prepare_cached(&format!(
-            "SELECT {DIR_COLUMNS} FROM dirs WHERE scan_id = ?1 AND parent_id = ?2
+            // Without statistics SQLite may scan every folder of the scan
+            // instead (30 ms a call at 400k folders); the index makes it instant.
+            "SELECT {DIR_COLUMNS} FROM dirs INDEXED BY dirs_by_parent WHERE scan_id = ?1 AND parent_id = ?2
              ORDER BY alloc_bytes DESC, id"
         ))?;
         let dirs = collect_dirs(stmt.query(params![scan, dir])?)?;
