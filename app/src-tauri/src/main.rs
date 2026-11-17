@@ -40,6 +40,8 @@ fn main() {
             bridge::list_exclusions,
             bridge::exclude_folder,
             bridge::include_folder,
+            bridge::list_scans,
+            bridge::compare_scans,
             window::window_material,
         ])
         .run(tauri::generate_context!())

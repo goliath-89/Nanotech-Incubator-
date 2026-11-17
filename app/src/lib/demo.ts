@@ -237,3 +237,27 @@ export async function includeFolder(path: string) {
   exclusions = exclusions.filter((p) => p !== path);
   return exclusions;
 }
+
+const DAY = 86_400;
+export async function listScans(_volumeId: string) {
+  const now = Math.floor(Date.now() / 1000);
+  return [
+    { scanId: 1, finishedAt: now, allocBytes: String(flat[0].bytes), fileCount: "1840000", cancelled: false, hasTree: true },
+    { scanId: 2, finishedAt: now - 14 * DAY, allocBytes: String(flat[0].bytes - 31 * GB), fileCount: "1790000", cancelled: false, hasTree: true },
+    { scanId: 3, finishedAt: now - 61 * DAY, allocBytes: String(flat[0].bytes - 58 * GB), fileCount: "1702000", cancelled: false, hasTree: false },
+  ];
+}
+export async function compareScans(before: number) {
+  const k = before === 3 ? 1.9 : 1;
+  const row = (path: string, depth: number, b: number, d: number) => ({ path, depth, beforeBytes: String(b * GB), afterBytes: String((b + d * k) * GB) });
+  return [
+    row("", 0, 703, 31),
+    row("Users", 1, 470, 23),
+    row("Users/sam", 2, 470, 23),
+    row("Users/sam/Movies", 3, 136, 16),
+    row("Users/sam/Library/Caches", 4, 24, 7),
+    row("Applications", 1, 141, 6),
+    row("Users/sam/Downloads", 3, 29, -4.5),
+    row("private/var/vm", 3, 6, 2),
+  ];
+}

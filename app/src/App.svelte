@@ -13,6 +13,7 @@
   import AppsView from "./lib/AppsView.svelte";
   import FilesView from "./lib/FilesView.svelte";
   import ReclaimView from "./lib/ReclaimView.svelte";
+  import ChangesView from "./lib/ChangesView.svelte";
   import { fileManager, isWindows } from "./lib/platform";
   import { displayName } from "./lib/kinds";
   import { tip } from "./lib/tooltip";
@@ -32,12 +33,13 @@
   let hovered = $state<number | null>(null);
   /** A kind picked in the kind bar, shared by the ring, the list and Largest Files. */
   let selectedKind = $state<number | null>(null);
-  type Tab = "folders" | "apps" | "files" | "reclaim";
+  type Tab = "folders" | "apps" | "files" | "changes" | "reclaim";
   let tab = $state<Tab>("folders");
   const tabs: { key: Tab; label: string }[] = [
     { key: "folders", label: "Folders" },
     { key: "apps", label: "Apps" },
     { key: "files", label: "Largest Files" },
+    { key: "changes", label: "Changes" },
     { key: "reclaim", label: "Clean Up" },
   ];
 
@@ -328,6 +330,10 @@
       {:else if tab === "files"}
         <section class="card">
           <FilesView scanId={phase.scanId} kindBytes={root?.dir.kindBytes ?? []} {selectedKind} />
+        </section>
+      {:else if tab === "changes"}
+        <section class="card">
+          {#if volume}<ChangesView scanId={phase.scanId} volumeId={volume.id} mount={volume.mount} />{/if}
         </section>
       {:else}
         <section class="card">

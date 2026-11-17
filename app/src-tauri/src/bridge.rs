@@ -45,6 +45,9 @@ impl AppState {
 }
 
 const EXCLUSIONS_FILE: &str = "exclusions.json";
+/// Scans per drive kept with every folder; older ones keep totals and the
+/// growth snapshot.
+const KEEP_FULL_SCANS: usize = 5;
 
 /// Errors reach the window as plain sentences.
 type Reply<T> = Result<T, String>;
@@ -242,6 +245,9 @@ pub fn start_scan(
                     let mut store = store.lock().map_err(text)?;
                     let scan_id =
                         save_everything(&mut store, &outcome.tree, &meta).map_err(text)?;
+                    // Keep full folder detail for the newest scans only; older
+                    // ones keep their totals and what is needed to compare.
+                    let _ = store.prune(&meta.volume_id, KEEP_FULL_SCANS);
                     Ok(Done {
                         token,
                         scan_id,
@@ -904,4 +910,67 @@ pub fn include_folder(state: State<'_, AppState>, path: String) -> Reply<Vec<Str
         }
     }
     list_exclusions(state)
+}
+
+// ---------------------------------------------------------------------------
+// History (Day 35)
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanEntry {
+    scan_id: i64,
+    finished_at: i64,
+    alloc_bytes: String,
+    file_count: String,
+    cancelled: bool,
+    /// Every folder kept (the newest scans), not just totals.
+    has_tree: bool,
+}
+
+/// The saved scans of a drive, newest first.
+#[tauri::command]
+pub fn list_scans(state: State<'_, AppState>, volume_id: String) -> Reply<Vec<ScanEntry>> {
+    let store = state.store.lock().map_err(text)?;
+    Ok(store
+        .scans(Some(&volume_id))
+        .map_err(text)?
+        .into_iter()
+        .map(|s| ScanEntry {
+            scan_id: s.id,
+            finished_at: s.finished_at,
+            alloc_bytes: s.alloc_bytes.to_string(),
+            file_count: s.file_count.to_string(),
+            cancelled: s.cancelled,
+            has_tree: s.has_tree,
+        })
+        .collect())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Change {
+    /// Relative to the drive, `/` separated; empty for the whole drive.
+    path: String,
+    depth: u32,
+    before_bytes: String,
+    after_bytes: String,
+}
+
+/// What changed between an earlier scan and a later one, largest changes
+/// first (folders down to a few levels, 1 MB and up).
+#[tauri::command]
+pub fn compare_scans(state: State<'_, AppState>, before: i64, after: i64) -> Reply<Vec<Change>> {
+    let store = state.store.lock().map_err(text)?;
+    Ok(store
+        .diff(before, after, 60)
+        .map_err(text)?
+        .into_iter()
+        .map(|r| Change {
+            path: r.path,
+            depth: r.depth,
+            before_bytes: r.before_bytes.to_string(),
+            after_bytes: r.after_bytes.to_string(),
+        })
+        .collect())
 }

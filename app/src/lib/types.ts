@@ -140,3 +140,22 @@ export type Preview =
   | { kind: "text"; text: string; truncated: boolean }
   | { kind: "cloud" }
   | { kind: "none" };
+
+/** A saved scan of a drive (`list_scans`). */
+export interface ScanEntry {
+  scanId: number;
+  finishedAt: number;
+  allocBytes: string;
+  fileCount: string;
+  cancelled: boolean;
+  hasTree: boolean;
+}
+
+/** A folder that changed between two scans (`compare_scans`). */
+export interface Change {
+  /** Relative to the drive, "/" separated; "" for the whole drive. */
+  path: string;
+  depth: number;
+  beforeBytes: string;
+  afterBytes: string;
+}

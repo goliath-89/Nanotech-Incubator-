@@ -290,6 +290,26 @@ test.describe("largest files", () => {
   });
 });
 
+test.describe("changes", () => {
+  test("shows what grew and shrank since an earlier scan, and can compare with another", async ({ page }) => {
+    const errors = watchErrors(page);
+    await scanned(page);
+    await page.getByRole("tab", { name: "Changes" }).click();
+    const select = page.getByRole("combobox", { name: "Compared with" });
+    await expect(select.locator("option")).toHaveCount(2);
+    await expect(page.getByText("+31.0 GB in all")).toBeVisible();
+    const movies = page.locator("li").filter({ hasText: "Movies" });
+    await expect(movies).toContainText("+16.0 GB");
+    await expect(movies).toContainText("/Users/sam/Movies");
+    await expect(page.locator("li").filter({ hasText: "Downloads" })).toContainText("−4.5 GB");
+    // The biggest change comes first.
+    await expect(page.locator("li .title").first()).toHaveText("Users");
+    await select.selectOption({ index: 1 });
+    await expect(page.getByText("+58.9 GB in all")).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});
+
 test.describe("clean up", () => {
   test("rebuildable items start ticked, downloads do not", async ({ page }) => {
     await scanned(page);
@@ -608,7 +628,7 @@ test.describe("look and layout", () => {
     await scanned(page);
     const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     expect(bg).not.toBe("rgb(255, 255, 255)");
-    for (const tab of ["Apps", "Largest Files", "Clean Up", "Folders"]) {
+    for (const tab of ["Apps", "Largest Files", "Changes", "Clean Up", "Folders"]) {
       await page.getByRole("tab", { name: tab }).click();
       await expect(page.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
     }
@@ -619,7 +639,7 @@ test.describe("look and layout", () => {
     test(`no sideways scrolling at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
       await scanned(page);
-      for (const tab of ["Folders", "Apps", "Largest Files", "Clean Up"]) {
+      for (const tab of ["Folders", "Apps", "Largest Files", "Changes", "Clean Up"]) {
         await page.getByRole("tab", { name: tab }).click();
         const overflow = await page.evaluate(() => {
           const main = document.querySelector("main")!;

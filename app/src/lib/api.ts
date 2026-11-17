@@ -11,6 +11,8 @@ import type {
   Partial,
   PlacedDir,
   Preview,
+  ScanEntry,
+  Change,
   Progress,
   RingNode,
   ScanSummary,
@@ -91,6 +93,16 @@ export function excludeFolder(scanId: number, dirId: number): Promise<string[]> 
 /** Scan a folder again from now on; returns the new list. */
 export function includeFolder(path: string): Promise<string[]> {
   return inApp ? call("include_folder", { path }) : demo.includeFolder(path);
+}
+
+/** Saved scans of a drive, newest first. */
+export function listScans(volumeId: string): Promise<ScanEntry[]> {
+  return inApp ? call("list_scans", { volumeId }) : demo.listScans(volumeId);
+}
+
+/** What changed between an earlier and a later scan, largest first. */
+export function compareScans(before: number, after: number): Promise<Change[]> {
+  return inApp ? call("compare_scans", { before, after }) : demo.compareScans(before);
 }
 
 /** "mica" when Windows 11 put its material behind the window, else "none". */
