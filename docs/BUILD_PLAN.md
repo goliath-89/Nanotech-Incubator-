@@ -14,7 +14,7 @@ Claude what to build and tells you what only you can do.
 - A gate is a pass/fail test. Do not start the next phase until it passes;
   if it fails, the next day is spent on the failure and later days shift.
 
-Status: **Days 1, 2, 4, 5, 7, 8 and 9 done; Day 6 and Day 10 half done.** Days 3 and 6 and the Gate A check wait for runs on your Mac and Windows PC (see [BACKLOG.md](BACKLOG.md)). Day 11 can start in the meantime.
+Status: **Engine days 1–10 done (Gate A passed on Windows); app Day 11 done.** Next: Day 12. The Mac half of Gate A waits for the MacBook.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -72,47 +72,51 @@ real Windows drive, and benchmark numbers for Mac and Windows.
 | The laptop is ARM64 and ran the x64 build under emulation | CI now also builds `strata-cli-windows-arm64` |
 | Still open | Walk without administrator double-counts hard links (the app should ask for elevation and use the fast scan); Recycle Bin shown as System |
 
-## Sprint 2 · weeks 3–4 · app shell
+## Sprint 2 (revised) · MVP first
+
+The engines finished early, so the app is built around a usable MVP first
+and polished after. Sprints 3 and 4 below now polish the same views instead
+of introducing them.
 
 | Day | Model | Claude builds | You |
 | --- | --- | --- | --- |
-| 11 | Opus | Tauri 2 app skeleton, bridge commands `list_volumes`, `start_scan`, `cancel_scan`, progress events | Install Node and Rust on both machines if you want to run the app locally (CI also attaches app builds). |
-| 12 | Opus | Design tokens, light and dark themes, type scale, window chrome for Mac and Windows 11 | — |
-| 13 | Opus | Sidebar: drives with capacity bars, cloud folders, empty states | Open the app on both machines; screenshot anything that looks off. |
-| 14 | Opus | Scanning screen: live counters, cancel, error states; saves each scan to the store | — |
-| 15 | Opus | `get_dir`, `largest_files` commands; reopen last scan in under 2 s | — |
-| 16 | Opus | macOS Full Disk Access detection and the guided setup screen | Try the setup screen on your Mac. |
-| 17 | Opus | App packaging in CI: `.dmg` and `.msi` attached to each run (unsigned for now) | Install from the packages on both machines. |
-| 18 | Opus | Nightly CI: accuracy and benchmark jobs that fail on a 10% slowdown | — |
-| 19 | Opus | UI test setup (Playwright) and tests for everything built this sprint | — |
-| 20 | Fable or Opus | Review of the bridge and shell; fix findings | Decide: keep the name "Strata"? Check the domain and a trademark search. |
+| 11 ✅ | Opus | Tauri 2 app: drive list, Scan with live progress and Stop, kind bar, largest folders with click-to-open and breadcrumb, reopen last scan instantly. Shared `strata-pipeline` crate so app and command line run the same steps. CI builds installers for Windows x64, Windows ARM64 and macOS | Install the Windows ARM64 build from Actions and try it. Note anything confusing. |
+| 12 | Opus | The ring (sunburst) on Canvas: click a segment to open it, hover for details; ring and list stay in sync | — |
+| 13 | Opus | By App view and Largest files view; Reveal in Explorer / Finder | — |
+| 14 | Opus | Reclaim view: suggestions, review sheet, Move to Recycle Bin / Trash through the safety engine | Try a real cleanup on something you don't need. |
+| 15 | Opus | Windows: ask for administrator rights to use the fast scan; Recycle Bin shown as its own item. **MVP** | Use the MVP for a few days; list what to fix. |
+| 16 | Opus | macOS: Full Disk Access check and setup screen | Once the MacBook is ready: install and scan. |
+| 17 | Opus | Fixes from your MVP notes | — |
+| 18 | Opus | Nightly CI: accuracy and benchmark jobs | — |
+| 19 | Opus | UI tests (Playwright on the browser build with example data) | — |
+| 20 | Fable or Opus | Review of the bridge and app; fix findings | Decide: keep the name "Strata"? |
 
-## Sprint 3 · weeks 5–6 · the ring
+## Sprint 3 · weeks 5–6 · the ring (polish)
 
 | Day | Model | Claude builds | You |
 | --- | --- | --- | --- |
-| 21 | Opus | Ring drawn on Canvas from a saved scan; category colours | — |
-| 22 | Opus | Ring fills in live during a scan (`scan://partial`) | — |
-| 23 | Opus | Legend with sizes and percentages; centre label | — |
-| 24 | Opus | Hover tooltips; selection shared with the legend | Use it on your real drive for 10 minutes; list what confuses you. |
-| 25 | Opus | Fixes from your notes; 60 fps check with 100k segments | — |
+| 21 | Opus | Ring: 60 fps with 100k segments, spring animation on drill | — |
+| 22 | Opus | Ring fills in live during a scan | — |
+| 23 | Opus | Design pass: tokens, Mica on Windows 11, vibrancy on macOS, light and dark | — |
+| 24 | Opus | Hover tooltips everywhere; shared selection across views | Use it on your real drive for 10 minutes; list what confuses you. |
+| 25 | Opus | Fixes from your notes | — |
 | 26 | Opus | Units setting (GB / GiB), number formatting by system locale | — |
-| 27 | Opus | Keyboard navigation of the ring and legend | — |
+| 27 | Opus | Keyboard navigation of the ring and lists | — |
 | 28 | Opus | "Not scanned" and cloud-only items shown as their own segments | — |
 | 29 | Opus | UI tests for the ring | — |
 | 30 | Opus | Buffer day: open bugs | — |
 
-## Sprint 4 · weeks 7–8 · drill-down and lists
+## Sprint 4 · weeks 7–8 · polish and testing
 
 | Day | Model | Claude builds | You |
 | --- | --- | --- | --- |
-| 31 | Opus | Click to drill in, with the spring animation; Esc and breadcrumb to go back | — |
-| 32 | Opus | Largest items list under the ring: sort, filter by kind | — |
-| 33 | Opus | Reveal in Finder / Explorer; Quick Look on Mac, preview on Windows | — |
-| 34 | Opus | Right-click menu: Reveal, Preview, Copy Path, Exclude | — |
-| 35 | Opus | Exclusions in Settings; theme setting | — |
-| 36 | Opus | Reduce Motion and high-contrast support | — |
-| 37 | Opus | UI tests for drill-down and lists | Recruit 5 people for a 15-minute test next day. |
+| 31 | Opus | Right-click menu: Reveal, Preview, Copy Path, Exclude | — |
+| 32 | Opus | Quick Look on Mac, preview on Windows | — |
+| 33 | Opus | Exclusions and theme in Settings | — |
+| 34 | Opus | Reduce Motion and high-contrast support | — |
+| 35 | Opus | Scan history: pick an older scan, see what grew | — |
+| 36 | Opus | Performance pass on very large drives (4M files) | — |
+| 37 | Opus | UI tests for everything so far | Recruit 5 people for a 15-minute test next day. |
 | 38 | Opus | Usability test script and a build for testers | Run the 5 tests; write down clicks to find the largest folder. |
 | 39 | Opus | Fixes from the tests | — |
 | 40 | Fable or Opus | Review; **Gate B check** | **Gate B:** testers find their largest folder in 3 clicks or fewer on both systems. |

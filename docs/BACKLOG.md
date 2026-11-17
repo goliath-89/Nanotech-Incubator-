@@ -7,6 +7,14 @@ go; Claude adds to this list when something new needs a person.
 
 - [x] Windows: normal and fast scans of C: (Gate A passed on Windows, 17 Nov)
 
+## Try the app (Day 11)
+
+- [ ] From the newest run under the repo's **Actions** tab, download `strata-app-windows-arm64`
+      (your laptop is ARM). Unzip it and run the `.exe` installer (or the `.msi`).
+      SmartScreen will warn because it is not signed yet: More info, then Run anyway.
+- [ ] Open Strata, scan C:, click into folders. Note anything slow, wrong or confusing.
+      (It uses the slower folder scan for now; the fast scan with an administrator prompt comes on Day 15.)
+
 ## Do soon (unblocks the Mac half of Gate A)
 
 - [ ] Download the `strata-cli-macos-latest` and `strata-cli-windows-latest`

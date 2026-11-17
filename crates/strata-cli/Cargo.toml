@@ -17,6 +17,7 @@ strata-classify = { path = "../strata-classify" }
 strata-reclaim = { path = "../strata-reclaim" }
 strata-safety = { path = "../strata-safety" }
 strata-mft = { path = "../strata-mft" }
+strata-pipeline = { path = "../strata-pipeline" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"

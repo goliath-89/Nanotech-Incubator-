@@ -1,0 +1,18 @@
+[package]
+name = "strata-pipeline"
+description = "What happens around a scan: pick the scanner, save the result with apps and suggestions"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+strata-core = { path = "../strata-core" }
+strata-classify = { path = "../strata-classify" }
+strata-store = { path = "../strata-store" }
+strata-reclaim = { path = "../strata-reclaim" }
+strata-safety = { path = "../strata-safety" }
+strata-mft = { path = "../strata-mft" }
+
+[dev-dependencies]
+tempfile = "3"

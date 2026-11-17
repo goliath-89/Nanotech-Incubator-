@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["crates/strata-core", "crates/strata-store", "crates/strata-safety", "crates/strata-classify", "crates/strata-reclaim", "crates/strata-mft", "crates/strata-cli"]
+exclude = ["app/src-tauri"]
+members = ["crates/strata-core", "crates/strata-store", "crates/strata-safety", "crates/strata-classify", "crates/strata-reclaim", "crates/strata-mft", "crates/strata-pipeline", "crates/strata-cli"]
 
 [workspace.package]
 version = "0.1.0"

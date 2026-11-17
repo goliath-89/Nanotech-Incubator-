@@ -3,3 +3,7 @@ node_modules
 dist
 .DS_Store
 *.sqlite
+app/node_modules
+app/dist
+app/src-tauri/target
+app/src-tauri/gen

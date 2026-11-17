@@ -136,75 +136,14 @@ fn report(result: Result<(), strata_store::StoreError>) -> ExitCode {
     }
 }
 
-/// Save a scan together with its app attribution and cleanup suggestions,
-/// the way the app does after every scan.
+/// Save a scan the way the app does: with apps and cleanup suggestions.
 fn save_everything(
     file: &std::path::Path,
     tree: &ScanTree,
     meta: &ScanMeta,
 ) -> Result<strata_store::ScanId, strata_store::StoreError> {
-    use strata_classify::Role;
-    use strata_reclaim::{suggest, Group, Options, Target};
-    use strata_store::{AppRole, AppRow, DirOwner, SuggestionRow};
-
     let mut store = Store::open(file)?;
-    let id = store.save(tree, meta)?;
-    let Some(env) = Env::current() else {
-        return Ok(id);
-    };
-    let attribution = attribute(tree, &RuleSet::builtin(Os::current()), &env);
-    let apps: Vec<AppRow> = attribution
-        .apps
-        .iter()
-        .map(|a| AppRow {
-            name: a.name.clone(),
-            key: a.id.clone(),
-            kind: a.kind,
-            app_bytes: a.app_bytes,
-            data_bytes: a.data_bytes,
-            cache_bytes: a.cache_bytes,
-        })
-        .collect();
-    let owners: Vec<Option<DirOwner>> = attribution
-        .owners
-        .iter()
-        .map(|o| {
-            o.map(|o| DirOwner {
-                app: o.app,
-                role: match o.role {
-                    Role::App => AppRole::Program,
-                    Role::Data => AppRole::Data,
-                    Role::Cache => AppRole::Cache,
-                },
-            })
-        })
-        .collect();
-    store.save_apps(id, &apps, &owners)?;
-
-    if let Ok(policy) = strata_safety::Policy::for_current_user() {
-        let rows: Vec<SuggestionRow> =
-            suggest(tree, &attribution, &env, &policy, &Options::default())
-                .into_iter()
-                .map(|s| SuggestionRow {
-                    group: match s.group {
-                        Group::AppCache => "app_cache",
-                        Group::DeveloperJunk => "developer_junk",
-                        Group::Cache => "cache",
-                        Group::OldInstaller => "old_installer",
-                        Group::OldDownload => "old_download",
-                    }
-                    .into(),
-                    contents_only: matches!(s.target, Target::Contents(_)),
-                    path: s.target.path().to_path_buf(),
-                    bytes: s.bytes,
-                    app: s.app,
-                    rebuildable: s.rebuildable,
-                    reason: s.reason,
-                })
-                .collect();
-        store.save_suggestions(id, &rows)?;
-    }
-    Ok(id)
+    strata_pipeline::save_everything(&mut store, tree, meta)
 }
 
 fn list_volumes() -> std::io::Result<()> {
@@ -287,13 +226,6 @@ fn growth(file: &std::path::Path) -> Result<(), strata_store::StoreError> {
     Ok(())
 }
 
-fn now() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0)
-}
-
 fn run_scan() -> ExitCode {
     let args = match parse_args() {
         Ok(a) => a,
@@ -312,7 +244,7 @@ fn run_scan() -> ExitCode {
     let ctl = ScanControl::new();
     let show_progress = !args.quiet && !args.json;
 
-    let started_at = now();
+    let started_at = strata_pipeline::now();
     let done = std::sync::atomic::AtomicBool::new(false);
     let result = std::thread::scope(|s| {
         let (ctl, done) = (&ctl, &done);
@@ -330,7 +262,16 @@ fn run_scan() -> ExitCode {
             });
         }
         let r = if args.fast {
-            fast_scan(&args.root, ctl).map_err(|e| std::io::Error::other(e.to_string()))
+            // A whole Windows drive, or a volume image file. Unlike the app,
+            // the command never falls back to the walk: it says why instead.
+            let result = match strata_pipeline::fast_scan(&args.root, ctl) {
+                Some(result) => result,
+                None if args.root.is_file() => strata_pipeline::scan_image(&args.root, ctl),
+                None => Err(strata_mft::MftError::Io(std::io::Error::other(
+                    "--fast needs a whole drive such as C: (Windows) or a volume image file",
+                ))),
+            };
+            result.map_err(|e| std::io::Error::other(e.to_string()))
         } else {
             scan(&opts, &KindClassifier, ctl)
         };
@@ -357,7 +298,7 @@ fn run_scan() -> ExitCode {
         let meta = ScanMeta {
             volume_id: args.root.to_string_lossy().into_owned(),
             started_at,
-            finished_at: now(),
+            finished_at: strata_pipeline::now(),
         };
         match save_everything(file, &tree, &meta) {
             Ok(id) if !args.json => println!("\nSaved as scan #{id} in {}", file.display()),
@@ -369,36 +310,6 @@ fn run_scan() -> ExitCode {
         }
     }
     ExitCode::SUCCESS
-}
-
-/// Scan a whole NTFS volume from its file table.
-fn fast_scan(
-    volume: &std::path::Path,
-    ctl: &ScanControl,
-) -> Result<ScanTree, strata_mft::MftError> {
-    #[cfg(windows)]
-    {
-        // `C:` or `C:\` names a drive; anything else is taken as an image file.
-        let text = volume.to_string_lossy();
-        let mut chars = text.chars();
-        if let (Some(letter), Some(':'), true) = (chars.next(), chars.next(), text.len() <= 3) {
-            let drive = strata_mft::open_drive(letter)?;
-            let name = format!("{}:\\", letter.to_ascii_uppercase());
-            return strata_mft::scan_volume(
-                drive,
-                &strata_mft::MftOptions::new(name),
-                &KindClassifier,
-                ctl,
-            );
-        }
-    }
-    let file = std::fs::File::open(volume)?;
-    strata_mft::scan_volume(
-        file,
-        &strata_mft::MftOptions::new(volume.as_os_str()),
-        &KindClassifier,
-        ctl,
-    )
 }
 
 fn print_report(args: &Args, tree: &ScanTree) {

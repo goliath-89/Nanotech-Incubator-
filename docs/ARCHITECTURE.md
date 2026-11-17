@@ -16,8 +16,9 @@ contract changes.
 | `crates/strata-mft` | Fast whole-volume scan from the NTFS file table | Built; first run on real Windows pending |
 | `crates/strata-classify` | File kinds and app attribution from rules | Built |
 | `rules/` | App attribution rules (TOML), 20 starter apps per system | Started; grows in Sprint 5 |
-| `app/src-tauri` | Tauri commands and events | Day 9 |
-| `app/ui` | Svelte views | Sprint 2 onwards |
+| `crates/strata-pipeline` | Picks the scanner, saves a scan with apps and suggestions (shared by app and CLI) | Built |
+| `app/src-tauri` | Tauri commands and events (own workspace: needs webview libraries) | Built: volumes, scan, cancel, folders, latest scan |
+| `app/src` | Svelte 5 views; `lib/api.ts` is the only file that calls Rust, and serves example data in a plain browser | Started |
 
 Rule: only Rust crates touch the file system. The UI receives finished
 numbers through the bridge and never reads, moves or deletes a file itself.

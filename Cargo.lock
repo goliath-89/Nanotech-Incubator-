@@ -734,6 +734,7 @@ dependencies = [
  "strata-classify",
  "strata-core",
  "strata-mft",
+ "strata-pipeline",
  "strata-reclaim",
  "strata-safety",
  "strata-store",
@@ -757,6 +758,19 @@ dependencies = [
  "strata-classify",
  "strata-core",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "strata-pipeline"
+version = "0.1.0"
+dependencies = [
+ "strata-classify",
+ "strata-core",
+ "strata-mft",
+ "strata-reclaim",
+ "strata-safety",
+ "strata-store",
+ "tempfile",
 ]
 
 [[package]]

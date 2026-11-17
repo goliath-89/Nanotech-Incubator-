@@ -21,7 +21,17 @@ of file, by folder, and by the application that owns it.
 | `strata-reclaim` | Cleanup suggestions and duplicate finder (read-only) |
 | `strata-cli` | The `strata` command, for testing all of the above |
 
-The desktop app (Tauri shell and Svelte UI) starts on Day 11.
+The desktop app is in `app/` (Tauri 2 + Svelte 5):
+
+```
+cd app && npm ci
+npx tauri dev          # run the app
+npm run dev            # interface only, in a browser, with example data
+npx tauri build        # installers
+```
+
+On Linux the app needs the webview libraries (`libwebkit2gtk-4.1-dev`).
+CI attaches Windows and macOS installers to every run.
 
 ## Try it
 
