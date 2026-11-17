@@ -22,6 +22,11 @@ go; Claude adds to this list when something new needs a person.
       (it picks up your desktop colours). Tell me if the sidebar looks blank, black or too see-through.
 - [ ] Use it for a few days. Write down anything slow, wrong or confusing and send me the list (a .txt is fine).
 
+## Usability test (Gate B), this week
+
+- [ ] Recruit 5 people for 15 minutes each, on their own Windows computers.
+- [ ] Run the sessions with docs/USABILITY_TEST.md and send me the results sheet as a .txt.
+
 ## Security settings on GitHub (10 minutes, once)
 
 In the repository's **Settings**:
