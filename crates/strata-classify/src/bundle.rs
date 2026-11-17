@@ -69,11 +69,14 @@ pub fn bundle_kind(name: &str, parent: Option<&str>, grandparent: Option<&str>) 
     }
     let parent = parent.map(str::to_ascii_lowercase);
     let grandparent = grandparent.map(str::to_ascii_lowercase);
-    let game = match (parent.as_deref(), grandparent.as_deref()) {
-        (Some("common"), Some("steamapps")) => true,
-        (Some("epic games" | "gog games" | "xboxgames" | "gog galaxy games"), _) => true,
-        _ => false,
-    };
+    let game = matches!(
+        (parent.as_deref(), grandparent.as_deref()),
+        (Some("common"), Some("steamapps"))
+            | (
+                Some("epic games" | "gog games" | "xboxgames" | "gog galaxy games"),
+                _
+            )
+    );
     game.then_some(Bundle::Game)
 }
 
