@@ -17,6 +17,7 @@
   import { fileManager, isWindows } from "./lib/platform";
   import { displayName } from "./lib/kinds";
   import { tip } from "./lib/tooltip";
+  import { kindRing } from "./lib/kindRing";
 
   type Phase =
     | { name: "loading" }
@@ -33,6 +34,8 @@
   let hovered = $state<number | null>(null);
   /** A kind picked in the kind bar, shared by the ring, the list and Largest Files. */
   let selectedKind = $state<number | null>(null);
+  /** The ring shows folders, or the folder's space by kind. */
+  let ringView = $state<"folders" | "kinds">("folders");
   type Tab = "folders" | "apps" | "files" | "changes" | "reclaim";
   let tab = $state<Tab>("folders");
   const tabs: { key: Tab; label: string }[] = [
@@ -295,8 +298,13 @@
       {#if tab === "folders"}
         <section class="card overview">
           <div class="ringside">
+            <div class="views" role="group" aria-label="Ring shows">
+              <button aria-pressed={ringView === "folders"} class:on={ringView === "folders"} onclick={() => (ringView = "folders")}>Folders</button>
+              <button aria-pressed={ringView === "kinds"} class:on={ringView === "kinds"} onclick={() => (ringView = "kinds")}>Kinds</button>
+            </div>
             <Ring
-              ring={phase.ring}
+              ring={ringView === "kinds" ? kindRing(phase.listing) : phase.ring}
+              onkind={(k) => (selectedKind = selectedKind === k ? null : k)}
               {hovered}
               onhover={(id) => (hovered = id)}
               onopen={open}
@@ -365,6 +373,10 @@
   .overview { display: grid; grid-template-columns: minmax(220px, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
   .ringside { display: grid; gap: 6px; justify-items: center; position: sticky; top: 0; }
   .hint { margin: 0; color: var(--muted); font-size: 11.5px; }
+  .views { display: flex; gap: 2px; background: var(--track); border-radius: 7px; padding: 2px; }
+  .views button { border: 0; background: transparent; border-radius: 5px; padding: 3px 12px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .views button.on { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-raised); }
+  .views button:focus-visible { outline: 2px solid var(--accent); }
   .listside { min-width: 0; }
   @media (max-width: 900px) { .overview { grid-template-columns: 1fr; } }
   .tabs { display: flex; gap: 2px; background: var(--track); border-radius: 9px; padding: 2px; justify-self: start; }

@@ -224,6 +224,35 @@ test.describe("folders", () => {
     await expect(page.getByRole("navigation", { name: "Location" }).locator(".here")).toHaveText("/");
   });
 
+  test("the ring by kind: kinds inside, the folders holding each kind outside", async ({ page }) => {
+    const errors = watchErrors(page);
+    await scanned(page);
+    const views = page.getByRole("group", { name: "Ring shows" });
+    await views.getByRole("button", { name: "Kinds" }).click();
+    await expect(views.getByRole("button", { name: "Kinds" })).toHaveAttribute("aria-pressed", "true");
+    const ring = page.getByRole("application", { name: /Ring chart/ });
+    await expect(ring).toHaveAttribute("aria-label", /Videos 152 GB/);
+    await page.waitForTimeout(700);
+    // Videos is the largest kind: first slice from 12 o'clock on the inner ring.
+    const box = (await page.locator("canvas").boundingBox())!;
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.mouse.move(cx + box.width * 0.07, cy - box.height * 0.22);
+    await expect(page.locator(".centre .what")).toHaveText("Videos");
+    // Clicking a kind picks it for the whole window.
+    await page.mouse.click(cx + box.width * 0.07, cy - box.height * 0.22);
+    await expect(page.locator("section.card").filter({ hasText: "By kind" }).getByRole("button", { name: /^Videos/ })).toHaveAttribute("aria-pressed", "true");
+    // The outer ring: the folder holding the videos, which opens on click.
+    await page.mouse.move(cx + box.width * 0.07, cy - box.height * 0.35);
+    await expect(page.locator(".centre .what")).toHaveText("Users");
+    await page.mouse.click(cx + box.width * 0.07, cy - box.height * 0.35);
+    await expect(page.getByRole("navigation", { name: "Location" }).locator(".here")).toHaveText("Users");
+    await expect(views.getByRole("button", { name: "Kinds" })).toHaveAttribute("aria-pressed", "true");
+    await views.getByRole("button", { name: "Folders" }).click();
+    await expect(ring).toHaveAttribute("aria-label", /Ring chart of Users: sam/);
+    expect(errors).toEqual([]);
+  });
+
   test("ring has a text description for screen readers", async ({ page }) => {
     await scanned(page);
     await expect(page.getByRole("application", { name: /Ring chart of \/: Users 493 GB/ })).toBeVisible();

@@ -13,6 +13,7 @@
     canGoUp,
     kind = null,
     onmenu = () => {},
+    onkind = () => {},
   }: {
     ring: RingNode;
     /** Folder id highlighted elsewhere (the list), or null. */
@@ -26,6 +27,8 @@
     kind?: number | null;
     /** Right-click (or the Menu key) on a folder slice. */
     onmenu?: (e: MouseEvent | KeyboardEvent, id: number) => void;
+    /** Clicked a kind slice (the ring's "by kind" view). */
+    onkind?: (kind: number) => void;
   } = $props();
 
   const LEVELS = 3;
@@ -155,7 +158,7 @@
     const batches = new Map<string, { path: Path2D; color: string | CanvasPattern; alpha: number }>();
     for (const s of layout.all) {
       const color = colorOf(s.node);
-      const faded = kind !== null && (s.node.mainKind !== kind || s.node.slice !== "folder");
+      const faded = kind !== null && (s.node.mainKind !== kind || (s.node.slice !== "folder" && s.node.slice !== "kind"));
       const key = `${typeof color === "string" ? color : "hatch"}|${s.level}|${faded}`;
       let b = batches.get(key);
       if (!b) batches.set(key, (b = { path: new Path2D(), color, alpha: LEVEL_ALPHA[s.level - 1] * (faded ? 0.22 : 1) }));
@@ -289,7 +292,7 @@
       pointer = seg;
       onhover(seg?.node.id ?? null);
     }
-    canvas.style.cursor = (h === "centre" ? canGoUp : seg?.node.id != null && seg.node.slice === "folder") ? "pointer" : "default";
+    canvas.style.cursor = (h === "centre" ? canGoUp : (seg?.node.id != null && seg.node.slice === "folder") || seg?.node.slice === "kind") ? "pointer" : "default";
   }
 
   function leave() {
@@ -301,7 +304,7 @@
   function announce(seg: Segment | null): string {
     if (!seg) return "";
     const n = seg.node;
-    const what = n.slice === "smaller" ? "Smaller folders" : n.slice === "files" ? "Files in this folder" : n.slice === "unscanned" ? "Not scanned" : displayName(n.name);
+    const what = n.slice === "smaller" ? "Smaller folders" : n.slice === "files" ? "Files in this folder" : n.slice === "unscanned" ? "Not scanned" : n.slice === "kind" ? n.name : displayName(n.name);
     return `${what}, ${bytes(n.bytes)}, ${percent(n.bytes, ring.bytes)}, ring ${seg.level} of ${LEVELS}`;
   }
 
@@ -348,7 +351,8 @@
         break;
       case "Enter":
       case " ":
-        if (keyed?.node.id != null && keyed.node.slice === "folder" && !keyed.node.notScanned) {
+        if (keyed?.node.slice === "kind") onkind(keyed.node.mainKind);
+        else if (keyed?.node.id != null && keyed.node.slice === "folder" && !keyed.node.notScanned) {
           next = { kind: "in", from: (keyed.a0 + keyed.a1) / 2 / (Math.PI * 2) };
           onopen(keyed.node.id);
         }
@@ -378,6 +382,8 @@
     if (h === "centre") {
       if (canGoUp) next = { kind: "out", from: 0 };
       onup();
+    } else if (h?.node.slice === "kind") {
+      onkind(h.node.mainKind);
     } else if (h?.node.id != null && h.node.slice === "folder" && !h.node.notScanned) {
       next = { kind: "in", from: (h.a0 + h.a1) / 2 / (Math.PI * 2) };
       onopen(h.node.id);
