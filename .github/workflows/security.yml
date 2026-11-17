@@ -98,6 +98,19 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: none
           queries: security-extended
+      # Results are checked here, so the gate works whether or not GitHub
+      # code scanning is switched on for the repository.
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: /language:${{ matrix.language }}
+          upload: never
+          output: codeql-results
+      - name: Fail on any finding
+        run: python3 tools/codeql-gate.py codeql-results
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: codeql-${{ matrix.language }}
+          path: codeql-results
+          if-no-files-found: ignore

@@ -101,6 +101,7 @@ Checked by `tools/check-app-hardening.py` on every push:
 | 2026-11-17 | Strata's own crates had a non-standard licence field and could in theory be published | Low | Marked `publish = false` with a `LicenseRef-Proprietary` licence |
 | 2026-11-17 | CI actions referenced by movable tags; default token permissions | Low | Every action pinned to a commit; `contents: read` by default; checkout without stored credentials |
 | 2026-11-17 | First CI run: CodeQL could not report (missing `actions: read`); Rust 1.100 lint on manual byte chunking | — (process) | Permission added to the CodeQL job only; three spots changed to fixed-size chunks |
+| 2026-11-17 | CodeQL upload refused: code scanning is not switched on for the repository | — (process) | CodeQL now writes its results to a file and `tools/codeql-gate.py` fails the job on any finding; results are kept as a run artifact. Works with or without GitHub code scanning |
 
 ## Your part
 
