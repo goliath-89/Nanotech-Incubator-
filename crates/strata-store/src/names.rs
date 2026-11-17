@@ -26,8 +26,10 @@ pub(crate) fn encode(name: &OsStr) -> Vec<u8> {
 pub(crate) fn decode(bytes: Vec<u8>) -> OsString {
     use std::os::windows::ffi::OsStringExt;
     let wide: Vec<u16> = bytes
-        .chunks_exact(2)
-        .map(|c| u16::from_le_bytes([c[0], c[1]]))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|c| u16::from_le_bytes(*c))
         .collect();
     OsString::from_wide(&wide)
 }

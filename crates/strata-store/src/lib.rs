@@ -926,8 +926,8 @@ fn kinds_from_blob(blob: &[u8]) -> Option<[u64; KIND_COUNT]> {
         return None;
     }
     let mut kinds = [0u64; KIND_COUNT];
-    for (slot, chunk) in kinds.iter_mut().zip(blob.chunks_exact(8)) {
-        *slot = u64::from_le_bytes(chunk.try_into().ok()?);
+    for (slot, chunk) in kinds.iter_mut().zip(blob.as_chunks::<8>().0) {
+        *slot = u64::from_le_bytes(*chunk);
     }
     Some(kinds)
 }

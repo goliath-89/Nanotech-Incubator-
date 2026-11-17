@@ -94,6 +94,7 @@ Checked by `tools/check-app-hardening.py` on every push:
 | 2026-11-17 | `proc-macro-error` unmaintained, via the GTK stack | Informational | Linux-only build-time crate, not in any Windows or macOS build; policy scoped to shipping platforms |
 | 2026-11-17 | Strata's own crates had a non-standard licence field and could in theory be published | Low | Marked `publish = false` with a `LicenseRef-Proprietary` licence |
 | 2026-11-17 | CI actions referenced by movable tags; default token permissions | Low | Every action pinned to a commit; `contents: read` by default; checkout without stored credentials |
+| 2026-11-17 | First CI run: CodeQL could not report (missing `actions: read`); Rust 1.100 lint on manual byte chunking | — (process) | Permission added to the CodeQL job only; three spots changed to fixed-size chunks |
 
 ## Your part
 
