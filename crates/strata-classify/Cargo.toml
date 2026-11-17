@@ -10,7 +10,7 @@ publish.workspace = true
 [dependencies]
 strata-core = { path = "../strata-core" }
 serde = { version = "1", features = ["derive"] }
-toml = "0.8"
+toml = "1.2"
 
 [dev-dependencies]
 strata-safety = { path = "../strata-safety" }
