@@ -9,7 +9,10 @@ go; Claude adds to this list when something new needs a person.
       builds from the latest run under the repo's **Actions** tab on GitHub.
 - [ ] On the Mac: `chmod +x strata && ./strata scan / --errors`. Save the output.
       If macOS blocks the file, run `xattr -d com.apple.quarantine strata` first.
-- [ ] On the PC: `strata.exe scan C:\ --errors`. Save the output.
+- [ ] On the PC: unzip the download, open PowerShell **as administrator**, then:
+      `cd $HOME\Downloads\strata-cli-windows-latest` (wherever you unzipped it),
+      `.\strata.exe scan C:\ --errors` and `.\strata.exe scan C: --fast --errors`.
+      PowerShell only runs a program from the current folder when you type `.\` in front.
 - [ ] Note the used space Finder (Get Info on Macintosh HD) and Explorer
       (Properties on C:) show for those drives.
 - [ ] Paste both outputs and both used-space figures into a session and say "Day 3".
