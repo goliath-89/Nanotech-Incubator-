@@ -522,3 +522,59 @@ fn a_tree_that_changes_during_the_scan_is_handled_quietly() {
         stop.store(true, Ordering::Relaxed);
     });
 }
+
+#[test]
+fn running_totals_per_top_folder_end_at_the_final_totals() {
+    let tmp = tempfile::tempdir().unwrap();
+    build_mixed_tree(tmp.path());
+    let ctl = ScanControl::new();
+    assert!(ctl.top_level_so_far().is_empty(), "nothing before the scan");
+    let tree = scan(&ScanOptions::new(tmp.path()), &NoClassify, &ctl).unwrap();
+    let so_far = ctl.top_level_so_far();
+    let root = tree.root();
+    assert_eq!(so_far.len(), root.children.len());
+    for &c in &root.children {
+        let d = &tree.dirs[c as usize];
+        let t = so_far
+            .iter()
+            .find(|t| t.name == d.name)
+            .expect("every top folder");
+        // Hard-linked files are placed after the walk, so the running total
+        // can only be short by what hard links added.
+        assert!(
+            t.bytes <= d.alloc_bytes,
+            "{:?}: {} > {}",
+            d.name,
+            t.bytes,
+            d.alloc_bytes
+        );
+    }
+}
+
+#[test]
+fn running_totals_match_exactly_without_hard_links() {
+    let tmp = tempfile::tempdir().unwrap();
+    for (dir, files) in [("a", 3), ("b/c", 5), ("b/d", 2), ("e", 0)] {
+        fs::create_dir_all(tmp.path().join(dir)).unwrap();
+        for i in 0..files {
+            write(&tmp.path().join(dir).join(format!("f{i}")), 3000 * (i + 1));
+        }
+    }
+    let ctl = ScanControl::new();
+    let tree = scan(&ScanOptions::new(tmp.path()), &NoClassify, &ctl).unwrap();
+    let mut so_far = ctl.top_level_so_far();
+    so_far.sort_by(|x, y| x.name.cmp(&y.name));
+    let finals: Vec<(OsString, u64)> = tree
+        .root()
+        .children
+        .iter()
+        .map(|&c| {
+            (
+                tree.dirs[c as usize].name.clone(),
+                tree.dirs[c as usize].alloc_bytes,
+            )
+        })
+        .collect();
+    let running: Vec<(OsString, u64)> = so_far.into_iter().map(|t| (t.name, t.bytes)).collect();
+    assert_eq!(running, finals);
+}

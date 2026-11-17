@@ -169,7 +169,7 @@ a display string; the UI never builds a path itself.
 | --- | --- | --- |
 | `scan://stage` | `{ token, stage }`: `permission`, `fileTable` or `walk` | when the scan changes method; on Windows the app asks for administrator rights and runs a short-lived copy of itself (`--strata-elevated-scan`) that reads the file table and writes the result to a new file in the app's data folder, which the app reads and deletes. Declined → folder walk |
 | `scan://progress` | `{ scan_token, files, dirs, bytes, errors }` | 10 times a second while scanning |
-| `scan://partial` | `{ scan_token, top[] }` (top-level totals so far) | once a second, drives the ring filling in |
+| `scan://partial` | `{ token, bytes, top[{ name, bytes, mainKind }] }`: totals so far per folder under the root, largest first (`ScanControl::top_level_so_far`, lock-free counters) | once a second during a folder walk, drives the ring filling in; the file-table scan has none (it takes seconds) |
 | `scan://done` | `{ scan_token, scan_id, stats }` | scan finished or cancelled |
 | `scan://failed` | `{ scan_token, message }` | root could not be read |
 

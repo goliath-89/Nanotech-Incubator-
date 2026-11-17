@@ -20,6 +20,13 @@ export interface Progress {
   errors: string;
 }
 
+/** Totals so far per folder directly under the root (`scan://partial`). */
+export interface Partial {
+  token: number;
+  bytes: string;
+  top: { name: string; bytes: string; mainKind: number }[];
+}
+
 export interface Done {
   token: number;
   scanId: number;

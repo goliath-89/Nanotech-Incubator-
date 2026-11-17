@@ -8,6 +8,7 @@ import type {
   Failed,
   LargeFile,
   Listing,
+  Partial,
   PlacedDir,
   Progress,
   RingNode,
@@ -83,6 +84,7 @@ export function latestScan(volumeId: string): Promise<ScanSummary | null> {
 export interface ScanEvents {
   stage?: (s: { token: number; stage: "permission" | "fileTable" | "walk" }) => void;
   progress: (p: Progress) => void;
+  partial?: (p: Partial) => void;
   done: (d: Done) => void;
   failed: (f: Failed) => void;
 }
@@ -94,6 +96,7 @@ export async function onScanEvents(handlers: ScanEvents): Promise<() => void> {
   const offs = await Promise.all([
     listen<{ token: number; stage: "permission" | "fileTable" | "walk" }>("scan://stage", (e) => handlers.stage?.(e.payload)),
     listen<Progress>("scan://progress", (e) => handlers.progress(e.payload)),
+    listen<Partial>("scan://partial", (e) => handlers.partial?.(e.payload)),
     listen<Done>("scan://done", (e) => handlers.done(e.payload)),
     listen<Failed>("scan://failed", (e) => handlers.failed(e.payload)),
   ]);

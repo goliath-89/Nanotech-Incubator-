@@ -49,6 +49,18 @@ test.describe("scanning", () => {
     expect(errors).toEqual([]);
   });
 
+  test("the ring fills in while the scan runs", async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Scan Macintosh HD" }).click();
+    const live = page.getByRole("img", { name: /Ring chart of Macintosh HD: Users/ });
+    await expect(live).toBeVisible();
+    await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
+    // Then the finished, clickable ring of the whole drive.
+    await expect(page.getByRole("img", { name: /Ring chart of \/: Users 493 GB/ })).toBeVisible({ timeout: 10_000 });
+    expect(errors).toEqual([]);
+  });
+
   test("Stop keeps partial figures and says so", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Scan Macintosh HD" }).click();

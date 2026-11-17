@@ -1,12 +1,12 @@
 use crate::platform::{self, RootCtx};
 use crate::raw::{build_tree, RawDir, RawFile, RawLink};
-use crate::tree::{Classify, DirFlags, ScanError, ScanErrorKind, ScanTree};
+use crate::tree::{Classify, DirFlags, ScanError, ScanErrorKind, ScanTree, KIND_COUNT};
 use rayon::prelude::*;
 use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering::Relaxed};
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
 
 /// How many unreadable paths are kept with full detail. The count of all of
@@ -53,6 +53,27 @@ pub struct ScanControl {
     bytes: AtomicU64,
     errors: AtomicU64,
     cancel: AtomicBool,
+    /// Running totals per folder directly under the root, for drawing the
+    /// result while the scan is still going. Set once, when the root has
+    /// been listed; after that only the atomic counters change.
+    top: OnceLock<Vec<TopCounter>>,
+}
+
+#[derive(Debug)]
+struct TopCounter {
+    name: OsString,
+    bytes: AtomicU64,
+    kind_bytes: [AtomicU64; KIND_COUNT],
+}
+
+/// A folder directly under the root, as counted so far.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TopLevelSoFar {
+    pub name: OsString,
+    /// Bytes on disk counted so far (hard-linked files are added at the end).
+    pub bytes: u64,
+    /// Of those, bytes per kind (files only), in `Kind` order.
+    pub kind_bytes: [u64; KIND_COUNT],
 }
 
 impl ScanControl {
@@ -89,6 +110,30 @@ impl ScanControl {
     /// Entries that could not be read so far.
     pub fn errors(&self) -> u64 {
         self.errors.load(Relaxed)
+    }
+    /// The folders directly under the root with what has been counted in
+    /// each so far. Empty until the root has been listed, and for scanners
+    /// that do not report it (the NTFS file-table scan finishes in seconds).
+    pub fn top_level_so_far(&self) -> Vec<TopLevelSoFar> {
+        self.top.get().map_or_else(Vec::new, |top| {
+            top.iter()
+                .map(|t| TopLevelSoFar {
+                    name: t.name.clone(),
+                    bytes: t.bytes.load(Relaxed),
+                    kind_bytes: std::array::from_fn(|k| t.kind_bytes[k].load(Relaxed)),
+                })
+                .collect()
+        })
+    }
+    fn add_to_top(&self, index: usize, bytes: u64, kind_bytes: &[u64; KIND_COUNT]) {
+        if let Some(t) = self.top.get().and_then(|top| top.get(index)) {
+            t.bytes.fetch_add(bytes, Relaxed);
+            for (counter, &b) in t.kind_bytes.iter().zip(kind_bytes) {
+                if b > 0 {
+                    counter.fetch_add(b, Relaxed);
+                }
+            }
+        }
     }
 }
 
@@ -153,6 +198,7 @@ pub fn scan(
             opts.root.clone(),
             opts.root.clone().into_os_string(),
             root.alloc,
+            None,
         );
         build_tree(raw, opts.min_file_bytes, opts.max_files)
     });
@@ -164,7 +210,15 @@ pub fn scan(
     Ok(tree)
 }
 
-fn scan_dir(ctx: &Ctx, path: PathBuf, name: OsString, dir_alloc: u64) -> RawDir {
+/// `top`: which folder directly under the root this one is in (None for
+/// the root itself), for the running totals in `ScanControl`.
+fn scan_dir(
+    ctx: &Ctx,
+    path: PathBuf,
+    name: OsString,
+    dir_alloc: u64,
+    top: Option<usize>,
+) -> RawDir {
     let mut dir = RawDir::new(name, dir_alloc);
     if ctx.ctl.is_cancelled() {
         dir.flags.cancelled = true;
@@ -255,16 +309,33 @@ fn scan_dir(ctx: &Ctx, path: PathBuf, name: OsString, dir_alloc: u64) -> RawDir 
 
     ctx.ctl.files.fetch_add(files_here, Relaxed);
     ctx.ctl.bytes.fetch_add(bytes_here, Relaxed);
+    match top {
+        Some(i) => ctx.ctl.add_to_top(i, bytes_here, &dir.kind_bytes),
+        None => {
+            // The root: register its folders for the running totals. Each
+            // starts with its own folder entry's space.
+            let counters = subdirs
+                .iter()
+                .map(|(_, name, own, _)| TopCounter {
+                    name: name.clone(),
+                    bytes: AtomicU64::new(*own),
+                    kind_bytes: Default::default(),
+                })
+                .collect();
+            let _ = ctx.ctl.top.set(counters);
+        }
+    }
 
     dir.children = subdirs
         .into_par_iter()
-        .map(|(sub_path, sub_name, own, flags)| {
+        .enumerate()
+        .map(|(i, (sub_path, sub_name, own, flags))| {
             if flags.not_scanned() {
                 let mut d = RawDir::new(sub_name, own);
                 d.flags = flags;
                 d
             } else {
-                scan_dir(ctx, sub_path, sub_name, own)
+                scan_dir(ctx, sub_path, sub_name, own, Some(top.unwrap_or(i)))
             }
         })
         .collect();

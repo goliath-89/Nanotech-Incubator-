@@ -20,12 +20,13 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 18 / 90 (20%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 19 / 90 (21%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
-| **Sprint 3 · ring polish (current)** | 1 / 10 (10%) | Day 21 done |
+| **Sprint 3 · ring polish (current)** | 2 / 10 (20%) | Days 21–22 done |
 
 Log (newest first):
+- 17 Nov · Day 22 ✅ ring fills in live during a scan. Sprint 3 2/10 (20%), overall 19/90 (21%).
 - 17 Nov · Day 21 ✅ ring at 60 fps with 100k folders, spring animation. Sprint 3 1/10 (10%), overall 18/90 (20%). Name decided: Strata.
 - 17 Nov · Day 20 ✅ bridge and app review: 1 high, 4 medium, 2 low fixed; dependencies updated. Sprint 2 8/10 (80%), overall 17/90 (19%).
 - 17 Nov · Day 19 ✅ 23 UI tests in CI (Playwright, example data). Sprint 2 7/10 (70%), overall 16/90 (18%).
@@ -35,7 +36,7 @@ Log (newest first):
 - 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
 - 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
 
-Next: Day 22 (ring fills in live during a scan), Day 23 (design pass: Mica on Windows 11, vibrancy on macOS). Day 16 waits for the MacBook; Day 17 waits for your MVP notes.
+Next: Day 23 (design pass: tokens, Mica on Windows 11, vibrancy on macOS), Day 24 (tooltips, shared selection). Day 16 waits for the MacBook; Day 17 waits for your MVP notes.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -117,7 +118,7 @@ of introducing them.
 | Day | Model | Claude builds | You |
 | --- | --- | --- | --- |
 | 21 ✅ | Opus | Ring drawn once into an image (fills batched by colour), hover redraws only the lit slice, hit-testing by binary search. With a 100,000-folder tree: built in ~8 ms once, frames under 2.1 ms, 61–62 fps while hovering (4 performance tests in CI). Spring animation: opens from the slice clicked, settles back when going up; off with Reduce Motion | — |
-| 22 | Opus | Ring fills in live during a scan | — |
+| 22 ✅ | Opus | Ring fills in live during a scan: the scanner keeps lock-free running totals per top-level folder; the app sends them once a second; the ring grows clockwise against the drive's used space, with the uncounted part as a faint track. Totals end exactly at the final figures (2 new engine tests, 1 UI test) | — |
 | 23 | Opus | Design pass: tokens, Mica on Windows 11, vibrancy on macOS, light and dark | — |
 | 24 | Opus | Hover tooltips everywhere; shared selection across views | Use it on your real drive for 10 minutes; list what confuses you. |
 | 25 | Opus | Fixes from your notes | — |

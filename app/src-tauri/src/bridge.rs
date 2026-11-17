@@ -93,6 +93,48 @@ struct Progress {
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct PartialTop {
+    name: String,
+    bytes: String,
+    main_kind: u8,
+}
+
+/// What has been counted so far in each folder directly under the root,
+/// largest first: drives the ring filling in while the scan runs.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Partial {
+    token: u64,
+    bytes: String,
+    top: Vec<PartialTop>,
+}
+
+fn partial(token: u64, ctl: &ScanControl) -> Option<Partial> {
+    let mut top = ctl.top_level_so_far();
+    if top.is_empty() {
+        return None;
+    }
+    top.sort_by_key(|t| std::cmp::Reverse(t.bytes));
+    Some(Partial {
+        token,
+        bytes: ctl.bytes().to_string(),
+        top: top
+            .into_iter()
+            .take(200)
+            .map(|t| PartialTop {
+                name: t.name.to_string_lossy().into_owned(),
+                bytes: t.bytes.to_string(),
+                main_kind: (0..KIND_COUNT)
+                    .max_by_key(|&k| (t.kind_bytes[k], std::cmp::Reverse(k)))
+                    .filter(|&k| t.kind_bytes[k] > 0)
+                    .unwrap_or(0) as u8,
+            })
+            .collect(),
+    })
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Done {
     token: u64,
     scan_id: i64,
@@ -156,7 +198,15 @@ pub fn start_scan(
             let ticker = {
                 let (app, ctl, finished) = (app.clone(), ctl.clone(), finished.clone());
                 std::thread::spawn(move || {
+                    let mut tick = 0u32;
                     while !finished.load(Ordering::Relaxed) {
+                        // Once a second: the running totals for the ring.
+                        if tick % 10 == 5 {
+                            if let Some(p) = partial(token, &ctl) {
+                                let _ = app.emit("scan://partial", p);
+                            }
+                        }
+                        tick += 1;
                         let _ = app.emit(
                             "scan://progress",
                             Progress {

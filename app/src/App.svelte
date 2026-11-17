@@ -16,7 +16,7 @@
   type Phase =
     | { name: "loading" }
     | { name: "idle" }
-    | { name: "scanning"; token: number; progress: Progress | null; started: number; stage: "permission" | "fileTable" | "walk" | null }
+    | { name: "scanning"; token: number; progress: Progress | null; started: number; stage: "permission" | "fileTable" | "walk" | null; partial: RingNode | null }
     | { name: "result"; scanId: number; done: Done | null; listing: Listing; ring: RingNode }
     | { name: "error"; message: string };
 
@@ -46,6 +46,20 @@
         },
         progress: (p) => {
           if (phase.name === "scanning" && p.token === phase.token) phase.progress = p;
+        },
+        partial: (p) => {
+          if (phase.name !== "scanning" || p.token !== phase.token) return;
+          // A ring of what has been counted so far: one level, not clickable yet.
+          phase.partial = {
+            // Sized against the drive's used space, so the ring fills up as the scan goes.
+            id: -1, slice: "folder", name: volume?.name ?? "",
+            bytes: String(Math.max(Number(p.bytes), Number(volume?.used ?? 0))), mainKind: 0, notScanned: false,
+            children: p.top.map((t) => ({ id: null, slice: "folder" as const, name: t.name, bytes: t.bytes, mainKind: t.mainKind, notScanned: false, children: [] })),
+          };
+          // The rest of the ring, faint, until it is counted.
+          const counted = p.top.reduce((t, x) => t + Number(x.bytes), 0);
+          const rest = Number(phase.partial.bytes) - counted;
+          if (rest > 0) phase.partial.children.push({ id: null, slice: "smaller", name: "Not counted yet", bytes: String(rest), mainKind: 0, notScanned: false, children: [] });
         },
         done: async (d) => {
           if (phase.name !== "scanning" || d.token !== phase.token) return;
@@ -91,7 +105,7 @@
     try {
       // On Windows a whole drive is read from its file table when allowed.
       const token = await api.startScan(volume.id, isWindows);
-      phase = { name: "scanning", token, progress: null, started: Date.now(), stage: null };
+      phase = { name: "scanning", token, progress: null, started: Date.now(), stage: null, partial: null };
     } catch (e) {
       phase = { name: "error", message: String(e) };
     }
@@ -152,7 +166,13 @@
       </div>
     {:else if phase.name === "scanning"}
       {@const p = phase.progress}
-      <div class="scanning" aria-live="polite">
+      <div class="scanning" class:with-ring={phase.partial} aria-live="polite">
+        {#if phase.partial}
+          <div class="live-ring">
+            <Ring ring={phase.partial} hovered={null} onhover={() => {}} onopen={() => {}} onup={() => {}} canGoUp={false} />
+          </div>
+        {/if}
+        <div class="figures">
         <div class="big num">{bytes(p?.bytes ?? 0)}</div>
         <p class="num">
           {count(p?.files ?? 0)} files in {count(p?.dirs ?? 0)} folders · {seconds(now - phase.started)}
@@ -167,6 +187,7 @@
             Counting {volume?.name}. You can keep working while this runs.
           {/if}
         </p>
+        </div>
       </div>
     {:else if phase.name === "result"}
       {#if phase.done}
@@ -263,6 +284,10 @@
   .scanning { padding: 40px 0 10px; display: grid; gap: 10px; }
   .big { font: 700 44px/1 var(--font-display); letter-spacing: -0.03em; }
   .scanning p { margin: 0; }
+  .scanning.with-ring { grid-template-columns: minmax(200px, 300px) minmax(0, 1fr); gap: 32px; align-items: center; padding-top: 24px; }
+  .figures { display: grid; gap: 10px; align-content: center; }
+  .live-ring { min-width: 0; }
+  @media (max-width: 760px) { .scanning.with-ring { grid-template-columns: 1fr; } }
   .quiet { color: var(--muted); font-weight: 400; }
   .status { margin: 0; color: var(--muted); }
   .note { margin: 0; padding: 10px 14px; border-radius: 8px; background: var(--warning-bg); color: var(--warning); }

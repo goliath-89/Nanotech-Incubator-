@@ -78,6 +78,15 @@ export async function startScan(_volumeId: string) {
     tick++;
     const f = Math.min(1, tick / 20);
     handlers?.progress({ token, files: String(Math.round(1_840_000 * f)), dirs: String(Math.round(210_000 * f)), bytes: String(Math.round(flat[0].bytes * f)), errors: "0" });
+    if (tick % 5 === 0) {
+      // Folders fill at different speeds, like a real walk.
+      const top = flat[0].children.map((c, i) => {
+        const x = flat[c];
+        const share = Math.min(1, f * (1.6 - i * 0.18));
+        return { name: x.name, bytes: String(Math.round(x.bytes * Math.max(0, share))), mainKind: mainKind(dirOf(x).kindBytes) };
+      });
+      handlers?.partial?.({ token, bytes: String(top.reduce((t, x) => t + Number(x.bytes), 0)), top: top.sort((a, b) => Number(b.bytes) - Number(a.bytes)) });
+    }
     if (tick >= 20) {
       clearInterval(timer!);
       scanned = true;
