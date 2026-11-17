@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function scanned(page: Page) {
-  await page.goto("/");
+async function scanned(page: Page, query = "") {
+  await page.goto("/" + query);
   await page.getByRole("button", { name: "Scan Macintosh HD" }).click();
   await expect(page.getByRole("tablist", { name: "Views" })).toBeVisible({ timeout: 10_000 });
   await page.mouse.move(0, 0);
@@ -51,20 +51,20 @@ test.describe("looks the same as approved", () => {
   // fonts that differ between machines do not matter.
   // To approve a deliberate change: npx playwright test ring --update-snapshots
   test("light", async ({ page }) => {
-    await scanned(page);
+    await scanned(page, "?demo-full=1");
     await page.waitForTimeout(800);
     await expect(page.locator("canvas")).toHaveScreenshot("ring-light.png", { maxDiffPixelRatio: 0.01, mask: [page.locator(".centre > *")] });
   });
 
   test("dark", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
-    await scanned(page);
+    await scanned(page, "?demo-full=1");
     await page.waitForTimeout(800);
     await expect(page.locator("canvas")).toHaveScreenshot("ring-dark.png", { maxDiffPixelRatio: 0.01, mask: [page.locator(".centre > *")] });
   });
 
   test("one kind picked", async ({ page }) => {
-    await scanned(page);
+    await scanned(page, "?demo-full=1");
     await page.locator("section.card").filter({ hasText: "By kind" }).getByRole("button", { name: /^Photos/ }).click();
     await page.waitForTimeout(300);
     await expect(page.locator("canvas")).toHaveScreenshot("ring-photos.png", { maxDiffPixelRatio: 0.01, mask: [page.locator(".centre > *")] });

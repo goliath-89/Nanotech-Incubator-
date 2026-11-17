@@ -49,7 +49,9 @@ jobs:
         run: python3 ../tools/npm-audit-gate.py .
       - name: Registry signatures and provenance
         working-directory: app
-        run: npm audit signatures
+        # The npm that comes with Node 22 cannot find the registry's newer
+        # signing keys (EMISSINGSIGNATUREKEY); a newer npm reads them.
+        run: npx --yes npm@11.21.1 audit signatures
 
   secrets:
     name: Secrets in the repository history

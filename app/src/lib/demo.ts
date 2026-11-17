@@ -72,7 +72,15 @@ let handlers: ScanEvents | null = null;
 let scanned = false;
 let timer: ReturnType<typeof setInterval> | null = null;
 
-export async function listVolumes() { return volumes; }
+export async function listVolumes() {
+  // Pixel snapshots: ?demo-full=1 makes the drive's used space exactly what
+  // the scan counts, so no striped "Not scanned" slice (its anti-aliasing
+  // differs between machines; it has its own functional tests).
+  if (typeof location !== "undefined" && new URLSearchParams(location.search).has("demo-full")) {
+    return volumes.map((v) => (v.id === "demo-1" ? { ...v, used: String(flat[0].bytes) } : v));
+  }
+  return volumes;
+}
 
 export async function latestScan(volumeId: string): Promise<ScanSummary | null> {
   return volumeId === "demo-1" && scanned ? { scanId: 1, finishedAt: 0, allocBytes: String(flat[0].bytes), fileCount: "1840000" } : null;

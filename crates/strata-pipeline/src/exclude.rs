@@ -10,15 +10,19 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use strata_core::{DirNode, ScanTree};
 
-/// Same path, as the file system compares them (letter case is ignored on
-/// Windows and macOS, whose usual file systems do).
+/// Same path, as the file system compares them: part by part (so `/` and
+/// `\` agree on Windows), ignoring letter case on Windows and macOS, whose
+/// usual file systems do.
 fn same(a: &Path, b: &Path) -> bool {
-    if cfg!(any(windows, target_os = "macos")) {
-        a.as_os_str().to_string_lossy().to_lowercase()
-            == b.as_os_str().to_string_lossy().to_lowercase()
-    } else {
-        a == b
-    }
+    let fold = |c: std::path::Component<'_>| {
+        let t = c.as_os_str().to_string_lossy().into_owned();
+        if cfg!(any(windows, target_os = "macos")) {
+            t.to_lowercase()
+        } else {
+            t
+        }
+    };
+    a.components().map(fold).eq(b.components().map(fold))
 }
 
 /// Remove the contents of every folder in `excludes` from `tree`.
@@ -235,6 +239,19 @@ mod tests {
             assert!(d.alloc_bytes >= below + d.own_files_alloc);
         }
         assert!(t.files.iter().all(|f| (f.dir as usize) < t.dirs.len()));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_paths_match_whatever_the_slashes_and_case() {
+        assert!(same(
+            Path::new(r"C:\Users\Sam\Mixed\Private"),
+            Path::new("c:/users/sam/mixed/private")
+        ));
+        assert!(!same(
+            Path::new(r"C:\Users\Sam\Mixed"),
+            Path::new(r"C:\Users\Sam\Mixed\Private")
+        ));
     }
 
     #[test]
