@@ -50,9 +50,12 @@ pub enum MftError {
     NotNtfs,
     /// The file table could not be made sense of.
     Damaged(&'static str),
-    /// Raw access to the volume was refused; on Windows this needs an
-    /// administrator.
+    /// Raw access to the volume needs administrator rights, and this
+    /// program is not running with them.
     NeedsAdministrator,
+    /// Raw access was refused although the program runs as administrator.
+    /// Security software that guards the disk is the usual cause.
+    AccessRefused(io::Error),
     Cancelled,
 }
 
@@ -62,9 +65,16 @@ impl std::fmt::Display for MftError {
             MftError::Io(e) => write!(f, "could not read the volume: {e}"),
             MftError::NotNtfs => write!(f, "the volume is not NTFS"),
             MftError::Damaged(what) => write!(f, "the volume's file table is damaged: {what}"),
-            MftError::NeedsAdministrator => {
-                write!(f, "reading the volume directly needs administrator rights")
-            }
+            MftError::NeedsAdministrator => write!(
+                f,
+                "reading the drive directly needs administrator rights, and this window does not have them. \
+                 Close it, right-click Windows PowerShell (or Terminal), choose Run as administrator, and try again"
+            ),
+            MftError::AccessRefused(e) => write!(
+                f,
+                "Windows refused direct access to the drive even though Strata is running as administrator \
+                 ({e}). Security software that protects the disk, such as an antivirus, usually causes this"
+            ),
             MftError::Cancelled => write!(f, "the scan was cancelled"),
         }
     }
@@ -584,8 +594,48 @@ pub fn open_drive(letter: char) -> Result<std::fs::File, MftError> {
             "not a drive letter",
         )));
     }
-    Ok(std::fs::File::open(format!(
-        r"\\.\{}:",
-        letter.to_ascii_uppercase()
-    ))?)
+    let path = format!(r"\\.\{}:", letter.to_ascii_uppercase());
+    match std::fs::File::open(path) {
+        Ok(file) => Ok(file),
+        Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
+            if is_elevated() {
+                Err(MftError::AccessRefused(e))
+            } else {
+                Err(MftError::NeedsAdministrator)
+            }
+        }
+        Err(e) => Err(MftError::Io(e)),
+    }
+}
+
+/// True when this process runs with administrator rights (an elevated token).
+#[cfg(windows)]
+pub fn is_elevated() -> bool {
+    use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
+    use windows_sys::Win32::Security::{
+        GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY,
+    };
+    use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+    let mut token: HANDLE = std::ptr::null_mut();
+    // SAFETY: GetCurrentProcess returns a pseudo-handle that needs no closing;
+    // `token` is a valid out-pointer.
+    if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) } == 0 {
+        return false;
+    }
+    let mut elevation = TOKEN_ELEVATION { TokenIsElevated: 0 };
+    let mut written = 0u32;
+    // SAFETY: `token` was opened above with TOKEN_QUERY; the buffer is a
+    // TOKEN_ELEVATION of the size passed; `written` is a valid out-pointer.
+    let ok = unsafe {
+        GetTokenInformation(
+            token,
+            TokenElevation,
+            (&mut elevation as *mut TOKEN_ELEVATION).cast(),
+            std::mem::size_of::<TOKEN_ELEVATION>() as u32,
+            &mut written,
+        )
+    };
+    // SAFETY: `token` is a handle this function opened and owns.
+    unsafe { CloseHandle(token) };
+    ok != 0 && elevation.TokenIsElevated != 0
 }

@@ -313,7 +313,8 @@ open_drive('C') -> Result<File, MftError>      // Windows only
 - All input is untrusted. Every offset is bounds-checked; a damaged record
   is skipped; a damaged table is an error. A test flips bytes across an
   image 400 times and requires no panic.
-- Errors: `NotNtfs` (fall back to the walk), `NeedsAdministrator`, `Damaged`,
+- Errors: `NotNtfs` (fall back to the walk), `NeedsAdministrator` (not elevated),
+  `AccessRefused` (elevated but refused, usually antivirus), `Damaged`,
   `Cancelled`, `Io`.
 - Tests use `tests/fixtures/small.img.gz`, a real NTFS volume built by
   `tools/make-ntfs-fixture.sh` (ntfs-3g), and compare against the listing
