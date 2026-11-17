@@ -94,6 +94,11 @@ export async function cancelScan(_token: number) {
 }
 
 export async function getDir(_scanId: number, dirId: number): Promise<Listing> {
+  const b = bigNodes.get(dirId);
+  if (b) {
+    const asDir = (n: RingNode): Dir => ({ ...dirOf(flat[0]), id: n.id!, name: n.name, allocBytes: n.bytes, dirCount: String(n.children.length) });
+    return { dir: asDir(b), path: `/${b.name}`, breadcrumb: [{ id: 0, name: "/" }, { id: b.id!, name: b.name }], children: b.children.map(asDir), files: [] };
+  }
   const f = flat[dirId];
   const crumbs: { id: number; name: string }[] = [];
   for (let x: Flat | undefined = f; x; x = x.parent === null ? undefined : flat[x.parent]) crumbs.unshift({ id: x.id, name: x.name });
@@ -114,7 +119,34 @@ function ringOf(f: Flat, levels: number): RingNode {
 }
 
 export async function getRing(_scanId: number, dirId: number): Promise<RingNode> {
+  // Performance tests: ?demo-ring=100000 gives a ring of that many slices.
+  const big = Number(new URLSearchParams(location.search).get("demo-ring"));
+  if (big > 0 && dirId === 0) return bigRing(big);
+  if (bigNodes.has(dirId)) return bigNodes.get(dirId)!;
   return ringOf(flat[dirId], 3);
+}
+
+/** About `count` slices over three levels, sizes uneven like a real drive
+ *  (a few large folders, a long tail of small ones). */
+const bigNodes = new Map<number, RingNode>();
+function bigRing(count: number): RingNode {
+  let id = 1000;
+  let seed = 7;
+  const rand = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const level3 = Math.max(1, Math.round(count / (60 * 40)));
+  const node = (bytes: number, children: RingNode[]): RingNode => {
+    const n: RingNode = { id: id++, slice: "folder", name: `Folder ${id}`, bytes: String(Math.round(bytes)), mainKind: Math.floor(rand() * 10), notScanned: false, children };
+    bigNodes.set(n.id!, n);
+    return n;
+  };
+  const top = Array.from({ length: 60 }, (_, i) => {
+    const mids = Array.from({ length: 40 }, (_, j) => {
+      const leaves = Array.from({ length: level3 }, (_, k) => node(GB / (1 + k) / (1 + j) / (1 + i * 0.2) * (0.5 + rand()), []));
+      return node(leaves.reduce((t, l) => t + Number(l.bytes), 0), leaves);
+    });
+    return node(mids.reduce((t, m) => t + Number(m.bytes), 0), mids);
+  });
+  return { ...node(top.reduce((t, n) => t + Number(n.bytes), 0), top), id: 0, name: "/" };
 }
 
 export async function onScanEvents(h: ScanEvents) {

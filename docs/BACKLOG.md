@@ -23,8 +23,9 @@ go; Claude adds to this list when something new needs a person.
 
 In the repository's **Settings**:
 
-- [ ] Code security → turn on **Dependabot alerts**, **Dependabot security updates**,
-      **Secret scanning**, **Push protection** and **Private vulnerability reporting**.
+- [x] Repository made public (17 Nov): Actions minutes are free.
+- [x] Dependabot turned on (17 Nov).
+- [ ] Code security → also turn on **Secret scanning**, **Push protection** and **Private vulnerability reporting** if not done (Dependabot alerts and security updates are on).
 - [ ] Branches → add a rule for the main branch: require the **CI** and **Security**
       checks to pass and require a pull request before merging.
 
@@ -55,7 +56,7 @@ In the repository's **Settings**:
 
 ## Decisions coming up
 
-- [ ] Final product name: check the domain and do a trademark search for "Strata" (Day 20).
+- [x] Final product name: **Strata** (decided 17 Nov). Still worth doing before launch: check the domain and do a trademark search.
 - [ ] One-time price or subscription (Day 67).
 - [ ] Telemetry provider, or none (Day 69).
 

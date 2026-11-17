@@ -20,11 +20,13 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 17 / 90 (19%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 18 / 90 (20%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
-| **Sprint 2 · MVP (current)** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
+| **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
+| **Sprint 3 · ring polish (current)** | 1 / 10 (10%) | Day 21 done |
 
 Log (newest first):
+- 17 Nov · Day 21 ✅ ring at 60 fps with 100k folders, spring animation. Sprint 3 1/10 (10%), overall 18/90 (20%). Name decided: Strata.
 - 17 Nov · Day 20 ✅ bridge and app review: 1 high, 4 medium, 2 low fixed; dependencies updated. Sprint 2 8/10 (80%), overall 17/90 (19%).
 - 17 Nov · Day 19 ✅ 23 UI tests in CI (Playwright, example data). Sprint 2 7/10 (70%), overall 16/90 (18%).
 - 17 Nov · Day 18 ✅ nightly accuracy and benchmark CI on all three systems. Sprint 2 6/10 (60%), overall 15/90 (17%).
@@ -33,7 +35,7 @@ Log (newest first):
 - 17 Nov · Days 11–12 ✅ app shell and ring. Sprint 2 2/10 (20%).
 - 17 Nov · Gate A passed on Windows (fast scan 99.8%, 3.8 s). Sprint 1 8/10 (80%).
 
-Next: Sprint 3 starts with Day 21 (ring at 60 fps with 100k segments, spring animation). Day 16 waits for the MacBook; Day 17 waits for your MVP notes.
+Next: Day 22 (ring fills in live during a scan), Day 23 (design pass: Mica on Windows 11, vibrancy on macOS). Day 16 waits for the MacBook; Day 17 waits for your MVP notes.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -108,13 +110,13 @@ of introducing them.
 | 17 | Opus | Fixes from your MVP notes | — |
 | 18 ✅ | Opus | Nightly CI (`.github/workflows/nightly.yml`, 02:23 UTC and on demand): a known 100k-file tree must match an independent count exactly on all three systems (hard links included); the whole system drive must be 97% (Linux walk) or 98% (Windows fast scan) covered and never over 100.5%; macOS reported only until Day 3. Benchmark with speed and memory limits per system (`tools/bench-baseline.json`); Windows peak memory now measured | — |
 | 19 ✅ | Opus | 23 UI tests (`app/tests`, `npm run test:ui`, in CI): drives, scan progress, Stop, administrator and file-table messages, folder order and shares, Trash by name, breadcrumb and keyboard back, ring hover/click/centre, Apps, Largest Files filter, Clean Up ticks/review/cancel/move, Trash card, Windows wording, dark mode, no sideways scrolling at 800 and 1440 px, keyboard use | — |
-| 20 ✅ | Opus | Review of the bridge and app: 7 findings (1 high, 4 medium, 2 low) fixed, 1 accepted until signing on Day 75 (see SECURITY_PROCESS.md). All Dependabot updates applied and verified | Decide: keep the name "Strata"? |
+| 20 ✅ | Opus | Review of the bridge and app: 7 findings (1 high, 4 medium, 2 low) fixed, 1 accepted until signing on Day 75 (see SECURITY_PROCESS.md). All Dependabot updates applied and verified | ✅ Name decided: **Strata** |
 
 ## Sprint 3 · weeks 5–6 · the ring (polish)
 
 | Day | Model | Claude builds | You |
 | --- | --- | --- | --- |
-| 21 | Opus | Ring: 60 fps with 100k segments, spring animation on drill | — |
+| 21 ✅ | Opus | Ring drawn once into an image (fills batched by colour), hover redraws only the lit slice, hit-testing by binary search. With a 100,000-folder tree: built in ~8 ms once, frames under 2.1 ms, 61–62 fps while hovering (4 performance tests in CI). Spring animation: opens from the slice clicked, settles back when going up; off with Reduce Motion | — |
 | 22 | Opus | Ring fills in live during a scan | — |
 | 23 | Opus | Design pass: tokens, Mica on Windows 11, vibrancy on macOS, light and dark | — |
 | 24 | Opus | Hover tooltips everywhere; shared selection across views | Use it on your real drive for 10 minutes; list what confuses you. |
@@ -219,7 +221,7 @@ of introducing them.
 
 | When | Decision |
 | --- | --- |
-| Day 20 | Final product name |
+| Day 20 ✅ | Final product name: **Strata** |
 | Day 67 | One-time price or subscription |
 | Day 69 | Telemetry provider, or none |
 | Day 74 | Pay for Apple Developer Program and Windows signing |
