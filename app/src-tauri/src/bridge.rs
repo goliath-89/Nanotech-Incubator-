@@ -311,7 +311,7 @@ fn run_scan(
             stage("permission");
             match crate::elevated::scan_drive_elevated(letter, data_folder) {
                 Ok(mut tree) => {
-                    strata_pipeline::exclude::apply(&mut tree, excludes);
+                    strata_pipeline::finish(&mut tree, excludes);
                     return Ok(strata_pipeline::Outcome {
                         tree,
                         method: Method::FileTable,

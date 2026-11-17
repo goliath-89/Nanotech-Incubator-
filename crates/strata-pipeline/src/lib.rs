@@ -6,6 +6,7 @@
 
 pub mod cleanup;
 pub mod exclude;
+pub mod refine;
 pub mod ring;
 
 use std::path::Path;
@@ -46,8 +47,17 @@ pub fn scan_root_excluding(
     excludes: &[std::path::PathBuf],
 ) -> std::io::Result<Outcome> {
     let mut outcome = scan_root_inner(root, prefer_fast, ctl, excludes)?;
-    exclude::apply(&mut outcome.tree, excludes);
+    finish(&mut outcome.tree, excludes);
     Ok(outcome)
+}
+
+/// The steps after any scan, whichever scanner ran: leave out excluded
+/// folders, then take a second look at large files of unknown kind.
+pub fn finish(tree: &mut ScanTree, excludes: &[std::path::PathBuf]) {
+    exclude::apply(tree, excludes);
+    if !tree.stats.cancelled {
+        refine::refine_unknown(tree, refine::MIN_BYTES, refine::MAX_FILES);
+    }
 }
 
 fn scan_root_inner(

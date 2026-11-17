@@ -7,12 +7,14 @@ mod bundle;
 mod context;
 mod extensions;
 mod rules;
+mod sniff;
 
 pub use attribute::{attribute, find_dirs, AppUsage, Attribution, Env, Owner};
 pub use bundle::{bundle_kind, Bundle};
 pub use context::folder_kind;
 pub use extensions::{kind_of_name, known_extensions};
 pub use rules::{AppRule, Os, Role, RuleSet};
+pub use sniff::{sniff, SNIFF_BYTES};
 
 use std::ffi::OsStr;
 use std::path::Path;
