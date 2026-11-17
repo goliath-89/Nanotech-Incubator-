@@ -462,11 +462,7 @@ impl Store {
         }
         breadcrumb.reverse();
 
-        let mut stmt = self.conn.prepare_cached(&format!(
-            "SELECT {DIR_COLUMNS} FROM dirs WHERE scan_id = ?1 AND parent_id = ?2
-             ORDER BY alloc_bytes DESC, id"
-        ))?;
-        let children = collect_dirs(stmt.query(params![scan, dir])?)?;
+        let children = self.child_dirs(scan, dir)?;
 
         let mut stmt = self.conn.prepare_cached(&format!(
             "SELECT {FILE_COLUMNS} FROM files WHERE scan_id = ?1 AND dir_id = ?2 ORDER BY rank"
@@ -481,6 +477,18 @@ impl Store {
             children,
             files,
         })
+    }
+
+    /// The folders directly inside `dir`, largest first. Cheaper than
+    /// [`Store::children`] when only the folders are needed (drawing the
+    /// ring several levels deep).
+    pub fn child_dirs(&self, scan: ScanId, dir: u32) -> Result<Vec<DirRow>> {
+        let mut stmt = self.conn.prepare_cached(&format!(
+            "SELECT {DIR_COLUMNS} FROM dirs WHERE scan_id = ?1 AND parent_id = ?2
+             ORDER BY alloc_bytes DESC, id"
+        ))?;
+        let dirs = collect_dirs(stmt.query(params![scan, dir])?)?;
+        Ok(dirs)
     }
 
     /// Full path of a saved folder.

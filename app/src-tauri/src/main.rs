@@ -16,6 +16,7 @@ fn main() {
             bridge::cancel_scan,
             bridge::get_dir,
             bridge::latest_scan,
+            bridge::get_ring,
         ])
         .run(tauri::generate_context!())
         .expect("Strata could not start");

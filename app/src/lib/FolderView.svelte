@@ -3,7 +3,17 @@
   import { bytes, count, percent, share } from "./format";
   import { kindColor, mainKind, KINDS } from "./kinds";
 
-  let { listing, onopen }: { listing: Listing; onopen: (dirId: number) => void } = $props();
+  let {
+    listing,
+    onopen,
+    hovered = null,
+    onhover = () => {},
+  }: {
+    listing: Listing;
+    onopen: (dirId: number) => void;
+    hovered?: number | null;
+    onhover?: (id: number | null) => void;
+  } = $props();
 
   const total = $derived(Number(listing.dir.allocBytes));
   const largest = $derived(Math.max(1, ...listing.children.map((c) => Number(c.allocBytes)), Number(listing.dir.ownFilesBytes)));
@@ -43,7 +53,7 @@
   <ul class="rows">
     {#each listing.children as d (d.id)}
       {@const k = mainKind(d.kindBytes)}
-      <li><button class="row" onclick={() => onopen(d.id)} disabled={d.notScanned !== null && Number(d.allocBytes) === 0}>
+      <li><button class="row" class:hot={hovered === d.id} onmouseenter={() => onhover(d.id)} onmouseleave={() => onhover(null)} onfocus={() => onhover(d.id)} onblur={() => onhover(null)} onclick={() => onopen(d.id)} disabled={d.notScanned !== null && Number(d.allocBytes) === 0}>
         <span class="name">
           <span class="title">{d.name}</span>
           <span class="sub">
@@ -79,11 +89,11 @@
   .rows { display: grid; gap: 2px; list-style: none; margin: 0; padding: 0; }
   .rows li { display: grid; }
   .row {
-    all: unset; display: grid; grid-template-columns: minmax(0, 1.4fr) 2fr 72px 52px; gap: 14px; align-items: center;
+    all: unset; display: grid; grid-template-columns: minmax(0, 2fr) minmax(60px, 1.2fr) 72px 52px; gap: 14px; align-items: center;
     padding: 8px 10px; border-radius: 8px;
   }
   button.row { cursor: pointer; }
-  button.row:hover:not(:disabled) { background: var(--hover); }
+  button.row:hover:not(:disabled), button.row.hot { background: var(--hover); }
   button.row:focus-visible { outline: 2px solid var(--accent); }
   button.row:disabled { cursor: default; opacity: 0.6; }
   .name { display: grid; min-width: 0; }

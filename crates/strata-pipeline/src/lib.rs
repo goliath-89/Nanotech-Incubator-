@@ -2,6 +2,8 @@
 //! both behave the same: choose the scanner, run it, then save the result
 //! together with app attribution and cleanup suggestions.
 
+pub mod ring;
+
 use std::path::Path;
 use strata_classify::{attribute, Env, KindClassifier, Os, Role, RuleSet};
 use strata_core::{scan, ScanControl, ScanOptions, ScanTree};

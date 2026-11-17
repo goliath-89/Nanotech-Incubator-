@@ -1,7 +1,8 @@
 // Example data for running the interface in a browser. Clearly fake
 // numbers on a made-up drive; never shown inside the desktop app.
 
-import type { Dir, Listing, ScanSummary, Volume } from "./types";
+import type { Dir, Listing, RingNode, ScanSummary, Volume } from "./types";
+import { mainKind } from "./kinds";
 import type { ScanEvents } from "./api";
 
 const GB = 1_000_000_000;
@@ -99,6 +100,17 @@ export async function getDir(_scanId: number, dirId: number): Promise<Listing> {
     children: f.children.map((c) => dirOf(flat[c])).sort((a, b) => Number(b.allocBytes) - Number(a.allocBytes)),
     files: [],
   };
+}
+
+function ringOf(f: Flat, levels: number): RingNode {
+  return {
+    id: f.id, slice: "folder", name: f.name, bytes: String(f.bytes), mainKind: mainKind(dirOf(f).kindBytes), notScanned: false,
+    children: levels === 0 ? [] : f.children.map((c) => ringOf(flat[c], levels - 1)).sort((a, b) => Number(b.bytes) - Number(a.bytes)),
+  };
+}
+
+export async function getRing(_scanId: number, dirId: number): Promise<RingNode> {
+  return ringOf(flat[dirId], 3);
 }
 
 export async function onScanEvents(h: ScanEvents) {

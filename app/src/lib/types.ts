@@ -73,3 +73,13 @@ export interface ScanSummary {
   allocBytes: string;
   fileCount: string;
 }
+
+export interface RingNode {
+  id: number | null;
+  slice: "folder" | "files" | "smaller";
+  name: string;
+  bytes: string;
+  mainKind: number;
+  notScanned: boolean;
+  children: RingNode[];
+}

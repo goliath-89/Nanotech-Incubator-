@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use strata_core::{volumes, ScanControl, VolumeKind, KIND_COUNT};
+use strata_pipeline::ring::{ring_tree, RingNode, Slice};
 use strata_pipeline::{now, save_everything, scan_root, Method};
 use strata_store::{AppRole, DirRow, FileRow, ScanMeta, Store};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -352,4 +353,44 @@ pub fn latest_scan(state: State<'_, AppState>, volume_id: String) -> Reply<Optio
             alloc_bytes: s.alloc_bytes.to_string(),
             file_count: s.file_count.to_string(),
         }))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RingDto {
+    /// The folder to open on click; null for "files here" and "smaller folders".
+    id: Option<u32>,
+    /// "folder", "files" or "smaller".
+    slice: &'static str,
+    name: String,
+    bytes: String,
+    main_kind: u8,
+    not_scanned: bool,
+    children: Vec<RingDto>,
+}
+
+fn ring_dto(n: RingNode) -> RingDto {
+    let (id, slice) = match n.slice {
+        Slice::Folder(id) => (Some(id), "folder"),
+        Slice::Files => (None, "files"),
+        Slice::Smaller(_) => (None, "smaller"),
+    };
+    RingDto {
+        id,
+        slice,
+        name: n.name,
+        bytes: n.bytes.to_string(),
+        main_kind: n.kind,
+        not_scanned: n.not_scanned,
+        children: n.children.into_iter().map(ring_dto).collect(),
+    }
+}
+
+/// Three rings below a folder, for the ring view. Slices under 0.4% of
+/// the centre (about 1.5 degrees) are folded together.
+#[tauri::command]
+pub fn get_ring(state: State<'_, AppState>, scan_id: i64, dir_id: u32) -> Reply<RingDto> {
+    let store = state.store.lock().map_err(text)?;
+    let ring = ring_tree(&store, scan_id, dir_id, 3, 0.004).map_err(text)?;
+    Ok(ring_dto(ring))
 }

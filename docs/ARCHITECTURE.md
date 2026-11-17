@@ -159,6 +159,7 @@ a display string; the UI never builds a path itself.
 | `reveal` | `{ scan_id, dir_id, file? }` | none |
 | `trash` | `{ scan_id, items[] }` | `{ moved[], refused[{ item, reason }] }` |
 | `growth` | `{ volume_id, from_scan, to_scan }` | `[{ path, delta }]` |
+| `get_ring` | `{ scan_id, dir_id }` | three levels below the folder for the ring: `{ id, slice: folder/files/smaller, name, bytes, mainKind, notScanned, children }`, slices under 0.4% folded (`strata_pipeline::ring`) |
 
 | Event | Payload | When |
 | --- | --- | --- |

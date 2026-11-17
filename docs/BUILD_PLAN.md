@@ -14,7 +14,7 @@ Claude what to build and tells you what only you can do.
 - A gate is a pass/fail test. Do not start the next phase until it passes;
   if it fails, the next day is spent on the failure and later days shift.
 
-Status: **Engine days 1–10 done (Gate A passed on Windows); app Day 11 done.** Next: Day 12. The Mac half of Gate A waits for the MacBook.
+Status: **Engine days 1–10 done (Gate A passed on Windows); app Days 11–12 done.** Next: Day 13. The Mac half of Gate A waits for the MacBook.
 
 ## Sprint 1 · weeks 1–2 · scanner and the risky engines
 
@@ -81,7 +81,7 @@ of introducing them.
 | Day | Model | Claude builds | You |
 | --- | --- | --- | --- |
 | 11 ✅ | Opus | Tauri 2 app: drive list, Scan with live progress and Stop, kind bar, largest folders with click-to-open and breadcrumb, reopen last scan instantly. Shared `strata-pipeline` crate so app and command line run the same steps. CI builds installers for Windows x64, Windows ARM64 and macOS | Install the Windows ARM64 build from Actions and try it. Note anything confusing. |
-| 12 | Opus | The ring (sunburst) on Canvas: click a segment to open it, hover for details; ring and list stay in sync | — |
+| 12 ✅ | Opus | The ring: three levels on Canvas, slices under 0.4% folded into "smaller folders", hover shows the slice in the centre, click a slice to open it (any level), click the centre to go back, ring and list highlight each other, unfold animation, light and dark | — |
 | 13 | Opus | By App view and Largest files view; Reveal in Explorer / Finder | — |
 | 14 | Opus | Reclaim view: suggestions, review sheet, Move to Recycle Bin / Trash through the safety engine | Try a real cleanup on something you don't need. |
 | 15 | Opus | Windows: ask for administrator rights to use the fast scan; Recycle Bin shown as its own item. **MVP** | Use the MVP for a few days; list what to fix. |

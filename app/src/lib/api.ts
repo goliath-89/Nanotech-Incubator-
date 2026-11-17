@@ -1,7 +1,7 @@
 // The only file that talks to the Rust side. Outside the desktop app (a
 // plain browser, for design work and UI tests) it serves example data.
 
-import type { Done, Failed, Listing, Progress, ScanSummary, Volume } from "./types";
+import type { Done, Failed, Listing, Progress, RingNode, ScanSummary, Volume } from "./types";
 import * as demo from "./demo";
 
 export const inApp = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -25,6 +25,10 @@ export function cancelScan(token: number): Promise<void> {
 
 export function getDir(scanId: number, dirId: number): Promise<Listing> {
   return inApp ? call("get_dir", { scanId, dirId }) : demo.getDir(scanId, dirId);
+}
+
+export function getRing(scanId: number, dirId: number): Promise<RingNode> {
+  return inApp ? call("get_ring", { scanId, dirId }) : demo.getRing(scanId, dirId);
 }
 
 export function latestScan(volumeId: string): Promise<ScanSummary | null> {

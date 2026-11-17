@@ -1,17 +1,18 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import * as api from "./lib/api";
-  import type { Done, Listing, Progress, Volume } from "./lib/types";
+  import type { Done, Listing, Progress, RingNode, Volume } from "./lib/types";
   import { bytes, count, percent, seconds, share } from "./lib/format";
   import Sidebar from "./lib/Sidebar.svelte";
   import KindBar from "./lib/KindBar.svelte";
   import FolderView from "./lib/FolderView.svelte";
+  import Ring from "./lib/Ring.svelte";
 
   type Phase =
     | { name: "loading" }
     | { name: "idle" }
     | { name: "scanning"; token: number; progress: Progress | null; started: number }
-    | { name: "result"; scanId: number; done: Done | null; listing: Listing }
+    | { name: "result"; scanId: number; done: Done | null; listing: Listing; ring: RingNode }
     | { name: "error"; message: string };
 
   let volumes = $state<Volume[]>([]);
@@ -19,6 +20,7 @@
   let phase = $state<Phase>({ name: "loading" });
   let root = $state<Listing | null>(null);
   let now = $state(Date.now());
+  let hovered = $state<number | null>(null);
 
   const isWindows = navigator.userAgent.includes("Windows");
 
@@ -32,9 +34,9 @@
         },
         done: async (d) => {
           if (phase.name !== "scanning" || d.token !== phase.token) return;
-          const listing = await api.getDir(d.scanId, 0);
+          const [listing, ring] = await Promise.all([api.getDir(d.scanId, 0), api.getRing(d.scanId, 0)]);
           root = listing;
-          phase = { name: "result", scanId: d.scanId, done: d, listing };
+          phase = { name: "result", scanId: d.scanId, done: d, listing, ring };
         },
         failed: (f) => {
           if (phase.name === "scanning" && f.token === phase.token) phase = { name: "error", message: f.message };
@@ -61,9 +63,9 @@
     root = null;
     const last = await api.latestScan(v.id);
     if (last) {
-      const listing = await api.getDir(last.scanId, 0);
+      const [listing, ring] = await Promise.all([api.getDir(last.scanId, 0), api.getRing(last.scanId, 0)]);
       root = listing;
-      phase = { name: "result", scanId: last.scanId, done: null, listing };
+      phase = { name: "result", scanId: last.scanId, done: null, listing, ring };
     } else {
       phase = { name: "idle" };
     }
@@ -83,8 +85,18 @@
   async function open(dirId: number) {
     if (phase.name !== "result") return;
     const scanId = phase.scanId;
-    const listing = await api.getDir(scanId, dirId);
-    if (phase.name === "result" && phase.scanId === scanId) phase.listing = listing;
+    const [listing, ring] = await Promise.all([api.getDir(scanId, dirId), api.getRing(scanId, dirId)]);
+    if (phase.name === "result" && phase.scanId === scanId) {
+      phase.listing = listing;
+      phase.ring = ring;
+      hovered = null;
+    }
+  }
+
+  function up() {
+    if (phase.name !== "result") return;
+    const crumbs = phase.listing.breadcrumb;
+    if (crumbs.length > 1) open(crumbs[crumbs.length - 2].id);
   }
 </script>
 
@@ -143,15 +155,27 @@
           <p class="note">The fast scan was not available, so folders were read one by one. {phase.done.fallbackReason}.</p>
         {/if}
       {/if}
-      {#if root}
-        <section class="card">
-          <h3>By kind <span class="quiet num">{bytes(root.dir.allocBytes)} found · {volume ? percent(root.dir.allocBytes, volume.used) : ""} of used space</span></h3>
-          <KindBar kindBytes={root.dir.kindBytes} />
-        </section>
-      {/if}
+      <section class="card overview">
+        <div class="ringside">
+          <Ring
+            ring={phase.ring}
+            {hovered}
+            onhover={(id) => (hovered = id)}
+            onopen={open}
+            onup={up}
+            canGoUp={phase.listing.breadcrumb.length > 1}
+          />
+          {#if phase.listing.breadcrumb.length > 1}
+            <p class="hint">Click the centre to go back</p>
+          {/if}
+        </div>
+        <div class="listside">
+          <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} />
+        </div>
+      </section>
       <section class="card">
-        <h3>Largest folders</h3>
-        <FolderView listing={phase.listing} onopen={open} />
+        <h3>By kind <span class="quiet num">{bytes(phase.listing.dir.allocBytes)} in {phase.listing.dir.name}{#if root && phase.listing.dir.id === 0 && volume}{" · "}{percent(root.dir.allocBytes, volume.used)} of used space{/if}</span></h3>
+        <KindBar kindBytes={phase.listing.dir.kindBytes} />
       </section>
     {:else if phase.name === "error"}
       <div class="empty">
@@ -175,6 +199,11 @@
   header p { margin: 4px 0 0; color: var(--muted); }
   .capacity, .track { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
   .capacity span, .track span { display: block; height: 100%; background: var(--accent); transition: width 0.2s linear; }
+  .overview { display: grid; grid-template-columns: minmax(220px, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .ringside { display: grid; gap: 6px; justify-items: center; position: sticky; top: 0; }
+  .hint { margin: 0; color: var(--muted); font-size: 11.5px; }
+  .listside { min-width: 0; }
+  @media (max-width: 900px) { .overview { grid-template-columns: 1fr; } }
   .card { background: var(--surface); border-radius: 12px; padding: 18px 20px; border: 1px solid var(--line); }
   h3 { margin: 0 0 14px; font-size: 13px; font-weight: 600; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
   .empty { text-align: center; padding: 70px 20px; display: grid; justify-items: center; gap: 12px; }
