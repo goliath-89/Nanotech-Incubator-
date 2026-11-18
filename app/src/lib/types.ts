@@ -173,3 +173,32 @@ export interface Change {
   beforeBytes: string;
   afterBytes: string;
 }
+
+export interface DuplicateCopy {
+  name: string;
+  folder: string;
+  /** False when the safety rules protect it: never the one removed. */
+  removable: boolean;
+  created: number | null;
+  modified: number | null;
+  /** Last opened, where the system records it. */
+  accessed: number | null;
+}
+
+export interface DuplicateGroup {
+  /** Bytes on disk of one copy. */
+  bytes: string;
+  copies: DuplicateCopy[];
+}
+
+export interface Duplicates {
+  groups: DuplicateGroup[];
+  filesChecked: string;
+  cancelled: boolean;
+}
+
+export interface DuplicateCleanup {
+  moved: [number, number][];
+  bytesFreed: string;
+  problems: { path: string; reason: string }[];
+}

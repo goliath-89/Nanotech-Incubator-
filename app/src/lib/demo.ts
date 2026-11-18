@@ -330,3 +330,62 @@ export async function compareScans(before: number) {
     row("private/var/vm", 3, 6, 2),
   ];
 }
+
+// Duplicate files: three groups of copies in made-up places.
+let dupes: import("./types").Duplicates | null = null;
+function makeDupes(): import("./types").Duplicates {
+  const now = nowS();
+  const copy = (folder: string, name: string, mod: number, opened: number | null, removable = true) => ({
+    name, folder, removable, created: now - (mod + 30) * DAY_S, modified: now - mod * DAY_S, accessed: opened === null ? null : now - opened * DAY_S,
+  });
+  return {
+    filesChecked: "41200",
+    cancelled: false,
+    groups: [
+      { bytes: String(4.1 * GB), copies: [
+        copy("/Users/sam/Movies", "Holiday-2024.mov", 400, 12),
+        copy("/Users/sam/Downloads", "Holiday-2024.mov", 380, 300),
+        copy("/Users/sam/Documents/Backup", "Holiday-2024 copy.mov", 200, 200),
+      ] },
+      { bytes: String(1.6 * GB), copies: [
+        copy("/Users/sam/Pictures/Photos Library.photoslibrary/originals", "IMG_2210.HEIC", 600, null, false),
+        copy("/Users/sam/Desktop", "IMG_2210.HEIC", 90, 90),
+      ] },
+      { bytes: String(0.4 * GB), copies: [
+        copy("/Users/sam/Documents", "Thesis-final.pdf", 800, 5),
+        copy("/Users/sam/Downloads", "Thesis-final (1).pdf", 799, 799),
+      ] },
+    ],
+  };
+}
+let dupeStarted = 0;
+export async function findDuplicates() {
+  dupeStarted = Date.now();
+  await new Promise((r) => setTimeout(r, 600));
+  dupes = makeDupes();
+  return dupes;
+}
+export async function duplicateProgress() {
+  const f = Math.min(1, (Date.now() - dupeStarted) / 600);
+  return { bytesRead: String(Math.round(f * 14 * GB)), totalBytes: String(14 * GB) };
+}
+export async function lastDuplicates() { return dupes; }
+export async function cleanDuplicates(picks: [number, number][]) {
+  if (!dupes) return { moved: [], bytesFreed: "0", problems: [] };
+  let bytes = 0;
+  const moved: [number, number][] = [];
+  const problems: { path: string; reason: string }[] = [];
+  dupes.groups.forEach((g, gi) => {
+    const mine = picks.filter((p) => p[0] === gi).map((p) => p[1]);
+    if (mine.length === 0) return;
+    if (mine.length >= g.copies.length) {
+      problems.push({ path: g.copies[0].folder, reason: "Every copy was picked; one must stay." });
+      return;
+    }
+    for (const c of mine) if (g.copies[c]?.removable) { moved.push([gi, c]); bytes += Number(g.bytes); }
+  });
+  for (const [gi, c] of moved) dupes.groups[gi].copies[c] = null as never;
+  dupes.groups = dupes.groups.map((g) => ({ ...g, copies: g.copies.filter(Boolean) })).filter((g) => g.copies.length > 1);
+  if (bytes > 0) cleanupLog.push({ at: nowS(), bytes: String(bytes), files: String(moved.length), groups: JSON.stringify({ duplicate: bytes }) });
+  return { moved, bytesFreed: String(bytes), problems };
+}

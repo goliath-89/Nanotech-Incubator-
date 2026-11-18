@@ -18,6 +18,8 @@ import type {
   ScanSummary,
   Suggestion,
   Volume,
+  Duplicates,
+  DuplicateCleanup,
 } from "./types";
 import * as demo from "./demo";
 
@@ -95,6 +97,31 @@ export function openDiskCleanup(): Promise<void> {
   return inApp ? call("open_disk_cleanup") : Promise.resolve();
 }
 
+/** Look for identical files among the scan's large personal files. */
+export function findDuplicates(scanId: number): Promise<Duplicates> {
+  return inApp ? call("find_duplicates", { scanId }) : demo.findDuplicates();
+}
+export function duplicateProgress(): Promise<{ bytesRead: string; totalBytes: string }> {
+  return inApp ? call("duplicate_progress") : demo.duplicateProgress();
+}
+export function cancelDuplicates(): Promise<void> {
+  return inApp ? call("cancel_duplicates") : Promise.resolve();
+}
+/** The finished search for this scan, if any. */
+export function lastDuplicates(scanId: number): Promise<Duplicates | null> {
+  return inApp ? call("last_duplicates", { scanId }) : demo.lastDuplicates();
+}
+export function revealDuplicate(scanId: number, group: number, copy: number): Promise<void> {
+  return inApp ? call("reveal_duplicate", { scanId, group, copy }) : Promise.resolve();
+}
+export function previewDuplicate(scanId: number, group: number, copy: number): Promise<Preview> {
+  return inApp ? call("preview_duplicate", { scanId, group, copy }) : demo.previewFile("copy.png");
+}
+/** Move the picked copies ([group, copy]) to the Trash; one copy always stays. */
+export function cleanDuplicates(scanId: number, picks: [number, number][]): Promise<DuplicateCleanup> {
+  return inApp ? call("clean_duplicates", { scanId, picks }) : demo.cleanDuplicates(picks);
+}
+
 /** Folders left out of scans. */
 export function listExclusions(): Promise<string[]> {
   return inApp ? call("list_exclusions") : demo.listExclusions();
@@ -122,7 +149,7 @@ export function compareScans(before: number, after: number): Promise<Change[]> {
 
 /** Version, build date (YYYY-MM-DD) and commit of this build. */
 export function appInfo(): Promise<{ version: string; buildDate: string; commit: string }> {
-  return inApp ? call("app_info") : Promise.resolve({ version: "0.6.0", buildDate: "2026-11-18", commit: "preview" });
+  return inApp ? call("app_info") : Promise.resolve({ version: "0.7.0", buildDate: "2026-11-18", commit: "preview" });
 }
 
 /** Every cleanup Strata has done, oldest first. */

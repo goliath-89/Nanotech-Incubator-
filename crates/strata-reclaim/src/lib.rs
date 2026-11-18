@@ -11,5 +11,8 @@
 mod duplicates;
 mod suggest;
 
-pub use duplicates::{find_duplicates, DuplicateControl, DuplicateFile, DuplicateGroup};
+pub use duplicates::{
+    find_duplicates, find_duplicates_among, DuplicateCandidate, DuplicateControl, DuplicateFile,
+    DuplicateGroup,
+};
 pub use suggest::{expand, suggest, Group, Options, Suggestion, Target};

@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod bridge;
+mod dupes;
 mod elevated;
 mod preview;
 mod window;
@@ -46,6 +47,13 @@ fn main() {
             bridge::reveal_suggestion,
             bridge::preview_suggestion,
             bridge::open_disk_cleanup,
+            dupes::find_duplicates,
+            dupes::duplicate_progress,
+            dupes::cancel_duplicates,
+            dupes::last_duplicates,
+            dupes::reveal_duplicate,
+            dupes::preview_duplicate,
+            dupes::clean_duplicates,
             bridge::app_info,
             window::window_material,
         ])

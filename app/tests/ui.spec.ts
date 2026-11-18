@@ -420,7 +420,7 @@ test.describe("UAT feedback (18 Nov)", () => {
   test("the version and build date are under Settings", async ({ page }) => {
     await page.goto("/");
     // Dates follow the system's language (en-US here).
-    await expect(page.getByText(/^Strata 0\.6\.0 · built Nov 18, 2026$/)).toBeVisible();
+    await expect(page.getByText(/^Strata 0\.7\.0 · built Nov 18, 2026$/)).toBeVisible();
   });
 });
 
@@ -896,5 +896,39 @@ test.describe("UAT feedback (18 Nov, part 2)", () => {
     await expect(file).toContainText(/Modified .* · Created /);
     await file.click({ button: "right" });
     await expect(page.getByRole("menuitem", { name: "Copy Path" })).toBeVisible();
+  });
+});
+
+test.describe("Duplicates", () => {
+  test("finds copies, shows where they are and moves the picked ones, keeping one", async ({ page }) => {
+    const errors = watchErrors(page);
+    await scanned(page);
+    await page.getByRole("tab", { name: "Duplicates" }).click();
+    await page.getByRole("button", { name: "Look for Duplicates" }).click();
+    await expect(page.locator(".stats")).toContainText("10.2 GB");
+    await expect(page.locator(".stats")).toContainText("4extra copies");
+    await expect(page.locator(".places li").first()).toContainText("/Users/sam/Downloads");
+    // Newest and last-opened marks; a copy inside the Photos library is protected.
+    const holiday = page.locator(".group").first();
+    await expect(holiday.locator(".badge.new")).toHaveCount(1);
+    await expect(holiday.locator(".badge.open")).toHaveCount(1);
+    await expect(page.getByRole("checkbox", { name: /IMG_2210.HEIC in .*photoslibrary/ })).toBeDisabled();
+    // Ticking every copy is not allowed.
+    for (const box of await holiday.getByRole("checkbox").all()) await box.check();
+    await expect(holiday.getByText("at least one copy must stay")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Review…" })).toBeDisabled();
+    await holiday.getByRole("button", { name: "Keep newest, select the rest" }).click();
+    await expect(page.locator(".top")).toContainText("2 copies selected · 8.2 GB");
+    // Right-click: preview, show, copy path.
+    await holiday.locator("li").first().click({ button: "right" });
+    await expect(page.getByRole("menuitem", { name: "Show in Finder" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Review…" }).click();
+    await page.getByRole("button", { name: "Move to Trash" }).click();
+    await expect(page.getByRole("status")).toContainText("Moved to the Trash: 8.2 GB");
+    await expect(page.locator(".group")).toHaveCount(2);
+    // Counted in Cleaned so far.
+    await expect(page.locator("aside").getByText("44.9 GB freed")).toBeVisible();
+    expect(errors).toEqual([]);
   });
 });

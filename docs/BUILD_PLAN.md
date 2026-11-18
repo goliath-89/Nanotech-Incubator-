@@ -20,7 +20,7 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 41 / 90 (46%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 42 / 90 (47%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 9 / 10 (90%) | Days 11–15 and 17–20 done; 16 waits for the MacBook; MVP installed and both scan methods work on Windows ARM64 |
 | **Sprint 3 · ring polish** | 10 / 10 (100%) | Done |
@@ -28,6 +28,7 @@ Updated every time a day is done. Half-done days count as half.
 | **Sprint 5 · kinds and app rules (current)** | 5 / 10 (50%) | Days 41–43, 46–47 done; 44–45 wait for the Mac |
 
 Log (newest first):
+- 18 Nov · UAT part 2 ✅ file dates everywhere, Clean Up right-click menu, protected-item bug fixed, Day 64 ✅ Duplicates tab brought forward; version 0.7.0. Overall 42/90 (47%).
 - 18 Nov · Day 25 ✅ Cleaned so far page and Clean Up widget (light and dark), version 0.6.0. Sprint 3 10/10 (100%), overall 41/90 (46%).
 - 18 Nov · Day 17 ✅ MVP notes: live fast-scan progress, Last scanned, select-all, traffic-light severity, version and build date, cleanup history, better kinds for your "Other" list. Sprint 2 9/10 (90%), overall 40/90 (44%).
 - 17 Nov · Days 46–47 ✅ 58 Windows app rules; all 235 rule folders checked by a fixture test. Sprint 5 5/10 (50%), overall 39/90 (43%).
@@ -203,7 +204,7 @@ of introducing them.
 | 61 | Opus | `suggestions` and `trash` commands wired to the Day 4 and Day 9 engines | — |
 | 62 | Opus | Reclaim view: groups, totals, per-item explanation | — |
 | 63 | Opus | Review sheet and Move to Trash / Recycle Bin, with the refused list | — |
-| 64 | Opus | Duplicates group in Reclaim | — |
+| 64 ✅ | Opus | Duplicates (brought forward from your UAT notes, 18 Nov): own **Duplicates** tab: totals (space to free, extra copies, files with copies), where the copies are, each set of copies with modified, created and last-opened dates, Newest and Last opened marks, protected copies (inside apps or the Photos library) never removable, "keep newest, select the rest", right-click Preview / Show in Explorer / Copy Path, review then Recycle Bin; one copy always stays (checked by the app, not only the window); counted in Cleaned so far | — |
 | 65 | Fable or Opus | Safety audit: try to make the UI and bridge trash a protected path; fuzz the `trash` command | — |
 | 66 | Opus | Fixes from the audit; Sidebar "Reclaim N GB" entry | Use Reclaim on a test folder, then on real caches. Check the Trash has what you expect. |
 | 67 | Opus | Pricing gate: free vs Pro features; licence key check | Decide: one-time $29 or subscription. Open a Paddle or Lemon Squeezy account. |

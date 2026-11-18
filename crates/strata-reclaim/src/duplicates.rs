@@ -79,8 +79,32 @@ pub fn find_duplicates(
     policy: &Policy,
     ctl: &DuplicateControl,
 ) -> Vec<DuplicateGroup> {
+    let candidates = tree.files.iter().map(|f| DuplicateCandidate {
+        path: tree.file_path(f),
+        logical_bytes: f.logical_bytes,
+        alloc_bytes: f.alloc_bytes,
+        kind: f.kind,
+    });
+    find_duplicates_among(candidates, policy, ctl)
+}
+
+/// A file that may have copies: where it is, its size and its kind.
+#[derive(Clone, Debug)]
+pub struct DuplicateCandidate {
+    pub path: PathBuf,
+    pub logical_bytes: u64,
+    pub alloc_bytes: u64,
+    pub kind: Kind,
+}
+
+/// As [`find_duplicates`], for files listed some other way (a saved scan).
+pub fn find_duplicates_among(
+    files: impl IntoIterator<Item = DuplicateCandidate>,
+    policy: &Policy,
+    ctl: &DuplicateControl,
+) -> Vec<DuplicateGroup> {
     let mut by_len: HashMap<u64, Vec<Candidate>> = HashMap::new();
-    for f in &tree.files {
+    for f in files {
         // Only the user's own material. Identical files inside apps, games,
         // developer tools, caches and the system are there on purpose, and
         // removing one "spare" would break whatever installed it.
@@ -95,7 +119,7 @@ pub fn find_duplicates(
             continue;
         }
         by_len.entry(f.logical_bytes).or_default().push(Candidate {
-            path: tree.file_path(f),
+            path: f.path,
             len: f.logical_bytes,
             alloc: f.alloc_bytes,
         });

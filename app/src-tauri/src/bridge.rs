@@ -15,9 +15,11 @@ use strata_store::{AppRole, DirRow, FileRow, ScanMeta, Store};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 pub struct AppState {
-    store: Arc<Mutex<Store>>,
+    pub(crate) store: Arc<Mutex<Store>>,
     /// Strata's own data folder: protected from cleanup.
-    data_folder: PathBuf,
+    pub(crate) data_folder: PathBuf,
+    /// The latest duplicate search (see `dupes.rs`).
+    pub(crate) dupes: Mutex<Option<crate::dupes::Run>>,
     scans: Mutex<HashMap<u64, Arc<ScanControl>>>,
     next_token: AtomicU64,
     /// Folders left out of scans, kept in `exclusions.json` in the data folder.
@@ -40,6 +42,7 @@ impl AppState {
             scans: Mutex::new(HashMap::new()),
             next_token: AtomicU64::new(1),
             exclusions: Mutex::new(exclusions),
+            dupes: Mutex::new(None),
         })
     }
 }
@@ -50,9 +53,9 @@ const EXCLUSIONS_FILE: &str = "exclusions.json";
 const KEEP_FULL_SCANS: usize = 5;
 
 /// Errors reach the window as plain sentences.
-type Reply<T> = Result<T, String>;
+pub(crate) type Reply<T> = Result<T, String>;
 
-fn text<E: std::fmt::Display>(e: E) -> String {
+pub(crate) fn text<E: std::fmt::Display>(e: E) -> String {
     e.to_string()
 }
 
@@ -781,7 +784,7 @@ pub fn reveal(
 }
 
 #[cfg(windows)]
-fn open_in_file_manager(path: &std::path::Path) -> std::io::Result<()> {
+pub(crate) fn open_in_file_manager(path: &std::path::Path) -> std::io::Result<()> {
     // Arguments go straight to the program; no shell is involved.
     let mut select = std::ffi::OsString::from("/select,");
     select.push(path.as_os_str());
@@ -792,7 +795,7 @@ fn open_in_file_manager(path: &std::path::Path) -> std::io::Result<()> {
 }
 
 #[cfg(target_os = "macos")]
-fn open_in_file_manager(path: &std::path::Path) -> std::io::Result<()> {
+pub(crate) fn open_in_file_manager(path: &std::path::Path) -> std::io::Result<()> {
     std::process::Command::new("open")
         .arg("-R")
         .arg(path)
@@ -801,7 +804,7 @@ fn open_in_file_manager(path: &std::path::Path) -> std::io::Result<()> {
 }
 
 #[cfg(not(any(windows, target_os = "macos")))]
-fn open_in_file_manager(path: &std::path::Path) -> std::io::Result<()> {
+pub(crate) fn open_in_file_manager(path: &std::path::Path) -> std::io::Result<()> {
     let folder = if path.is_dir() {
         path
     } else {
@@ -883,8 +886,8 @@ pub struct CleanupDto {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Problem {
-    path: String,
-    reason: String,
+    pub(crate) path: String,
+    pub(crate) reason: String,
 }
 
 /// Move the chosen suggestions to the Trash or Recycle Bin. The window

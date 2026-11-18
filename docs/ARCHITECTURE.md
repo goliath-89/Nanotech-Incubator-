@@ -162,6 +162,10 @@ a display string; the UI never builds a path itself.
 | `get_app_dirs` | `{ scan_id, app }` | an app's outermost folders with paths (`Store::app_dirs`) |
 | `get_suggestions` | `{ scan_id }` | saved suggestions with their numbers |
 | `clean_up` | `{ scan_id, numbers[] }` | `{ done[], bytesFreed, refused[], failed[] }`; paths come from the history, never from the window (`strata_pipeline::cleanup`); each cleanup is recorded (bytes, files moved, bytes per group) |
+| `reveal_suggestion`, `preview_suggestion` | `{ scan_id, number }` | Clean Up item by number; path from the history |
+| `open_disk_cleanup` | — | Starts Windows Disk Cleanup (fixed program, no arguments) |
+| `find_duplicates` | `{ scan_id }` | Compares the scan's largest personal files (size, sample hash, full hash; `strata_reclaim::find_duplicates_among`); keeps the result for the commands below. `duplicate_progress`, `cancel_duplicates`, `last_duplicates` |
+| `reveal_duplicate`, `preview_duplicate`, `clean_duplicates` | `{ scan_id, group, copy }` / `{ scan_id, picks }` | Copies named by number; `clean_duplicates` refuses a pick that would leave no copy, and protected copies |
 | `list_cleanups` | — | `[{ at, bytes, files, groups }]`, oldest first, for Cleaned so far |
 | `app_info` | — | `{ version, buildDate, commit }`, shown under Settings |
 | `open_trash` | — | opens the Recycle Bin (Explorer) or Trash (Finder); never empties it |

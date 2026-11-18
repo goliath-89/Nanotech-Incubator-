@@ -14,6 +14,7 @@
   import FilesView from "./lib/FilesView.svelte";
   import ReclaimView from "./lib/ReclaimView.svelte";
   import ChangesView from "./lib/ChangesView.svelte";
+  import DuplicatesView from "./lib/DuplicatesView.svelte";
   import CleanedPage from "./lib/CleanedPage.svelte";
   import { loadCleaned } from "./lib/cleaned.svelte";
   import { fileManager, isWindows } from "./lib/platform";
@@ -38,7 +39,7 @@
   let selectedKind = $state<number | null>(null);
   /** The ring shows folders, or the folder's space by kind. */
   let ringView = $state<"folders" | "kinds">("folders");
-  type Tab = "folders" | "apps" | "files" | "changes" | "reclaim";
+  type Tab = "folders" | "apps" | "files" | "duplicates" | "changes" | "reclaim";
   let tab = $state<Tab>("folders");
   /** The sidebar's Cleaned so far page, instead of a drive. */
   let showCleaned = $state(false);
@@ -46,6 +47,7 @@
     { key: "folders", label: "Folders" },
     { key: "apps", label: "Apps" },
     { key: "files", label: "Largest Files" },
+    { key: "duplicates", label: "Duplicates" },
     { key: "changes", label: "Changes" },
     { key: "reclaim", label: "Clean Up" },
   ];
@@ -364,6 +366,10 @@
       {:else if tab === "files"}
         <section class="card">
           <FilesView scanId={phase.scanId} kindBytes={root?.dir.kindBytes ?? []} {selectedKind} />
+        </section>
+      {:else if tab === "duplicates"}
+        <section class="card">
+          <DuplicatesView scanId={phase.scanId} />
         </section>
       {:else if tab === "changes"}
         <section class="card">

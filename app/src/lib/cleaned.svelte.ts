@@ -132,6 +132,7 @@ export const groupNames: Record<string, string> = {
   cache: "Other caches and logs",
   old_installer: "Old installers",
   old_download: "Old downloads",
+  duplicate: "Duplicate files",
 };
 
 export const groupColours: Record<string, string> = {
@@ -140,4 +141,5 @@ export const groupColours: Record<string, string> = {
   cache: "var(--kind-caches)",
   old_installer: "var(--kind-apps)",
   old_download: "var(--kind-videos)",
+  duplicate: "var(--kind-other)",
 };
