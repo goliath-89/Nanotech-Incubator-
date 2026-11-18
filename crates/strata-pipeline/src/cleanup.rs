@@ -15,6 +15,9 @@ pub struct CleanupReport {
     pub done: Vec<u32>,
     /// Bytes those suggestions held at scan time.
     pub bytes_freed: u64,
+    /// Files those suggestions held when they were moved (a folder counts
+    /// the files inside it; folders themselves are not counted).
+    pub files_moved: u64,
     /// Items the safety policy refused, with the reason in plain words.
     pub refused: Vec<(PathBuf, String)>,
     /// Items that could not be moved, with what went wrong.
@@ -46,6 +49,8 @@ pub fn clean_up(
                 continue;
             }
         };
+        // Counted before the move: afterwards the files are in the Trash.
+        let files: u64 = items.iter().map(|p| count_files(p)).sum();
         let result = trash(policy, &root, &items);
         let clean = result.refused.is_empty() && result.failed.is_empty();
         report
@@ -55,10 +60,31 @@ pub fn clean_up(
         if clean {
             report.done.push(n);
             report.bytes_freed += row.bytes;
+            report.files_moved += files;
         }
     }
     store.remove_suggestions(scan, &report.done)?;
     Ok(report)
+}
+
+/// Files at or below `path`, without following links (a link counts as
+/// one file). Unreadable folders count as nothing.
+fn count_files(path: &std::path::Path) -> u64 {
+    let mut count = 0u64;
+    let mut stack = vec![path.to_path_buf()];
+    while let Some(p) = stack.pop() {
+        let Ok(meta) = std::fs::symlink_metadata(&p) else {
+            continue;
+        };
+        if !meta.is_dir() {
+            count += 1;
+            continue;
+        }
+        if let Ok(entries) = std::fs::read_dir(&p) {
+            stack.extend(entries.flatten().map(|e| e.path()));
+        }
+    }
+    count
 }
 
 #[cfg(test)]
@@ -130,6 +156,7 @@ mod tests {
         let report = clean_up(&mut store, scan, &[0, 1, 99], &policy).unwrap();
         assert_eq!(report.done, [0, 1], "{report:?}");
         assert_eq!(report.bytes_freed, 15_000);
+        assert_eq!(report.files_moved, 3, "a.bin, sub/b.bin and the installer");
         assert!(report.refused.is_empty() && report.failed.is_empty());
 
         assert!(

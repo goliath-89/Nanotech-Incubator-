@@ -409,6 +409,8 @@ test.describe("UAT feedback (18 Nov)", () => {
     await expect(page.locator("label").filter({ hasText: "Google Chrome" }).locator(".sev")).toHaveText("No impact");
     await expect(page.locator("label").filter({ hasText: "node_modules" }).locator(".sev")).toHaveText("Some effort");
     await expect(page.locator("label").filter({ hasText: "Photos-export-2023.zip" }).locator(".sev")).toHaveText("Check first");
+    // Installers can be downloaded again: some effort, not check first.
+    await expect(page.locator("label").filter({ hasText: "Installer.dmg" }).locator(".sev")).toHaveText("Some effort");
     // Ticking a "check first" item warns in the review.
     await page.getByRole("checkbox", { name: "Select all old downloads" }).check();
     await page.getByRole("button", { name: "Review…" }).click();
@@ -418,7 +420,7 @@ test.describe("UAT feedback (18 Nov)", () => {
   test("the version and build date are under Settings", async ({ page }) => {
     await page.goto("/");
     // Dates follow the system's language (en-US here).
-    await expect(page.getByText(/^Strata 0\.5\.0 · built Nov 18, 2026$/)).toBeVisible();
+    await expect(page.getByText(/^Strata 0\.6\.0 · built Nov 18, 2026$/)).toBeVisible();
   });
 });
 
@@ -795,5 +797,59 @@ test.describe("look and layout", () => {
     await apps.focus();
     await page.keyboard.press("Enter");
     await expect(apps).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+test.describe("Cleaned so far", () => {
+  test("the sidebar opens the page with totals, milestones and history", async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto("/");
+    const entry = page.getByRole("button", { name: /Cleaned so far/ });
+    await expect(entry).toContainText("36.7 GB freed");
+    await entry.click();
+    await expect(page.getByRole("heading", { name: "Cleaned so far", level: 1 })).toBeVisible();
+    await expect(entry).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("img", { name: /36\.7 GB freed, 73% of the way to 50 GB/ })).toBeVisible();
+    await expect(page.getByText("13,095")).toBeVisible();
+    await expect(page.getByText("13.3 GB to go").first()).toBeVisible();
+    // 1, 5, 10 and 25 GB reached; 50 GB next.
+    await expect(page.locator(".badges li.earned")).toHaveCount(4);
+    await expect(page.locator(".badges li.upcoming")).toContainText("50 GB");
+    await expect(page.locator(".legend li").first()).toContainText("App caches");
+    await expect(page.locator("tbody tr")).toHaveCount(5);
+    await page.getByRole("button", { name: "Show all 6" }).click();
+    await expect(page.locator("tbody tr")).toHaveCount(6);
+    // Back to the drive.
+    await page.getByRole("button", { name: /Macintosh HD/ }).click();
+    await expect(page.getByRole("button", { name: "Scan Macintosh HD" })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test("the Clean Up widget adds every cleanup and shows milestones reached", async ({ page }) => {
+    await scanned(page);
+    await page.getByRole("tab", { name: "Clean Up" }).click();
+    const widget = page.locator("button.widget");
+    await expect(widget).toHaveAccessibleName(/^Cleaned so far: 36\.7 GB/);
+    await expect(widget).toContainText("13.3 GB to the 50 GB milestone");
+    await page.getByRole("button", { name: "Review…" }).click();
+    await page.getByRole("button", { name: "Move to Trash" }).click();
+    await expect(widget).toContainText("+18.4 GB just now");
+    await expect(widget).toContainText("50 GB reached");
+    await expect(widget.locator(".total")).toHaveText("55.1 GB");
+    await expect(page.getByRole("button", { name: /Cleaned so far/ }).first()).toBeVisible();
+    await expect(page.locator("aside").getByText("55.1 GB freed")).toBeVisible();
+    await widget.click();
+    await expect(page.locator("tbody tr").first()).toContainText("Today");
+    await expect(page.locator("tbody tr").first()).toContainText("18.4 GB");
+  });
+
+  test("before the first cleanup it explains itself", async ({ page }) => {
+    await page.goto("/?demo-cleaned=none");
+    await page.getByRole("button", { name: /Cleaned so far/ }).click();
+    await expect(page.getByRole("heading", { name: "Nothing cleaned yet" })).toBeVisible();
+    await page.getByRole("button", { name: "Macintosh HD" }).click();
+    await page.getByRole("button", { name: "Scan Macintosh HD" }).click();
+    await page.getByRole("tab", { name: "Clean Up" }).click();
+    await expect(page.getByText("Your total starts with your first cleanup")).toBeVisible();
   });
 });

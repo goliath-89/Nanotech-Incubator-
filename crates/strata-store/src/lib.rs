@@ -192,6 +192,7 @@ pub struct CleanupRow {
     pub at: i64,
     pub volume_id: String,
     pub bytes: u64,
+    /// Files moved to the Trash.
     pub items: u64,
     /// Bytes per suggestion group, as JSON.
     pub groups_json: String,
@@ -823,8 +824,8 @@ impl Store {
     }
 
     /// Forget suggestions that have been acted on.
-    /// Remember a cleanup: when, on which drive, how many bytes and items,
-    /// and the bytes per suggestion group.
+    /// Remember a cleanup: when, on which drive, how many bytes and files
+    /// (`items`: files moved, not suggestions), and the bytes per group.
     pub fn record_cleanup(
         &mut self,
         at: i64,

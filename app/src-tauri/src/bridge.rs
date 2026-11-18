@@ -862,7 +862,7 @@ pub fn clean_up(state: State<'_, AppState>, scan_id: i64, numbers: Vec<u32>) -> 
             now(),
             &volume,
             report.bytes_freed,
-            report.done.len() as u64,
+            report.files_moved,
             &groups,
         );
     }
@@ -1037,7 +1037,8 @@ pub fn compare_scans(state: State<'_, AppState>, before: i64, after: i64) -> Rep
 pub struct CleanupEntry {
     at: i64,
     bytes: String,
-    items: String,
+    /// Files moved to the Recycle Bin or Trash.
+    files: String,
     /// Bytes per suggestion group, as JSON.
     groups: String,
 }
@@ -1053,7 +1054,7 @@ pub fn list_cleanups(state: State<'_, AppState>) -> Reply<Vec<CleanupEntry>> {
         .map(|c| CleanupEntry {
             at: c.at,
             bytes: c.bytes.to_string(),
-            items: c.items.to_string(),
+            files: c.items.to_string(),
             groups: c.groups_json,
         })
         .collect())

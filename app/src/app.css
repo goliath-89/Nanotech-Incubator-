@@ -13,6 +13,10 @@
   --accent-fg: #ffffff;
   --warning: #b25000;
   --warning-bg: #fff4e5;
+  /* Cleaned so far: the ring and bars, text on surfaces, badge fills. */
+  --success: #34c759;
+  --success-fg: #1c7333;
+  --success-bg: #e3f7e8;
 
   --kind-videos: #ff375f;
   --kind-apps: #0a84ff;
@@ -56,6 +60,9 @@
     --accent: #2997ff;
     --warning: #ffb340;
     --warning-bg: rgba(255, 159, 10, 0.12);
+    --success: #30d158;
+    --success-fg: #6ee28a;
+    --success-bg: rgba(48, 209, 88, 0.16);
     --kind-caches: #ffd60a;
     --kind-other: #64d2ff;
     --kind-trash: #b59a74;
@@ -79,6 +86,9 @@
     --accent: #2997ff;
     --warning: #ffb340;
     --warning-bg: rgba(255, 159, 10, 0.12);
+    --success: #30d158;
+    --success-fg: #6ee28a;
+    --success-bg: rgba(48, 209, 88, 0.16);
     --kind-caches: #ffd60a;
     --kind-other: #64d2ff;
     --kind-trash: #b59a74;
@@ -125,7 +135,7 @@ button { font: inherit; color: inherit; }
 /* Increase contrast (macOS) and More contrast (browsers): stronger muted
    text and lines. */
 @media (prefers-contrast: more) {
-  :root { --muted: #48484d; --line: #a1a1a6; --track: #d1d1d6; }
+  :root { --muted: #48484d; --line: #a1a1a6; --track: #d1d1d6; --success-fg: #145a26; }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) { --muted: #c7c7cc; --line: #6e6e73; --track: #48484a; }
   }

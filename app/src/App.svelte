@@ -14,6 +14,8 @@
   import FilesView from "./lib/FilesView.svelte";
   import ReclaimView from "./lib/ReclaimView.svelte";
   import ChangesView from "./lib/ChangesView.svelte";
+  import CleanedPage from "./lib/CleanedPage.svelte";
+  import { loadCleaned } from "./lib/cleaned.svelte";
   import { fileManager, isWindows } from "./lib/platform";
   import { displayName } from "./lib/kinds";
   import { tip } from "./lib/tooltip";
@@ -38,6 +40,8 @@
   let ringView = $state<"folders" | "kinds">("folders");
   type Tab = "folders" | "apps" | "files" | "changes" | "reclaim";
   let tab = $state<Tab>("folders");
+  /** The sidebar's Cleaned so far page, instead of a drive. */
+  let showCleaned = $state(false);
   const tabs: { key: Tab; label: string }[] = [
     { key: "folders", label: "Folders" },
     { key: "apps", label: "Apps" },
@@ -51,6 +55,7 @@
     let off: (() => void) | undefined;
     const clock = setInterval(() => (now = Date.now()), 250);
     // Let the system material show behind the sidebar where it is on.
+    loadCleaned();
     api.windowMaterial().then((m) => (document.documentElement.dataset.material = m)).catch(() => {});
     (async () => {
       off = await api.onScanEvents({
@@ -101,6 +106,7 @@
   });
 
   async function select(v: Volume) {
+    showCleaned = false;
     if (phase.name === "scanning") return;
     volume = v;
     selectedKind = null;
@@ -217,11 +223,14 @@
 
 <div class="window">
   <aside>
-    <Sidebar {volumes} selected={volume?.id ?? null} onselect={select} />
+    <Sidebar {volumes} selected={volume?.id ?? null} onselect={(v) => (showCleaned && v.id === volume?.id ? (showCleaned = false) : select(v))} cleanedOn={showCleaned} oncleaned={() => (showCleaned = true)} />
     <SettingsMenu />
   </aside>
 
   <main>
+    {#if showCleaned}
+      <CleanedPage onclean={() => { showCleaned = false; tab = "reclaim"; }} />
+    {:else}
     {#if volume}
       <header>
         <div>
@@ -362,7 +371,7 @@
         </section>
       {:else}
         <section class="card">
-          <ReclaimView scanId={phase.scanId} onchanged={() => {}} trashBytes={root?.dir.kindBytes[10] ?? "0"} />
+          <ReclaimView scanId={phase.scanId} onchanged={() => {}} trashBytes={root?.dir.kindBytes[10] ?? "0"} onopencleaned={() => (showCleaned = true)} />
         </section>
       {/if}
     {:else if phase.name === "error"}
@@ -371,6 +380,7 @@
         <p>{phase.message}</p>
         <button class="primary" onclick={() => (volume ? select(volume) : location.reload())}>Try Again</button>
       </div>
+    {/if}
     {/if}
     {#if !api.inApp}
       <p class="demo">Example data: the interface is running in a browser, not the Strata app.</p>

@@ -111,7 +111,7 @@ CREATE TABLE cleanups (
     at        INTEGER NOT NULL,
     volume_id TEXT    NOT NULL,
     bytes     INTEGER NOT NULL,
-    items     INTEGER NOT NULL,
+    items     INTEGER NOT NULL,  -- files moved to the Trash
     -- bytes per suggestion group, as JSON: {\"app_cache\": 123, ...}
     groups    TEXT    NOT NULL
 );

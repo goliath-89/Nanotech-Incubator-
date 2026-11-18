@@ -241,9 +241,36 @@ let suggestions: Suggestion[] = [
 
 export async function getSuggestions() { return suggestions; }
 
+// Earlier cleanups, for Cleaned so far. ?demo-cleaned=none starts empty.
+const cleanupLog: { at: number; bytes: string; files: string; groups: string }[] = (() => {
+  if (typeof location !== "undefined" && new URLSearchParams(location.search).get("demo-cleaned") === "none") return [];
+  const now = Math.floor(Date.now() / 1000);
+  const day = 86_400;
+  const rows: [number, number, number, Record<string, number>][] = [
+    [47, 6.1, 1840, { app_cache: 4.2, cache: 1.9 }],
+    [36, 8.4, 3210, { developer_junk: 6.0, old_installer: 2.4 }],
+    [27, 2.2, 640, { cache: 2.2 }],
+    [20, 6.2, 2015, { app_cache: 4.1, old_download: 2.1 }],
+    [13, 4.0, 1288, { old_installer: 1.9, cache: 2.1 }],
+    [6, 9.8, 4102, { developer_junk: 5.6, app_cache: 4.2 }],
+  ];
+  return rows.map(([ago, gb, files, groups]) => ({
+    at: now - ago * day,
+    bytes: String(Math.round(gb * GB)),
+    files: String(files),
+    groups: JSON.stringify(Object.fromEntries(Object.entries(groups).map(([k, v]) => [k, Math.round(v * GB)]))),
+  }));
+})();
+export async function listCleanups() { return cleanupLog.map((c) => ({ ...c })); }
+
 export async function cleanUp(numbers: number[]): Promise<CleanupReport> {
   const chosen = suggestions.filter((s) => numbers.includes(s.number));
   suggestions = suggestions.filter((s) => !numbers.includes(s.number));
+  const groups: Record<string, number> = {};
+  for (const s of chosen) groups[s.group] = (groups[s.group] ?? 0) + Number(s.bytes);
+  if (chosen.length > 0) {
+    cleanupLog.push({ at: Math.floor(Date.now() / 1000), bytes: String(chosen.reduce((t, s) => t + Number(s.bytes), 0)), files: String(chosen.length * 120), groups: JSON.stringify(groups) });
+  }
   return { done: numbers, bytesFreed: String(chosen.reduce((t, s) => t + Number(s.bytes), 0)), refused: [], failed: [] };
 }
 

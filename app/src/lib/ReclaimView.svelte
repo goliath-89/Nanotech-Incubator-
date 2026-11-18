@@ -4,8 +4,10 @@
   import { bytes } from "./format";
   import { trashName } from "./platform";
   import { tip } from "./tooltip";
+  import CleanedWidget from "./CleanedWidget.svelte";
+  import { noteCleanup } from "./cleaned.svelte";
 
-  let { scanId, onchanged, trashBytes = "0" }: { scanId: number; onchanged: () => void; trashBytes?: string } = $props();
+  let { scanId, onchanged, trashBytes = "0", onopencleaned = () => {} }: { scanId: number; onchanged: () => void; trashBytes?: string; onopencleaned?: () => void } = $props();
 
   let items = $state<Suggestion[] | null>(null);
   let chosen = $state<Set<number>>(new Set());
@@ -22,8 +24,11 @@
   //          check it or back it up first
   type Severity = "low" | "mid" | "high";
   function severity(s: Suggestion): Severity {
-    if (!s.rebuildable || s.group === "old_download") return "high";
+    // Installers are not "rebuildable" (nothing recreates them on its own)
+    // but can be downloaded again, so they are mid, not high.
+    if (s.group === "old_download") return "high";
     if (s.group === "developer_junk" || s.group === "old_installer") return "mid";
+    if (!s.rebuildable) return "high";
     return "low";
   }
   const severityText: Record<Severity, { label: string; help: string }> = {
@@ -88,6 +93,7 @@
       reviewing = false;
       items = (items ?? []).filter((s) => !report!.done.includes(s.number));
       chosen = new Set([...chosen].filter((n) => !report!.done.includes(n)));
+      void noteCleanup(Number(report.bytesFreed));
       onchanged();
     } catch (e) {
       error = String(e);
@@ -96,6 +102,8 @@
     }
   }
 </script>
+
+<CleanedWidget onopen={onopencleaned} />
 
 {#if error}
   <p class="note">{error}</p>

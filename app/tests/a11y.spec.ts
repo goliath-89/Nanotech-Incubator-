@@ -44,6 +44,18 @@ for (const scheme of ["light", "dark"] as const) {
     expect(await contrast(page, '[role=tab][aria-selected="false"]')).toBeGreaterThanOrEqual(4.5);
   });
 
+  test(`Cleaned so far meets WCAG AA contrast in ${scheme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto("/");
+    await page.getByRole("button", { name: /Cleaned so far/ }).click();
+    expect(await contrast(page, ".badges li.earned")).toBeGreaterThanOrEqual(4.5);
+    expect(await contrast(page, ".badges li.earned .note")).toBeGreaterThanOrEqual(4.5);
+    expect(await contrast(page, ".badges li:not(.earned):not(.upcoming)")).toBeGreaterThanOrEqual(4.5);
+    expect(await contrast(page, ".stats .quiet")).toBeGreaterThanOrEqual(4.5);
+    expect(await contrast(page, ".week .d")).toBeGreaterThanOrEqual(4.5);
+    expect(await contrast(page, "tbody td.quiet")).toBeGreaterThanOrEqual(4.5);
+  });
+
   test(`Increase contrast raises secondary text to AAA in ${scheme} mode`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme, contrast: "more" });
     await scanned(page);

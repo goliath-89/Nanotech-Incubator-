@@ -161,7 +161,9 @@ a display string; the UI never builds a path itself.
 | `get_apps` | `{ scan_id }` | apps largest first: `{ index, name, kind, appBytes, dataBytes, cacheBytes, totalBytes }` |
 | `get_app_dirs` | `{ scan_id, app }` | an app's outermost folders with paths (`Store::app_dirs`) |
 | `get_suggestions` | `{ scan_id }` | saved suggestions with their numbers |
-| `clean_up` | `{ scan_id, numbers[] }` | `{ done[], bytesFreed, refused[], failed[] }`; paths come from the history, never from the window (`strata_pipeline::cleanup`) |
+| `clean_up` | `{ scan_id, numbers[] }` | `{ done[], bytesFreed, refused[], failed[] }`; paths come from the history, never from the window (`strata_pipeline::cleanup`); each cleanup is recorded (bytes, files moved, bytes per group) |
+| `list_cleanups` | — | `[{ at, bytes, files, groups }]`, oldest first, for Cleaned so far |
+| `app_info` | — | `{ version, buildDate, commit }`, shown under Settings |
 | `open_trash` | — | opens the Recycle Bin (Explorer) or Trash (Finder); never empties it |
 | `preview_file` | `{ scan_id, dir_id, file }` | `{ kind: native \| image \| text \| cloud \| none, … }`: Quick Look on macOS; images and the first 64 KB of text elsewhere; never runs a file, follows a link or reads a cloud-only file |
 | `list_exclusions` / `exclude_folder { scan_id, dir_id }` / `include_folder { path }` | | the list of folders left out of scans (`exclusions.json` in the data folder); applied to every scan method by `strata_pipeline::exclude` |

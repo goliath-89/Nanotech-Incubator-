@@ -20,14 +20,15 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 40 / 90 (44%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 41 / 90 (46%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 9 / 10 (90%) | Days 11–15 and 17–20 done; 16 waits for the MacBook; MVP installed and both scan methods work on Windows ARM64 |
-| **Sprint 3 · ring polish** | 9 / 10 (90%) | Days 21–24, 26–30 done; 25 waits for your notes |
+| **Sprint 3 · ring polish** | 10 / 10 (100%) | Done |
 | **Sprint 4 · polish and testing** | 8 / 10 (80%) | Days 31–38 done; 39–40 wait for the test sessions |
 | **Sprint 5 · kinds and app rules (current)** | 5 / 10 (50%) | Days 41–43, 46–47 done; 44–45 wait for the Mac |
 
 Log (newest first):
+- 18 Nov · Day 25 ✅ Cleaned so far page and Clean Up widget (light and dark), version 0.6.0. Sprint 3 10/10 (100%), overall 41/90 (46%).
 - 18 Nov · Day 17 ✅ MVP notes: live fast-scan progress, Last scanned, select-all, traffic-light severity, version and build date, cleanup history, better kinds for your "Other" list. Sprint 2 9/10 (90%), overall 40/90 (44%).
 - 17 Nov · Days 46–47 ✅ 58 Windows app rules; all 235 rule folders checked by a fixture test. Sprint 5 5/10 (50%), overall 39/90 (43%).
 - 17 Nov · Day 43 ✅ large unknown files recognised from their contents. Sprint 5 3/10 (30%), overall 37/90 (41%).
@@ -143,7 +144,7 @@ of introducing them.
 | 22 ✅ | Opus | Ring fills in live during a scan: the scanner keeps lock-free running totals per top-level folder; the app sends them once a second; the ring grows clockwise against the drive's used space, with the uncounted part as a faint track. Totals end exactly at the final figures (2 new engine tests, 1 UI test) | — |
 | 23 ✅ | Opus | Design pass: shape and depth tokens (card, control, pill radii; raised shadow) used everywhere; window created in code; **Mica behind the sidebar on Windows 11** (build 22000+, content area stays solid; Windows 10 unchanged), light and dark. macOS vibrancy moved to Day 16: it needs Tauri's private-API switch, which rules out the Mac App Store | Check the Mica sidebar on your laptop (see BACKLOG). |
 | 24 ✅ | Opus | One shared tooltip (hover after a pause, keyboard focus at once, Escape hides, screen-reader description) on folder rows (full path), kind bar, drives, capacity bar and app bars. Shared selection: pick a kind in the kind bar and the ring fades the rest, folder bars show only that kind, Largest Files opens on it; click again or "Show all kinds" to clear. 4 UI tests | Use it on your real drive for 10 minutes; list what confuses you. |
-| 25 | Opus | Fixes from your notes | — |
+| 25 ✅ | Opus | Fixes from your notes (18 Nov, part 2): **Cleaned so far** page in the sidebar (total freed with a ring towards the next milestone, files removed, cleanups and start date, a phone-photos comparison, milestone badges 1 GB → 5 TB, by-type breakdown, weekly chart, every cleanup) and a widget at the top of Clean Up that counts up after each cleanup and shows milestones reached; light and dark colours checked for contrast; files removed now counted for real; old installers rated "some effort" as intended; version 0.6.0 | — |
 | 26 ✅ | Opus | Sizes setting (Settings at the foot of the sidebar): like macOS (1 GB = 10⁹ bytes), like Windows Explorer (1 GB = 2³⁰ bytes) or GiB; defaults to the system's own convention and is remembered. Every number, percentage and time uses the system locale (e.g. 1,5 GB and 67,2 % in German). 2 UI tests | — |
 | 27 ✅ | Opus | Keyboard: the ring takes focus (Left/Right between slices, Down into a folder's ring, Up back out, Home/End, Enter opens, Backspace/Escape up), each step announced for screen readers and mirrored in the list. Up/Down/Home/End in the folder, app and file lists; tabs follow the standard pattern (arrows switch, one Tab stop). Fixed: slices stored as plain values so lookups match. 3 UI tests | — |
 | 28 ✅ | Opus | At the top of a drive, space in use that the scan could not read is its own hatched "Not scanned" slice and list row (with why, and how the fast scan reads it); shares are now of the whole drive in use, so rows add to 100%. Unreadable folders are hatched too. Cloud-only files (OneDrive, iCloud) are noted per folder and under the kinds, never counted as space on the drive. 2 UI tests | — |
