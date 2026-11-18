@@ -651,3 +651,28 @@ fn a_store_in_memory_round_trips_through_its_bytes() {
     assert_eq!(loaded.root().alloc_bytes, tree.root().alloc_bytes);
     assert_eq!(loaded.root().file_count, tree.root().file_count);
 }
+
+#[test]
+fn cleanups_are_remembered_across_restarts() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("h.sqlite");
+    let mut store = Store::open(&file).unwrap();
+    assert!(store.cleanups().unwrap().is_empty());
+    store
+        .record_cleanup(
+            100,
+            "v",
+            5_000,
+            3,
+            &[("app_cache".into(), 4_000), ("cache".into(), 1_000)],
+        )
+        .unwrap();
+    store.record_cleanup(200, "v", 7, 1, &[]).unwrap();
+    drop(store);
+    let store = Store::open(&file).unwrap();
+    let rows = store.cleanups().unwrap();
+    assert_eq!(rows.len(), 2);
+    assert_eq!((rows[0].at, rows[0].bytes, rows[0].items), (100, 5_000, 3));
+    assert_eq!(rows[0].groups_json, r#"{"app_cache":4000,"cache":1000}"#);
+    assert_eq!(rows[1].groups_json, "{}");
+}

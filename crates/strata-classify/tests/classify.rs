@@ -654,3 +654,31 @@ fn every_built_in_rule_claims_its_own_folders() {
     }
     assert!(checked > 150, "only {checked} folder rules checked");
 }
+
+/// From the "Other" list on a real Windows laptop (UAT, 18 Nov).
+#[test]
+fn caches_and_databases_seen_on_a_real_drive() {
+    // Forward slashes: on Linux, where tests run, a backslash is not a separator.
+    let k = |p: &str| folder_kind(Path::new(&p.replace('\\', "/")));
+    let local = r"C:\Users\sam\AppData\Local";
+    for p in [
+        r"\Google\Chrome\User Data\component_crx_cache",
+        r"\Google\Chrome\User Data\extensions_crx_cache",
+        r"\Microsoft\Edge\User Data\ProvenanceData\2025.10.7.5",
+        r"\Google\Chrome\User Data\SODALanguagePacks\en-US\1.5075.0",
+        r"\Google\Chrome\User Data\optimization_guide_model_store\43",
+        r"\npm-cache\_cacache\content-v2\sha512\6a",
+        r"\Google\DriveFS\1096\content_cache\d39\d125",
+        r"\Packages\SpotifyAB.SpotifyMusic_zpdnekdrzrea0\LocalCache\Spotify\component_crx_cache",
+    ] {
+        assert_eq!(k(&format!("{local}{p}")), Some(Kind::Caches), "{p}");
+    }
+    assert_eq!(k(r"C:\immich\postgres\base\16384"), Some(Kind::Developer));
+    assert_eq!(
+        k(r"C:\Users\sam\AppData\Local\Claude-Data\x\vm_bundles\claudevm.bundle"),
+        Some(Kind::Developer)
+    );
+    // In personal folders a name proves nothing.
+    assert_eq!(k("/Users/sam/Pictures/photo_cache"), None);
+    assert_eq!(k("/Users/sam/Documents/Projects/render-cache"), None);
+}

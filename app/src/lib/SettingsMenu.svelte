@@ -3,6 +3,10 @@
   import * as api from "./api";
 
   let excluded = $state<string[]>([]);
+  let info = $state<{ version: string; buildDate: string; commit: string } | null>(null);
+  api.appInfo().then((i) => (info = i)).catch(() => {});
+  const built = (d: string) =>
+    new Intl.DateTimeFormat(navigator.language, { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${d}T12:00:00`));
   async function refresh() {
     try {
       excluded = await api.listExclusions();
@@ -79,6 +83,9 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" /></svg>
     Settings
   </button>
+  {#if info}
+    <p class="version" title={info.commit ? `Commit ${info.commit}` : undefined}>Strata {info.version} · built {built(info.buildDate)}</p>
+  {/if}
 </div>
 
 <style>
@@ -87,6 +94,7 @@
     all: unset; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 7px; color: var(--muted); cursor: pointer; width: 100%; box-sizing: border-box;
   }
   .gear:hover { background: var(--hover); color: var(--fg); }
+  .version { margin: 2px 10px 0; color: var(--muted); font-size: 11px; user-select: text; }
   .gear:focus-visible { outline: 2px solid var(--accent); }
   svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
   .panel {

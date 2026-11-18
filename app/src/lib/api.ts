@@ -105,6 +105,16 @@ export function compareScans(before: number, after: number): Promise<Change[]> {
   return inApp ? call("compare_scans", { before, after }) : demo.compareScans(before);
 }
 
+/** Version, build date (YYYY-MM-DD) and commit of this build. */
+export function appInfo(): Promise<{ version: string; buildDate: string; commit: string }> {
+  return inApp ? call("app_info") : Promise.resolve({ version: "0.5.0", buildDate: "2026-11-18", commit: "preview" });
+}
+
+/** Every cleanup Strata has done, oldest first. */
+export function listCleanups(): Promise<{ at: number; bytes: string; items: string; groups: string }[]> {
+  return inApp ? call("list_cleanups") : Promise.resolve([]);
+}
+
 /** "mica" when Windows 11 put its material behind the window, else "none". */
 export function windowMaterial(): Promise<string> {
   return inApp ? call("window_material") : Promise.resolve("none");

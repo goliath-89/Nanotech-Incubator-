@@ -186,6 +186,17 @@ pub struct DirListing {
     pub files: Vec<FileRow>,
 }
 
+/// One cleanup Strata did ("Cleaned so far").
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CleanupRow {
+    pub at: i64,
+    pub volume_id: String,
+    pub bytes: u64,
+    pub items: u64,
+    /// Bytes per suggestion group, as JSON.
+    pub groups_json: String,
+}
+
 /// How one folder changed between two scans.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GrowthRow {
@@ -333,9 +344,11 @@ impl Store {
 
         tx.commit()?;
         // Keep the query planner's statistics current (cheap: sampled).
-        let _ = self
-            .conn
-            .execute_batch("PRAGMA analysis_limit = 1000; PRAGMA optimize;");
+        // Fold the write-ahead log back into the file so it does not linger
+        // at the size of the last save.
+        let _ = self.conn.execute_batch(
+            "PRAGMA analysis_limit = 1000; PRAGMA optimize; PRAGMA wal_checkpoint(TRUNCATE);",
+        );
         Ok(scan)
     }
 
@@ -810,6 +823,48 @@ impl Store {
     }
 
     /// Forget suggestions that have been acted on.
+    /// Remember a cleanup: when, on which drive, how many bytes and items,
+    /// and the bytes per suggestion group.
+    pub fn record_cleanup(
+        &mut self,
+        at: i64,
+        volume_id: &str,
+        bytes: u64,
+        items: u64,
+        groups: &[(String, u64)],
+    ) -> Result<()> {
+        let json = format!(
+            "{{{}}}",
+            groups
+                .iter()
+                .map(|(g, b)| format!("\"{}\":{b}", g.replace(['"', '\\'], "")))
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+        self.conn.execute(
+            "INSERT INTO cleanups (at, volume_id, bytes, items, groups) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![at, volume_id, bytes as i64, items as i64, json],
+        )?;
+        Ok(())
+    }
+
+    /// Every cleanup so far, oldest first.
+    pub fn cleanups(&self) -> Result<Vec<CleanupRow>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT at, volume_id, bytes, items, groups FROM cleanups ORDER BY at, id")?;
+        let rows = stmt.query_map([], |r| {
+            Ok(CleanupRow {
+                at: r.get(0)?,
+                volume_id: r.get(1)?,
+                bytes: r.get::<_, i64>(2)? as u64,
+                items: r.get::<_, i64>(3)? as u64,
+                groups_json: r.get(4)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
     pub fn remove_suggestions(&mut self, scan: ScanId, numbers: &[u32]) -> Result<()> {
         let tx = self.conn.transaction()?;
         for n in numbers {

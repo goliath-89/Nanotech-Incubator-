@@ -20,7 +20,7 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 39 / 90 (43%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 40 / 90 (44%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
 | **Sprint 3 · ring polish** | 9 / 10 (90%) | Days 21–24, 26–30 done; 25 waits for your notes |
@@ -28,6 +28,7 @@ Updated every time a day is done. Half-done days count as half.
 | **Sprint 5 · kinds and app rules (current)** | 5 / 10 (50%) | Days 41–43, 46–47 done; 44–45 wait for the Mac |
 
 Log (newest first):
+- 18 Nov · Day 17 ✅ MVP notes: live fast-scan progress, Last scanned, select-all, traffic-light severity, version and build date, cleanup history, better kinds for your "Other" list. Sprint 2 9/10 (90%), overall 40/90 (44%).
 - 17 Nov · Days 46–47 ✅ 58 Windows app rules; all 235 rule folders checked by a fixture test. Sprint 5 5/10 (50%), overall 39/90 (43%).
 - 17 Nov · Day 43 ✅ large unknown files recognised from their contents. Sprint 5 3/10 (30%), overall 37/90 (41%).
 - 17 Nov · Day 42 ✅ apps, libraries and games shown as one item. Sprint 5 2/10 (20%), overall 36/90 (40%).
@@ -129,7 +130,7 @@ of introducing them.
 | 14 ✅ | Opus | Clean Up tab: suggestions by group (rebuildable ones pre-ticked, downloads not), review step listing every path, Move to Recycle Bin / Trash through the safety engine, result with anything left in place. The window can only name saved suggestions by number | Try a real cleanup on something you don't need. |
 | 15 ✅ | Opus | Windows: ask for administrator rights to use the fast scan; Recycle Bin shown as its own item. **MVP** | Use the MVP for a few days; list what to fix. |
 | 16 | Opus | macOS: Full Disk Access check and setup screen; walk speed (GitHub's Mac runner: ~40k files/s, vs 260k on Windows: try getattrlistbulk); sidebar vibrancy (needs the private-API switch: no Mac App Store build while it is on) | Once the MacBook is ready: install and scan. |
-| 17 | Opus | Fixes from your MVP notes | — |
+| 17 ✅ | Opus | Fixes from your MVP notes (18 Nov): live progress for the Windows fast scan too (the administrator copy reports through its own output file), "of about N GB · %" and a progress bar; "Last scanned" date and time on results; Clean Up select-all per group and a traffic-light severity per item (no impact / some effort / check first) with a warning in the review; version and build date under Settings, version 0.5.0, installers named with the build date; cleanups now recorded for "Cleaned so far" (page design awaiting your approval); your "Other" list: browser component caches, model stores, speech packs, npm and Drive caches now count as Caches, database and VM folders as Developer; Strata's own history journal no longer lingers at 48 MB | — |
 | 18 ✅ | Opus | Nightly CI (`.github/workflows/nightly.yml`, 02:23 UTC and on demand): a known 100k-file tree must match an independent count exactly on all three systems (hard links included); the whole system drive must be 97% (Linux walk) or 98% (Windows fast scan) covered and never over 100.5%; macOS reported only until Day 3. Benchmark with speed and memory limits per system (`tools/bench-baseline.json`); Windows peak memory now measured | — |
 | 19 ✅ | Opus | 23 UI tests (`app/tests`, `npm run test:ui`, in CI): drives, scan progress, Stop, administrator and file-table messages, folder order and shares, Trash by name, breadcrumb and keyboard back, ring hover/click/centre, Apps, Largest Files filter, Clean Up ticks/review/cancel/move, Trash card, Windows wording, dark mode, no sideways scrolling at 800 and 1440 px, keyboard use | — |
 | 20 ✅ | Opus | Review of the bridge and app: 7 findings (1 high, 4 medium, 2 low) fixed, 1 accepted until signing on Day 75 (see SECURITY_PROCESS.md). All Dependabot updates applied and verified | ✅ Name decided: **Strata** |

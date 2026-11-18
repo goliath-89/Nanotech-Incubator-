@@ -79,7 +79,7 @@ test.describe("scanning", () => {
     await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
     await expect(page.getByText(/Counting Macintosh HD/)).toBeVisible();
     await expect(page.getByText(/files in .* folders/)).toBeVisible();
-    await expect(page.getByText("Scanned in 2.1 s")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Last scanned today at .* ·\s+took 2\.1 s/)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("button", { name: "Scan Again" })).toBeVisible();
     expect(errors).toEqual([]);
   });
@@ -100,7 +100,7 @@ test.describe("scanning", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Scan Macintosh HD" }).click();
     await page.getByRole("button", { name: "Stop" }).click();
-    await expect(page.getByText(/Stopped early, figures are partial/)).toBeVisible();
+    await expect(page.getByText(/stopped early, figures are partial/)).toBeVisible();
   });
 
   test("explains the administrator prompt while it is open", async ({ page }) => {
@@ -119,7 +119,7 @@ test.describe("scanning", () => {
     await scanned(page);
     await page.getByRole("button", { name: "Scan Again" }).click();
     await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
-    await expect(page.getByText("Scanned in 2.1 s")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Last scanned today at .* ·\s+took 2\.1 s/)).toBeVisible({ timeout: 10_000 });
   });
 });
 
@@ -168,7 +168,7 @@ test.describe("folders", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Scan Macintosh HD" }).click();
     await page.getByRole("button", { name: "Stop" }).click();
-    await expect(page.getByText(/Stopped early/)).toBeVisible();
+    await expect(page.getByText(/stopped early/)).toBeVisible();
     await expect(page.locator(".rows li.unscanned")).toContainText("Not counted");
     await expect(page.locator(".rows li.unscanned")).toContainText("stopped before reaching it");
   });
@@ -373,6 +373,52 @@ test.describe("largest files", () => {
     await expect(list).toHaveText(["Wedding-raw.mov", "Final-cut-render.mov", "IMG_9356.mov"]);
     await chips.getByRole("button", { name: "All" }).click();
     await expect(list).toHaveCount(9);
+  });
+});
+
+test.describe("UAT feedback (18 Nov)", () => {
+  test("live progress shows GB of the drive, files and a percentage", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Scan Macintosh HD" }).click();
+    await expect(page.getByText(/of about 742 GB/)).toBeVisible();
+    const bar = page.getByRole("progressbar", { name: "Scan progress" });
+    await expect(bar).toBeVisible();
+    await expect.poll(async () => Number(await bar.getAttribute("aria-valuenow"))).toBeGreaterThan(0);
+    await expect(page.getByText(/files in .* folders .* \d+%/)).toBeVisible();
+  });
+
+  test("a saved scan says when it was made", async ({ page }) => {
+    await scanned(page);
+    await page.getByRole("button", { name: /Archive SSD/ }).click();
+    await page.getByRole("button", { name: /Macintosh HD/ }).click();
+    await expect(page.getByText(/Last scanned (today|yesterday) at/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Scan again", exact: true })).toBeVisible();
+  });
+
+  test("Clean Up: select a whole group, and see how much each item matters", async ({ page }) => {
+    await scanned(page);
+    await page.getByRole("tab", { name: "Clean Up" }).click();
+    const devAll = page.getByRole("checkbox", { name: "Select all developer files" });
+    await expect(devAll).toBeChecked();
+    await devAll.uncheck();
+    await expect(page.getByRole("checkbox", { name: /node_modules/ })).not.toBeChecked();
+    await expect(page.getByRole("checkbox", { name: /Xcode/ })).not.toBeChecked();
+    await devAll.check();
+    await expect(page.getByRole("checkbox", { name: /Xcode/ })).toBeChecked();
+    // Traffic lights: caches no impact, developer files some effort, downloads check first.
+    await expect(page.locator("label").filter({ hasText: "Google Chrome" }).locator(".sev")).toHaveText("No impact");
+    await expect(page.locator("label").filter({ hasText: "node_modules" }).locator(".sev")).toHaveText("Some effort");
+    await expect(page.locator("label").filter({ hasText: "Photos-export-2023.zip" }).locator(".sev")).toHaveText("Check first");
+    // Ticking a "check first" item warns in the review.
+    await page.getByRole("checkbox", { name: "Select all old downloads" }).check();
+    await page.getByRole("button", { name: "Review…" }).click();
+    await expect(page.getByText(/1 of these cannot be rebuilt/)).toBeVisible();
+  });
+
+  test("the version and build date are under Settings", async ({ page }) => {
+    await page.goto("/");
+    // Dates follow the system's language (en-US here).
+    await expect(page.getByText(/^Strata 0\.5\.0 · built Nov 18, 2026$/)).toBeVisible();
   });
 });
 
@@ -702,7 +748,7 @@ test.describe("units and language", () => {
     test("numbers use the system's separators", async ({ page }) => {
       await scanned(page);
       await expect(page.getByText("742 GB used of 1,0 TB")).toBeVisible();
-      await expect(page.getByText("Scanned in 2,1 s")).toBeVisible();
+      await expect(page.getByText(/took 2,1 s/)).toBeVisible();
       await expect(rows(page).filter({ hasText: "Users" })).toContainText("246.500 files");
       await expect(rows(page).filter({ hasText: "Users" })).toContainText("66,4 %");
     });

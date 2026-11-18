@@ -13,6 +13,10 @@
 /// The argument that starts the elevated copy.
 pub const FLAG: &str = "--strata-elevated-scan";
 
+/// How the elevated copy's progress line starts.
+#[cfg_attr(not(windows), allow(dead_code))]
+const PROGRESS: &str = "STRATA-PROGRESS";
+
 #[cfg(windows)]
 #[derive(Debug)]
 pub enum ElevatedError {
@@ -55,7 +59,7 @@ pub fn run_elevated_copy(_args: &[String]) -> i32 {
 
 #[cfg(windows)]
 mod imp {
-    use super::{code, ElevatedError, FLAG};
+    use super::{code, ElevatedError, FLAG, PROGRESS};
     use std::ffi::OsStr;
     use std::io::Write;
     use std::os::windows::ffi::OsStrExt;
@@ -66,6 +70,7 @@ mod imp {
     use strata_core::{ScanControl, ScanTree};
     use strata_mft::{open_drive, scan_volume, MftError, MftOptions};
     use strata_store::{ScanMeta, Store};
+    use windows_sys::Win32::Foundation::WAIT_TIMEOUT;
     use windows_sys::Win32::Foundation::{
         CloseHandle, GetLastError, ERROR_CANCELLED, HANDLE, INVALID_HANDLE_VALUE,
     };
@@ -128,11 +133,12 @@ mod imp {
         let Some(folder) = output.parent().and_then(hold_folder) else {
             return code::UNSAFE_OUTPUT;
         };
-        // A fresh file only, never through a link, and nobody else may open it.
+        // A fresh file only, never through a link; others may only read it
+        // (the app reads the progress line while the scan runs).
         let mut file = match std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
-            .share_mode(0)
+            .share_mode(FILE_SHARE_READ)
             .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
             .open(&output)
         {
@@ -142,15 +148,37 @@ mod imp {
         if !final_path(file.as_raw_handle() as HANDLE).is_some_and(|p| same_path(&p, &output)) {
             return code::UNSAFE_OUTPUT;
         }
-        let tree = match open_drive(letter).and_then(|drive| {
+        // While the file table is read, a progress line at the start of the
+        // output file: "STRATA-PROGRESS <files> <folders> <bytes>".
+        let ctl = std::sync::Arc::new(ScanControl::new());
+        let done = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let reporter = file.try_clone().ok().map(|mut out| {
+            let (ctl, done) = (ctl.clone(), done.clone());
+            std::thread::spawn(move || {
+                use std::io::{Seek, SeekFrom};
+                while !done.load(std::sync::atomic::Ordering::Relaxed) {
+                    let line = format!(
+                        "{PROGRESS} {} {} {}\n",
+                        ctl.files(),
+                        ctl.dirs(),
+                        ctl.bytes()
+                    );
+                    let _ = out
+                        .seek(SeekFrom::Start(0))
+                        .and_then(|_| out.write_all(format!("{line:<64}").as_bytes()));
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                }
+            })
+        });
+        let scanned = open_drive(letter).and_then(|drive| {
             let name = format!("{}:\\", letter.to_ascii_uppercase());
-            scan_volume(
-                drive,
-                &MftOptions::new(name),
-                &KindClassifier,
-                &ScanControl::new(),
-            )
-        }) {
+            scan_volume(drive, &MftOptions::new(name), &KindClassifier, &ctl)
+        });
+        done.store(true, std::sync::atomic::Ordering::Relaxed);
+        if let Some(r) = reporter {
+            let _ = r.join();
+        }
+        let tree = match scanned {
             Ok(tree) => tree,
             Err(MftError::NotNtfs) => return code::NOT_NTFS,
             Err(MftError::NeedsAdministrator | MftError::AccessRefused(_)) => return code::REFUSED,
@@ -166,7 +194,14 @@ mod imp {
             .and_then(|mut s| s.save(&tree, &meta).map(|_| s))
             .and_then(|mut s| s.to_bytes());
         let written = match bytes {
-            Ok(bytes) => file.write_all(&bytes).and_then(|_| file.sync_all()).is_ok(),
+            Ok(bytes) => {
+                use std::io::{Seek, SeekFrom};
+                file.set_len(0)
+                    .and_then(|_| file.seek(SeekFrom::Start(0)))
+                    .and_then(|_| file.write_all(&bytes))
+                    .and_then(|_| file.sync_all())
+                    .is_ok()
+            }
             Err(_) => false,
         };
         drop(file);
@@ -265,6 +300,8 @@ mod imp {
     pub fn scan_drive_elevated(
         letter: char,
         data_folder: &Path,
+        ctl: &ScanControl,
+        on_started: &dyn Fn(),
     ) -> Result<ScanTree, ElevatedError> {
         let stamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -307,6 +344,25 @@ mod imp {
         let mut exit = 1u32;
         // SAFETY: SEE_MASK_NOCLOSEPROCESS makes `hProcess` a valid process
         // handle that this function owns and closes.
+        // While it runs, pass its progress line on to the live counters.
+        let mut seen = (0u64, 0u64, 0u64);
+        let mut started = false;
+        // SAFETY: `hProcess` is a valid process handle (see above).
+        while unsafe { WaitForSingleObject(info.hProcess, 200) } == WAIT_TIMEOUT {
+            if let Some((f, d, b)) = read_progress(&output) {
+                if !started {
+                    started = true;
+                    on_started();
+                }
+                ctl.record(
+                    f.saturating_sub(seen.0),
+                    d.saturating_sub(seen.1),
+                    b.saturating_sub(seen.2),
+                );
+                seen = (f.max(seen.0), d.max(seen.1), b.max(seen.2));
+            }
+        }
+        // SAFETY: as above; the handle is closed once, here.
         unsafe {
             WaitForSingleObject(info.hProcess, INFINITE);
             GetExitCodeProcess(info.hProcess, &mut exit);
@@ -330,6 +386,17 @@ mod imp {
             let _ = std::fs::remove_file(PathBuf::from(name)); // own-file: the temporary result
         }
         result
+    }
+
+    /// The elevated copy's progress line, if it has written one.
+    fn read_progress(output: &Path) -> Option<(u64, u64, u64)> {
+        use std::io::Read;
+        let mut head = [0u8; 64];
+        let n = std::fs::File::open(output).ok()?.read(&mut head).ok()?;
+        let text = std::str::from_utf8(&head[..n]).ok()?;
+        let mut parts = text.strip_prefix(PROGRESS)?.split_whitespace();
+        let mut next = || parts.next()?.parse::<u64>().ok();
+        Some((next()?, next()?, next()?))
     }
 
     fn read_result(output: &Path) -> Result<ScanTree, ElevatedError> {

@@ -42,6 +42,8 @@ fn main() {
             bridge::include_folder,
             bridge::list_scans,
             bridge::compare_scans,
+            bridge::list_cleanups,
+            bridge::app_info,
             window::window_material,
         ])
         .run(tauri::generate_context!())

@@ -83,7 +83,7 @@ export async function listVolumes() {
 }
 
 export async function latestScan(volumeId: string): Promise<ScanSummary | null> {
-  return volumeId === "demo-1" && scanned ? { scanId: 1, finishedAt: 0, allocBytes: String(flat[0].bytes), fileCount: "1840000" } : null;
+  return volumeId === "demo-1" && scanned ? { scanId: 1, finishedAt: Math.floor(Date.now() / 1000) - 3600, allocBytes: String(flat[0].bytes), fileCount: "1840000" } : null;
 }
 
 export async function startScan(_volumeId: string) {

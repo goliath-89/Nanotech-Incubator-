@@ -28,7 +28,36 @@ const CACHE_NAMES: &[&str] = &[
     "service worker",
     "blob_storage",
 ];
+/// Re-downloadable stores that browsers and apps keep (component updates,
+/// on-device models, speech packs). Seen on a real Windows drive, 18 Nov.
+const DOWNLOAD_STORE_NAMES: &[&str] = &[
+    "component_crx_cache",
+    "extensions_crx_cache",
+    "optimization_guide_model_store",
+    "sodalanguagepacks",
+    "provenancedata",
+    "_cacache",
+];
+
+/// Names that look like caches: `content_cache`, `npm-cache`, `cache2`.
+/// Not used inside personal folders, where a name proves nothing.
+fn cache_like(name: &str) -> bool {
+    DOWNLOAD_STORE_NAMES.contains(&name)
+        || name.ends_with("_cache")
+        || name.ends_with("-cache")
+        || name.ends_with(" cache")
+        || name == "cache2"
+}
+
 const DEVELOPER_NAMES: &[&str] = &[
+    // Database data folders (self-hosted apps, local servers).
+    "pgdata",
+    "postgres",
+    "postgresql",
+    "mysql",
+    "mariadb",
+    "mongodb",
+    "vm_bundles",
     "node_modules",
     ".git",
     ".svn",
@@ -192,7 +221,9 @@ pub fn folder_kind(dir: &Path) -> Option<Kind> {
             Some(Kind::Trash)
         } else if GAME_NAMES.contains(&name) {
             Some(Kind::Games)
-        } else if CACHE_NAMES.contains(&name) && !(personal && WEAK_CACHE_NAMES.contains(&name)) {
+        } else if (CACHE_NAMES.contains(&name) && !(personal && WEAK_CACHE_NAMES.contains(&name)))
+            || (!personal && cache_like(name))
+        {
             Some(Kind::Caches)
         } else if DEVELOPER_NAMES.contains(&name) || (name == "developer" && previous == "library")
         {

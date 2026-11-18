@@ -309,7 +309,9 @@ fn run_scan(
     if fast && !strata_mft::is_elevated() {
         if let Some(letter) = whole_drive(root) {
             stage("permission");
-            match crate::elevated::scan_drive_elevated(letter, data_folder) {
+            match crate::elevated::scan_drive_elevated(letter, data_folder, ctl, &|| {
+                stage("fileTable")
+            }) {
                 Ok(mut tree) => {
                     strata_pipeline::finish(&mut tree, excludes);
                     return Ok(strata_pipeline::Outcome {
@@ -837,8 +839,33 @@ pub fn clean_up(state: State<'_, AppState>, scan_id: i64, numbers: Vec<u32>) -> 
         .protect(&state.data_folder.to_string_lossy())
         .map_err(|r| format!("could not protect Strata's own data folder: {r:?}"))?;
     let mut store = state.store.lock().map_err(text)?;
+    // Group and size of each suggestion, to record what was cleaned.
+    let before = store.numbered_suggestions(scan_id).map_err(text)?;
     let report =
         strata_pipeline::cleanup::clean_up(&mut store, scan_id, &numbers, &policy).map_err(text)?;
+    if !report.done.is_empty() {
+        let mut groups: Vec<(String, u64)> = Vec::new();
+        for (n, s) in &before {
+            if report.done.contains(n) {
+                match groups.iter_mut().find(|(g, _)| *g == s.group) {
+                    Some((_, b)) => *b += s.bytes,
+                    None => groups.push((s.group.clone(), s.bytes)),
+                }
+            }
+        }
+        let volume = store
+            .scan_info(scan_id)
+            .map(|i| i.volume_id)
+            .unwrap_or_default();
+        // The cleanup itself happened; failing to record it is not an error.
+        let _ = store.record_cleanup(
+            now(),
+            &volume,
+            report.bytes_freed,
+            report.done.len() as u64,
+            &groups,
+        );
+    }
     let problems = |v: Vec<(PathBuf, String)>| {
         v.into_iter()
             .map(|(p, reason)| Problem {
@@ -999,4 +1026,53 @@ pub fn compare_scans(state: State<'_, AppState>, before: i64, after: i64) -> Rep
             after_bytes: r.after_bytes.to_string(),
         })
         .collect())
+}
+
+// ---------------------------------------------------------------------------
+// Cleaned so far, and the app's version (UAT feedback, 18 Nov)
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupEntry {
+    at: i64,
+    bytes: String,
+    items: String,
+    /// Bytes per suggestion group, as JSON.
+    groups: String,
+}
+
+/// Every cleanup Strata has done, oldest first.
+#[tauri::command]
+pub fn list_cleanups(state: State<'_, AppState>) -> Reply<Vec<CleanupEntry>> {
+    let store = state.store.lock().map_err(text)?;
+    Ok(store
+        .cleanups()
+        .map_err(text)?
+        .into_iter()
+        .map(|c| CleanupEntry {
+            at: c.at,
+            bytes: c.bytes.to_string(),
+            items: c.items.to_string(),
+            groups: c.groups_json,
+        })
+        .collect())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppInfo {
+    version: &'static str,
+    build_date: &'static str,
+    commit: &'static str,
+}
+
+/// Version, build date and commit, shown under Settings.
+#[tauri::command]
+pub fn app_info() -> AppInfo {
+    AppInfo {
+        version: env!("CARGO_PKG_VERSION"),
+        build_date: env!("STRATA_BUILD_DATE"),
+        commit: env!("STRATA_COMMIT"),
+    }
 }

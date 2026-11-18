@@ -3,6 +3,7 @@
   import * as api from "./api";
   import { bytes } from "./format";
   import { trashName } from "./platform";
+  import { tip } from "./tooltip";
 
   let { scanId, onchanged, trashBytes = "0" }: { scanId: number; onchanged: () => void; trashBytes?: string } = $props();
 
@@ -12,6 +13,24 @@
   let working = $state(false);
   let report = $state<CleanupReport | null>(null);
   let error = $state<string | null>(null);
+
+  // How much it matters if an item is removed (traffic light):
+  //   low  – rebuilt by its app on its own, no visible effect (caches, temp files)
+  //   mid  – can be got back, at some cost: rebuild or reinstall (developer
+  //          files), or download again (old installers)
+  //   high – cannot be rebuilt: downloads and anything not marked rebuildable;
+  //          check it or back it up first
+  type Severity = "low" | "mid" | "high";
+  function severity(s: Suggestion): Severity {
+    if (!s.rebuildable || s.group === "old_download") return "high";
+    if (s.group === "developer_junk" || s.group === "old_installer") return "mid";
+    return "low";
+  }
+  const severityText: Record<Severity, { label: string; help: string }> = {
+    low: { label: "No impact", help: "Rebuilt by its app automatically. You will not notice it is gone." },
+    mid: { label: "Some effort", help: "Can be got back: rebuilt, reinstalled or downloaded again, which takes time." },
+    high: { label: "Check first", help: "Cannot be rebuilt. Make sure you have a copy, or that you no longer need it." },
+  };
 
   const groups = [
     { key: "app_cache", title: "App caches", note: "Apps rebuild these as needed." },
@@ -42,6 +61,17 @@
   const picked = $derived((items ?? []).filter((s) => chosen.has(s.number)));
   const pickedBytes = $derived(picked.reduce((t, s) => t + Number(s.bytes), 0));
   const allBytes = $derived((items ?? []).reduce((t, s) => t + Number(s.bytes), 0));
+
+  /** Tick or untick every item of a group. */
+  function toggleGroup(list: Suggestion[]) {
+    const next = new Set(chosen);
+    const all = list.every((x) => next.has(x.number));
+    for (const x of list) {
+      if (all) next.delete(x.number);
+      else next.add(x.number);
+    }
+    chosen = next;
+  }
 
   function toggle(n: number) {
     const next = new Set(chosen);
@@ -106,9 +136,12 @@
   <div class="review">
     <h4>Move {picked.length} {picked.length === 1 ? "item" : "items"} ({bytes(pickedBytes)}) to the {trashName}?</h4>
     <p class="quiet">Strata checks each one again before it moves. Nothing is deleted: everything goes to the {trashName}, where you can restore it.</p>
+    {#if picked.some((x) => severity(x) === "high")}
+      <p class="warn"><span class="sev high"><i aria-hidden="true"></i>Check first</span> {picked.filter((x) => severity(x) === "high").length} of these cannot be rebuilt. Make sure you have a copy, or that you no longer need them.</p>
+    {/if}
     <ul class="paths">
       {#each picked as s (s.number)}
-        <li><span class="path">{s.path}{s.contentsOnly ? " (contents)" : ""}</span><span class="num">{bytes(s.bytes)}</span></li>
+        <li><span class="path"><span class="dot {severity(s)}" aria-label={severityText[severity(s)].label}></span>{s.path}{s.contentsOnly ? " (contents)" : ""}</span><span class="num">{bytes(s.bytes)}</span></li>
       {/each}
     </ul>
     <div class="buttons">
@@ -123,18 +156,37 @@
     <span><strong class="num">{bytes(pickedBytes)}</strong> <span class="quiet num">selected of {bytes(allBytes)} found</span></span>
     <button class="primary" onclick={() => (reviewing = true)} disabled={picked.length === 0}>Review…</button>
   </div>
+  <p class="legend">
+    {#each ["low", "mid", "high"] as const as level (level)}
+      <span class="sev {level}" use:tip={severityText[level].help}><i aria-hidden="true"></i>{severityText[level].label}</span>
+    {/each}
+  </p>
   {#each groups as g (g.key)}
     {@const list = items.filter((s) => s.group === g.key)}
     {#if list.length > 0}
+      {@const ticked = list.filter((x) => chosen.has(x.number)).length}
       <section>
-        <h4>{g.title} <span class="quiet">{g.note}</span></h4>
+        <h4>
+          <input
+            type="checkbox"
+            class="all"
+            aria-label="Select all {g.title.toLowerCase()}"
+            checked={ticked === list.length}
+            indeterminate={ticked > 0 && ticked < list.length}
+            onchange={() => toggleGroup(list)}
+          />
+          {g.title} <span class="quiet">{g.note}</span>
+        </h4>
         <ul>
           {#each list as s (s.number)}
             <li>
               <label>
                 <input type="checkbox" checked={chosen.has(s.number)} onchange={() => toggle(s.number)} />
                 <span class="name">
-                  <span class="title" title={s.path}>{s.app ?? s.path.split(/[\\/]/).pop()}</span>
+                  <span class="title" title={s.path}>
+                    {s.app ?? s.path.split(/[\\/]/).pop()}
+                    <span class="sev {severity(s)}" use:tip={severityText[severity(s)].help}><i aria-hidden="true"></i>{severityText[severity(s)].label}</span>
+                  </span>
                   <span class="sub">{s.reason}</span>
                   <span class="sub path" title={s.path}>{s.path}{s.contentsOnly ? " (contents)" : ""}</span>
                 </span>
@@ -149,6 +201,17 @@
 {/if}
 
 <style>
+  .sev { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; font-size: 11px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+  .sev i, .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+  .sev.low i, .dot.low { background: #30d158; }
+  .sev.mid i, .dot.mid { background: #ffb340; }
+  .sev.high i, .dot.high { background: #ff453a; }
+  .dot { margin-right: 6px; vertical-align: 1px; }
+  .legend { display: flex; gap: 14px; margin: 6px 0 0; }
+  .legend .sev { margin-left: 0; }
+  .warn { margin: 8px 0; padding: 8px 10px; border-radius: var(--radius-control); background: var(--warning-bg); color: var(--fg); }
+  .warn .sev { margin: 0 6px 0 0; color: var(--fg); }
+  input.all { margin: 0 6px 0 0; vertical-align: -2px; accent-color: var(--accent); }
   .trash { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 14px; border-radius: var(--radius-control); border: 1px solid var(--line); margin-bottom: 14px; }
   .trash div { display: grid; gap: 2px; }
   .trash button { white-space: nowrap; }

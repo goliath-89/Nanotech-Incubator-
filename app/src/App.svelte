@@ -23,7 +23,7 @@
     | { name: "loading" }
     | { name: "idle" }
     | { name: "scanning"; token: number; progress: Progress | null; started: number; stage: "permission" | "fileTable" | "walk" | null; partial: RingNode | null }
-    | { name: "result"; scanId: number; done: Done | null; listing: Listing; ring: RingNode }
+    | { name: "result"; scanId: number; done: Done | null; listing: Listing; ring: RingNode; finishedAt: number }
     | { name: "error"; message: string };
 
   let volumes = $state<Volume[]>([]);
@@ -78,7 +78,7 @@
           if (phase.name !== "scanning" || d.token !== phase.token) return;
           const [listing, ring] = await Promise.all([api.getDir(d.scanId, 0), api.getRing(d.scanId, 0)]);
           root = listing;
-          phase = { name: "result", scanId: d.scanId, done: d, listing, ring };
+          phase = { name: "result", scanId: d.scanId, done: d, listing, ring, finishedAt: Date.now() / 1000 };
           phase.ring = withUnscanned(ring, listing);
         },
         failed: (f) => {
@@ -109,7 +109,7 @@
     if (last) {
       const [listing, ring] = await Promise.all([api.getDir(last.scanId, 0), api.getRing(last.scanId, 0)]);
       root = listing;
-      phase = { name: "result", scanId: last.scanId, done: null, listing, ring: withUnscanned(ring, listing) };
+      phase = { name: "result", scanId: last.scanId, done: null, listing, ring: withUnscanned(ring, listing), finishedAt: last.finishedAt };
     } else {
       phase = { name: "idle" };
     }
@@ -194,6 +194,16 @@
     return null;
   }
 
+  const timeFormat = new Intl.DateTimeFormat(navigator.language, { hour: "numeric", minute: "2-digit" });
+  const dayFormat = new Intl.DateTimeFormat(navigator.language, { day: "numeric", month: "short", year: "numeric" });
+  /** "today at 09:12", "yesterday at 18:40", or "3 Nov 2026 at 10:05". */
+  function when(unixSeconds: number): string {
+    const d = new Date(unixSeconds * 1000);
+    const days = Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86_400_000);
+    const day = days === 0 ? "today" : days === 1 ? "yesterday" : dayFormat.format(d);
+    return `${day} at ${timeFormat.format(d)}`;
+  }
+
   function up() {
     if (phase.name !== "result") return;
     const crumbs = phase.listing.breadcrumb;
@@ -249,11 +259,14 @@
           </div>
         {/if}
         <div class="figures">
-        <div class="big num">{bytes(p?.bytes ?? 0)}</div>
+        <div class="big num">{bytes(p?.bytes ?? 0)}{#if volume}<span class="of"> of about {bytes(volume.used)}</span>{/if}</div>
         <p class="num">
           {count(p?.files ?? 0)} files in {count(p?.dirs ?? 0)} folders · {seconds(now - phase.started)}
+          {#if volume && p} · {Math.min(100, Math.round(share(p.bytes, volume.used) * 100))}%{/if}
         </p>
-        <div class="track"><span style:width="{volume ? Math.min(100, share(p?.bytes ?? 0, volume.used) * 100) : 0}%"></span></div>
+        <div class="track live" role="progressbar" aria-label="Scan progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow={volume && p ? Math.min(100, Math.round(share(p.bytes, volume.used) * 100)) : 0}>
+          <span style:width="{volume ? Math.min(100, share(p?.bytes ?? 0, volume.used) * 100) : 0}%"></span>
+        </div>
         <p class="quiet">
           {#if phase.stage === "permission"}
             Waiting for Windows: allow administrator access for the fast scan, or say no to read folders one by one.
@@ -266,9 +279,13 @@
         </div>
       </div>
     {:else if phase.name === "result"}
+      {#if !phase.done}
+        <p class="status num">Last scanned {when(phase.finishedAt)} · <button class="link inline" onclick={scan}>Scan again</button> to see what changed</p>
+      {/if}
       {#if phase.done}
         <p class="status num">
-          {phase.done.cancelled ? "Stopped early, figures are partial" : "Scanned"} in {seconds(phase.done.elapsedMs)}
+          Last scanned {when(phase.finishedAt)} ·
+          {phase.done.cancelled ? "stopped early, figures are partial" : "took"} {seconds(phase.done.elapsedMs)}
           {#if phase.done.method === "fileTable"} using the fast scan{/if}
           {#if Number(phase.done.errorCount) > 0} · {count(phase.done.errorCount)} items could not be read{/if}
         </p>
@@ -392,6 +409,10 @@
   .empty p { color: var(--muted); max-width: 46ch; margin: 0; }
   .scanning { padding: 40px 0 10px; display: grid; gap: 10px; }
   .big { font: 700 44px/1 var(--font-display); letter-spacing: -0.03em; }
+  .big .of { font-size: 18px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+  .track.live { height: 8px; border-radius: 4px; }
+  .track.live span { background-image: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 70%, white)); transition: width 0.25s ease-out; }
+  .link.inline { margin: 0; font-size: inherit; }
   .scanning p { margin: 0; }
   .scanning.with-ring { grid-template-columns: minmax(200px, 300px) minmax(0, 1fr); gap: 32px; align-items: center; padding-top: 24px; }
   .figures { display: grid; gap: 10px; align-content: center; }

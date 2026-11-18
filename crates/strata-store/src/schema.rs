@@ -1,7 +1,7 @@
 use rusqlite::Connection;
 
 /// Bump when the tables change, and add a step to `migrate`.
-pub(crate) const SCHEMA_VERSION: i64 = 1;
+pub(crate) const SCHEMA_VERSION: i64 = 2;
 
 const V1: &str = "
 CREATE TABLE scans (
@@ -104,12 +104,31 @@ CREATE TABLE suggestions (
 ) WITHOUT ROWID;
 ";
 
+/// Version 2: what Strata has cleaned up over time ("Cleaned so far").
+const V2: &str = "
+CREATE TABLE cleanups (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    at        INTEGER NOT NULL,
+    volume_id TEXT    NOT NULL,
+    bytes     INTEGER NOT NULL,
+    items     INTEGER NOT NULL,
+    -- bytes per suggestion group, as JSON: {\"app_cache\": 123, ...}
+    groups    TEXT    NOT NULL
+);
+";
+
 pub(crate) fn migrate(conn: &mut Connection) -> rusqlite::Result<i64> {
     let found: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
     if found < 1 {
         let tx = conn.transaction()?;
         tx.execute_batch(V1)?;
         tx.pragma_update(None, "user_version", 1)?;
+        tx.commit()?;
+    }
+    if found < 2 {
+        let tx = conn.transaction()?;
+        tx.execute_batch(V2)?;
+        tx.pragma_update(None, "user_version", 2)?;
         tx.commit()?;
     }
     Ok(found)
