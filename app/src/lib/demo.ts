@@ -63,7 +63,7 @@ function dirOf(f: Flat): Dir {
   sum(f);
   return {
     id: f.id, name: f.name, allocBytes: String(f.bytes), fileCount: String(Math.round(f.bytes / 2e6)),
-    dirCount: String(f.children.length), kindBytes, cloudOnlyBytes: String(cloud), ownFilesBytes: "0",
+    dirCount: String(f.children.length), kindBytes, cloudOnlyBytes: String(cloud), ownFilesBytes: f.children.length === 0 ? String(f.bytes) : "0",
     notScanned: null, owner: null, bundle: bundleOf(f.name),
   };
 }
@@ -139,8 +139,22 @@ export async function getDir(_scanId: number, dirId: number): Promise<Listing> {
     path: crumbs.map((c) => c.name).join("/").replace(/^\/\//, "/"),
     breadcrumb: crumbs,
     children: f.children.map((c) => dirOf(flat[c])).sort((a, b) => Number(b.allocBytes) - Number(a.allocBytes)),
-    files: [],
+    files: f.children.length === 0 && f.bytes > 0 ? leafFiles(f) : [],
   };
+}
+
+const DAY_S = 86_400;
+const nowS = () => Math.floor(Date.now() / 1000);
+/** A leaf folder's files: three made-up ones sharing its size. */
+function leafFiles(f: Flat) {
+  const base = f.name.replace(/[^A-Za-z]/g, "").slice(0, 8) || "file";
+  return [0.6, 0.3, 0.1].map((share, i) => ({
+    name: `${base}-${i + 1}.${["mov", "pdf", "zip"][i]}`,
+    allocBytes: String(Math.round(f.bytes * share)),
+    kind: f.kind,
+    created: nowS() - (900 - i * 200) * DAY_S,
+    modified: nowS() - (400 - i * 150) * DAY_S,
+  }));
 }
 
 function ringOf(f: Flat, levels: number): RingNode {
@@ -212,7 +226,7 @@ const files: LargeFile[] = [
   ["Final-cut-render.mov", "/Users/sam/Movies/Final Cut Library.fcpbundle", 6.2, 1], ["sleepimage", "/private/var/vm", 6.0, 8],
   ["IMG_9356.mov", "/Users/sam/Pictures", 1.0, 1], ["Installer.dmg", "/Users/sam/Downloads", 0.9, 5],
   ["Panorama-2024.png", "/Users/sam/Pictures", 0.6, 2], ["server.log", "/Users/sam/code/app", 0.5, 0],
-].map(([name, folder, gb, kind], i) => ({ dirId: i, name: name as string, folder: folder as string, allocBytes: String((gb as number) * GB), kind: kind as number }));
+].map(([name, folder, gb, kind], i) => ({ dirId: i, name: name as string, folder: folder as string, allocBytes: String((gb as number) * GB), kind: kind as number, created: nowS() - (700 - i * 40) * DAY_S, modified: nowS() - (420 - i * 40) * DAY_S }));
 
 export async function previewFile(name: string): Promise<import("./types").Preview> {
   if (name.endsWith(".png")) {
@@ -239,7 +253,13 @@ let suggestions: Suggestion[] = [
   { number: 5, group: "old_download", contentsOnly: false, path: "/Users/sam/Downloads/Photos-export-2023.zip", bytes: String(20.4 * GB), app: null, rebuildable: false, reason: "In Downloads, unchanged for 210 days." },
 ];
 
-export async function getSuggestions() { return suggestions; }
+// ?demo-admin=1 adds an item Windows protects, as on a real Windows drive.
+if (typeof location !== "undefined" && new URLSearchParams(location.search).has("demo-admin")) {
+  suggestions.push({ number: 6, group: "app_cache", contentsOnly: true, path: "C:\\Windows\\SoftwareDistribution\\Download", bytes: String(1.2 * GB), app: "Windows Update", rebuildable: true, reason: "Cache kept by Windows Update. It rebuilds what it needs.", needsAdmin: true });
+}
+export async function getSuggestions() {
+  return suggestions.map((s, i) => ({ ...s, isFile: !s.contentsOnly && /\.[a-z0-9]+$/i.test(s.path), created: s.created ?? nowS() - (300 + i * 60) * DAY_S, modified: s.modified ?? nowS() - (40 + i * 30) * DAY_S }));
+}
 
 // Earlier cleanups, for Cleaned so far. ?demo-cleaned=none starts empty.
 const cleanupLog: { at: number; bytes: string; files: string; groups: string }[] = (() => {

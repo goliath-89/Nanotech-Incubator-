@@ -43,6 +43,9 @@ fn main() {
             bridge::list_scans,
             bridge::compare_scans,
             bridge::list_cleanups,
+            bridge::reveal_suggestion,
+            bridge::preview_suggestion,
+            bridge::open_disk_cleanup,
             bridge::app_info,
             window::window_material,
         ])

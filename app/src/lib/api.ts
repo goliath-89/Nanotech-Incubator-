@@ -80,6 +80,21 @@ export function previewFile(scanId: number, dirId: number, file: string): Promis
   return inApp ? call("preview_file", { scanId, dirId, file }) : demo.previewFile(file);
 }
 
+/** Show a Clean Up item in Explorer or Finder (named by number, never by path). */
+export function revealSuggestion(scanId: number, number: number): Promise<void> {
+  return inApp ? call("reveal_suggestion", { scanId, number }) : Promise.resolve();
+}
+
+/** Preview a Clean Up item that is a file. */
+export function previewSuggestion(scanId: number, number: number): Promise<Preview> {
+  return inApp ? call("preview_suggestion", { scanId, number }) : demo.previewFile("item");
+}
+
+/** Open Windows Disk Cleanup, for what Windows protects. */
+export function openDiskCleanup(): Promise<void> {
+  return inApp ? call("open_disk_cleanup") : Promise.resolve();
+}
+
 /** Folders left out of scans. */
 export function listExclusions(): Promise<string[]> {
   return inApp ? call("list_exclusions") : demo.listExclusions();

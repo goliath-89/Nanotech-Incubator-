@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { LargeFile } from "./types";
   import * as api from "./api";
-  import { bytes } from "./format";
+  import { bytes, fileDates } from "./format";
   import { KINDS, kindColor } from "./kinds";
   import { fileManager } from "./platform";
   import { listKeys } from "./keys";
@@ -71,6 +71,7 @@
         <span class="name">
           <span class="title" title={f.name}>{f.name}</span>
           <span class="sub" title={f.folder}>{f.folder}</span>
+          {#if f.modified || f.created}<span class="sub dates num">{fileDates(f.created, f.modified)}</span>{/if}
         </span>
         <span class="num size">{bytes(f.allocBytes)}</span>
         <button class="link" onclick={() => api.reveal(scanId, f.dirId, f.name)} onkeydown={(e) => {

@@ -53,3 +53,29 @@ export function seconds(ms: string | number): string {
   const s = Number(ms) / 1000;
   return `${fmt(s < 10 ? 1 : 0).format(s)} s`;
 }
+
+const dateFormat = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" });
+const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+
+/** "3 Mar 2026", from unix seconds; "unknown" when missing. */
+export function day(unix: number | null | undefined): string {
+  return unix ? dateFormat.format(new Date(unix * 1000)) : "unknown";
+}
+
+/** "today", "3 days ago", "5 months ago", "2 years ago". */
+export function ago(unix: number | null | undefined, now = Date.now()): string {
+  if (!unix) return "";
+  const days = Math.floor((now / 1000 - unix) / 86_400);
+  if (days < 1) return relative.format(0, "day");
+  if (days < 31) return relative.format(-days, "day");
+  if (days < 365) return relative.format(-Math.floor(days / 30.4), "month");
+  return relative.format(-Math.floor(days / 365.25), "year");
+}
+
+/** "Modified 3 Mar 2026 (2 years ago) · Created 1 Jan 2020", or "" when unknown. */
+export function fileDates(created: number | null | undefined, modified: number | null | undefined): string {
+  const parts: string[] = [];
+  if (modified) parts.push(`Modified ${day(modified)} (${ago(modified)})`);
+  if (created) parts.push(`Created ${day(created)}`);
+  return parts.join(" · ");
+}

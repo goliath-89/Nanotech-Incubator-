@@ -129,6 +129,8 @@ Checked by `tools/check-app-hardening.py` on every push:
 | 2026-11-17 | picomatch ReDoS (GHSA-fc5q-39xc-vjpf), via vite and svelte-check; no fixed release yet | High (advisory) — not reachable: build tools only, our own patterns, not in the app | **Accepted until 2026-12-01** in `tools/npm-audit-exceptions.json`; update as soon as a fix ships |
 | 2026-11-17 | Repository made public | — (process) | History checked: no secrets (gitleaks, manual grep), no personal email addresses in commits |
 | 2026-11-17 | Days 46–47: what Clean Up may empty was widened by 11 cache locations (Brave, Vivaldi and Opera caches; NVIDIA and AMD shader caches; JetBrains, Unity and Go build caches) | — (reviewed change) | Each is rebuilt by its owner and holds nothing the person made; still only via the review step and the Trash. The contract test keeps every app "cache" rule inside what the safety policy allows |
+| 2026-11-18 | UAT bug: Clean Up offered Windows Update's download folder, which only administrators may change; the move failed and the failure was easy to miss | Low (no harm: nothing moved) | A read-only access check (open with delete rights, then close) marks such items "protected"; they cannot be ticked, `clean_up` refuses them again, and a failed cleanup is shown as such. Strata still never asks for admin rights to delete |
+| 2026-11-18 | New commands: show or preview a Clean Up item, open Disk Cleanup | — (reviewed change) | Items are named by number; the path comes from the scan history, never the window. Preview goes through the existing checks (no links, no cloud-only files). Disk Cleanup is a fixed program with no arguments |
 
 ## Your part
 

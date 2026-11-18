@@ -853,3 +853,48 @@ test.describe("Cleaned so far", () => {
     await expect(page.getByText("Your total starts with your first cleanup")).toBeVisible();
   });
 });
+
+test.describe("UAT feedback (18 Nov, part 2)", () => {
+  test("Clean Up items show dates and have a right-click menu with Preview", async ({ page }) => {
+    await scanned(page);
+    await page.getByRole("tab", { name: "Clean Up" }).click();
+    const installer = page.locator("li").filter({ hasText: "Installer.dmg" }).first();
+    await expect(installer.locator(".dates")).toContainText(/Modified .* ago\) · Created /);
+    await expect(page.locator("li").filter({ hasText: "Google Chrome" }).first().locator(".dates")).toContainText("Newest inside: Modified");
+    await installer.click({ button: "right" });
+    await expect(page.getByRole("menuitem", { name: "Show in Finder" })).toBeVisible();
+    await page.getByRole("menuitem", { name: "Preview" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    // Folders cannot be previewed.
+    await page.locator("li").filter({ hasText: "Google Chrome" }).first().click({ button: "right" });
+    await expect(page.getByRole("menuitem", { name: "Preview" })).toBeDisabled();
+  });
+
+  test("an item Windows protects cannot be ticked and says why", async ({ page }) => {
+    await scanned(page, "?demo-admin=1");
+    await page.getByRole("tab", { name: "Clean Up" }).click();
+    const box = page.getByRole("checkbox", { name: /Windows Update/ });
+    await expect(box).toBeDisabled();
+    await expect(box).not.toBeChecked();
+    await expect(page.getByText(/Protected by the system: Strata cannot move it without administrator rights/)).toBeVisible();
+    // Select all leaves it out and stays fully ticked.
+    await expect(page.getByRole("checkbox", { name: "Select all app caches" })).toBeChecked();
+  });
+
+  test("Largest Files and folders show when files were modified and created", async ({ page }) => {
+    await scanned(page);
+    await page.getByRole("tab", { name: "Largest Files" }).click();
+    await expect(page.locator("li").filter({ hasText: "Wedding-raw.mov" }).locator(".dates")).toContainText(/Modified .* \((last year|1 year ago)\) · Created /);
+    await page.getByRole("tab", { name: "Folders" }).click();
+    await rows(page).filter({ hasText: "Users" }).click();
+    await rows(page).filter({ hasText: "sam" }).click();
+    await rows(page).filter({ hasText: "Documents" }).click();
+    // A folder with only files lists them straight away.
+    const file = page.locator("li.file").first();
+    await expect(file).toContainText("Document-1.mov");
+    await expect(file).toContainText(/Modified .* · Created /);
+    await file.click({ button: "right" });
+    await expect(page.getByRole("menuitem", { name: "Copy Path" })).toBeVisible();
+  });
+});

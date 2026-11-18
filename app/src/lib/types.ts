@@ -66,6 +66,9 @@ export interface FileEntry {
   name: string;
   allocBytes: string;
   kind: number;
+  /** Unix seconds, read when listed; null when unknown. */
+  created?: number | null;
+  modified?: number | null;
 }
 
 export interface Listing {
@@ -116,6 +119,8 @@ export interface LargeFile {
   folder: string;
   allocBytes: string;
   kind: number;
+  created?: number | null;
+  modified?: number | null;
 }
 
 export interface Suggestion {
@@ -127,6 +132,12 @@ export interface Suggestion {
   app: string | null;
   rebuildable: boolean;
   reason: string;
+  /** Protected by the system: cannot be moved without administrator rights. */
+  needsAdmin?: boolean;
+  created?: number | null;
+  /** For a folder, the newest change among its entries. */
+  modified?: number | null;
+  isFile?: boolean;
 }
 
 export interface CleanupReport {

@@ -1,6 +1,8 @@
 <script lang="ts">
-  import type { Listing } from "./types";
-  import { bytes, count, percent, share } from "./format";
+  import type { FileEntry, Listing, Preview } from "./types";
+  import { bytes, count, percent, share, fileDates } from "./format";
+  import * as api from "./api";
+  import PreviewDialog from "./PreviewDialog.svelte";
   import { displayName, kindColor, mainKind, KINDS } from "./kinds";
   import { tip } from "./tooltip";
   import { listKeys } from "./keys";
@@ -18,8 +20,11 @@
     stopped = false,
     onreveal = () => {},
     onexclude = () => {},
+    scanId = 0,
   }: {
     listing: Listing;
+    /** The scan, for previewing and showing its files. */
+    scanId?: number;
     onopen: (dirId: number) => void;
     hovered?: number | null;
     onhover?: (id: number | null) => void;
@@ -42,6 +47,30 @@
       { label: "Copy Path", run: () => copyPath(pathOf(d.name)) },
       { label: "Exclude from Scans", run: () => onexclude(d.id), disabled: d.notScanned === "excluded" },
     ]);
+  }
+
+  /** The folder's own files, listed one by one when opened. */
+  let filesOpen = $state(false);
+  $effect.pre(() => {
+    // A folder with only files opens its list straight away.
+    filesOpen = listing.children.length === 0;
+  });
+  function fileMenu(e: MouseEvent | KeyboardEvent, f: FileEntry) {
+    openMenu(e, f.name, [
+      { label: "Preview", run: () => preview(f) },
+      { label: `Show in ${fileManager}`, run: () => api.reveal(scanId, listing.dir.id, f.name) },
+      { label: "Copy Path", run: () => copyPath(pathOf(f.name)) },
+    ]);
+  }
+  let previewing = $state<{ file: FileEntry; preview: Preview | null } | null>(null);
+  async function preview(f: FileEntry) {
+    previewing = { file: f, preview: null };
+    try {
+      const p = await api.previewFile(scanId, listing.dir.id, f.name);
+      if (previewing?.file === f) previewing.preview = p;
+    } catch {
+      if (previewing?.file === f) previewing.preview = { kind: "none" };
+    }
   }
 
   const sep = isWindows ? "\\" : "/";
@@ -101,12 +130,27 @@
       </button></li>
     {/each}
     {#if Number(listing.dir.ownFilesBytes) > 0}
-      <li class="row loose">
-        <span class="name"><span class="title">Files in this folder</span><span class="sub">{listing.files.length > 0 ? `largest: ${listing.files[0].name}` : ""}</span></span>
+      <li><button class="row loose" aria-expanded={filesOpen} onclick={() => (filesOpen = !filesOpen)} onkeydown={(e) => listKeys(e, "button.row:not(:disabled)")}>
+        <span class="name"><span class="title"><span class="chev" class:open={filesOpen} aria-hidden="true">›</span> Files in this folder</span><span class="sub">{listing.files.length > 0 ? (filesOpen ? `${listing.files.length} of 1 MB or more listed` : `largest: ${listing.files[0].name}`) : "All under 1 MB"}</span></span>
         <span class="bar"><span style:width="{share(listing.dir.ownFilesBytes, largest) * 100}%" style:background="var(--kind-system)"></span></span>
         <span class="num size">{bytes(listing.dir.ownFilesBytes)}</span>
         <span class="num pct">{percent(listing.dir.ownFilesBytes, total)}</span>
-      </li>
+      </button></li>
+      {#if filesOpen}
+        {#each listing.files as f (f.name)}
+          <li class="file" oncontextmenu={(e) => fileMenu(e, f)}>
+            <span class="name">
+              <span class="title" title={pathOf(f.name)}><i style:background={kindColor(f.kind)} aria-hidden="true"></i>{f.name}</span>
+              <span class="sub num">{fileDates(f.created, f.modified) || "Dates unknown"}</span>
+            </span>
+            <span class="num size">{bytes(f.allocBytes)}</span>
+            <button class="link" onclick={() => preview(f)} onkeydown={(e) => {
+              if (isMenuKey(e)) fileMenu(e, f);
+              else listKeys(e, "li.file button.link");
+            }}>Preview</button>
+          </li>
+        {/each}
+      {/if}
     {/if}
     {#if Number(unscanned) > 0 && kind === null}
       <li class="row loose unscanned" use:tip={stopped ? "The scan was stopped before it reached this part of the drive. Scan again to count it." : "The drive reports this much more in use than the scan could read: usually folders Windows or macOS protect.\nOn Windows, allowing administrator access for the fast scan reads them too."}>
@@ -122,7 +166,23 @@
   </ul>
 </section>
 
+{#if previewing}
+  <PreviewDialog
+    name={previewing.file.name}
+    preview={previewing.preview}
+    onclose={() => (previewing = null)}
+    onreveal={() => previewing && api.reveal(scanId, listing.dir.id, previewing.file.name)}
+  />
+{/if}
+
 <style>
+  .chev { display: inline-block; width: 10px; color: var(--muted); transition: transform 0.15s; }
+  .chev.open { transform: rotate(90deg); }
+  li.file { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 6px 10px 6px 30px; border-radius: 6px; }
+  li.file:hover { background: var(--hover); }
+  li.file i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+  li.file .link { all: unset; color: var(--accent); cursor: pointer; font-size: 12px; }
+  li.file .link:focus-visible { outline: 2px solid var(--accent); border-radius: 3px; }
   .badge { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--track); color: var(--muted); font-size: 10.5px; font-weight: 500; vertical-align: 1px; }
   .hatched { background: repeating-linear-gradient(135deg, var(--track) 0 3px, var(--muted) 3px 4px) !important; opacity: 0.8; }
   .crumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-bottom: 10px; font-size: 12.5px; }

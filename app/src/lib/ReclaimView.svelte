@@ -1,8 +1,11 @@
 <script lang="ts">
   import type { CleanupReport, Suggestion } from "./types";
   import * as api from "./api";
-  import { bytes } from "./format";
-  import { trashName } from "./platform";
+  import { bytes, fileDates } from "./format";
+  import { trashName, fileManager, isWindows } from "./platform";
+  import { openMenu, isMenuKey, copyPath } from "./menu.svelte";
+  import PreviewDialog from "./PreviewDialog.svelte";
+  import type { Preview } from "./types";
   import { tip } from "./tooltip";
   import CleanedWidget from "./CleanedWidget.svelte";
   import { noteCleanup } from "./cleaned.svelte";
@@ -51,8 +54,9 @@
     reviewing = false;
     try {
       items = await api.getSuggestions(scanId);
-      // Things that come back by themselves start ticked; downloads do not.
-      chosen = new Set(items.filter((s) => s.rebuildable).map((s) => s.number));
+      // Things that come back by themselves start ticked; downloads do not,
+      // nor anything the system protects (it cannot be moved anyway).
+      chosen = new Set(items.filter((s) => s.rebuildable && !s.needsAdmin).map((s) => s.number));
     } catch (e) {
       error = String(e);
     }
@@ -67,8 +71,29 @@
   const pickedBytes = $derived(picked.reduce((t, s) => t + Number(s.bytes), 0));
   const allBytes = $derived((items ?? []).reduce((t, s) => t + Number(s.bytes), 0));
 
-  /** Tick or untick every item of a group. */
-  function toggleGroup(list: Suggestion[]) {
+  /** Right-click or menu key on an item: preview it, show it, copy its path. */
+  function itemMenu(e: MouseEvent | KeyboardEvent, s: Suggestion) {
+    openMenu(e, s.app ?? s.path.split(/[\\/]/).pop() ?? s.path, [
+      { label: "Preview", run: () => preview(s), disabled: !s.isFile },
+      { label: `Show in ${fileManager}`, run: () => api.revealSuggestion(scanId, s.number) },
+      { label: "Copy Path", run: () => copyPath(s.path) },
+    ]);
+  }
+
+  let previewing = $state<{ item: Suggestion; preview: Preview | null } | null>(null);
+  async function preview(s: Suggestion) {
+    previewing = { item: s, preview: null };
+    try {
+      const p = await api.previewSuggestion(scanId, s.number);
+      if (previewing?.item === s) previewing.preview = p;
+    } catch {
+      if (previewing?.item === s) previewing.preview = { kind: "none" };
+    }
+  }
+
+  /** Tick or untick every item of a group (protected items stay unticked). */
+  function toggleGroup(group: Suggestion[]) {
+    const list = group.filter((x) => !x.needsAdmin);
     const next = new Set(chosen);
     const all = list.every((x) => next.has(x.number));
     for (const x of list) {
@@ -110,11 +135,16 @@
 {/if}
 
 {#if report}
-  <div class="result" role="status">
-    <strong>Moved to the {trashName}: {bytes(report.bytesFreed)}</strong>
-    <span class="quiet">from {report.done.length} {report.done.length === 1 ? "item" : "items"}. Empty the {trashName} to free the space; until then you can put anything back.</span>
+  <div class="result" class:failed={report.done.length === 0} role="status">
+    {#if report.done.length === 0}
+      <strong>Nothing was moved</strong>
+      <span class="quiet">Strata could not move {report.refused.length + report.failed.length === 1 ? "this item" : "these items"}. The reason is below.</span>
+    {:else}
+      <strong>Moved to the {trashName}: {bytes(report.bytesFreed)}</strong>
+      <span class="quiet">from {report.done.length} {report.done.length === 1 ? "item" : "items"}. Empty the {trashName} to free the space; until then you can put anything back.</span>
+    {/if}
     {#if report.refused.length > 0 || report.failed.length > 0}
-      <details>
+      <details open={report.done.length === 0}>
         <summary>{report.refused.length + report.failed.length} items were left in place</summary>
         <ul class="problems">
           {#each [...report.refused, ...report.failed] as p}
@@ -172,34 +202,45 @@
   {#each groups as g (g.key)}
     {@const list = items.filter((s) => s.group === g.key)}
     {#if list.length > 0}
-      {@const ticked = list.filter((x) => chosen.has(x.number)).length}
+      {@const movable = list.filter((x) => !x.needsAdmin)}
+      {@const ticked = movable.filter((x) => chosen.has(x.number)).length}
       <section>
         <h4>
           <input
             type="checkbox"
             class="all"
             aria-label="Select all {g.title.toLowerCase()}"
-            checked={ticked === list.length}
-            indeterminate={ticked > 0 && ticked < list.length}
+            checked={movable.length > 0 && ticked === movable.length}
+            disabled={movable.length === 0}
+            indeterminate={ticked > 0 && ticked < movable.length}
             onchange={() => toggleGroup(list)}
           />
           {g.title} <span class="quiet">{g.note}</span>
         </h4>
         <ul>
           {#each list as s (s.number)}
-            <li>
+            <li oncontextmenu={(e) => itemMenu(e, s)} class:locked={s.needsAdmin}>
               <label>
-                <input type="checkbox" checked={chosen.has(s.number)} onchange={() => toggle(s.number)} />
+                <input type="checkbox" checked={chosen.has(s.number)} disabled={s.needsAdmin} onchange={() => toggle(s.number)} onkeydown={(e) => {
+                  if (isMenuKey(e)) itemMenu(e, s);
+                }} />
                 <span class="name">
                   <span class="title" title={s.path}>
                     {s.app ?? s.path.split(/[\\/]/).pop()}
                     <span class="sev {severity(s)}" use:tip={severityText[severity(s)].help}><i aria-hidden="true"></i>{severityText[severity(s)].label}</span>
                   </span>
                   <span class="sub">{s.reason}</span>
+                  {#if s.modified || s.created}<span class="sub dates num">{s.isFile ? "" : "Newest inside: "}{fileDates(s.isFile ? s.created : null, s.modified)}</span>{/if}
                   <span class="sub path" title={s.path}>{s.path}{s.contentsOnly ? " (contents)" : ""}</span>
+                  {#if s.needsAdmin}
+                    <span class="admin">Protected by {isWindows ? "Windows" : "the system"}: Strata cannot move it without administrator rights.{#if isWindows} Use Disk Cleanup › Clean up system files.{/if}</span>
+                  {/if}
                 </span>
                 <span class="num size">{bytes(s.bytes)}</span>
               </label>
+              {#if s.needsAdmin && isWindows}
+                <button class="secondary small" onclick={() => api.openDiskCleanup()}>Open Disk Cleanup</button>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -208,7 +249,22 @@
   {/each}
 {/if}
 
+{#if previewing}
+  <PreviewDialog
+    name={previewing.item.path.split(/[\\/]/).pop() ?? ""}
+    preview={previewing.preview}
+    onclose={() => (previewing = null)}
+    onreveal={() => previewing && api.revealSuggestion(scanId, previewing.item.number)}
+  />
+{/if}
+
 <style>
+  .dates { font-size: 11px; }
+  li.locked label { opacity: 0.75; }
+  .admin { display: block; margin-top: 4px; font-size: 11.5px; color: var(--warning); }
+  button.secondary.small { padding: 4px 10px; font-size: 12px; margin: 0 0 8px 34px; }
+  .result.failed { background: var(--warning-bg); }
+  .result.failed strong { color: var(--warning); }
   .sev { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; font-size: 11px; font-weight: 500; color: var(--muted); white-space: nowrap; }
   .sev i, .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
   .sev.low i, .dot.low { background: #30d158; }

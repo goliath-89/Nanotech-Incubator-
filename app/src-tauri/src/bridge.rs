@@ -394,6 +394,34 @@ pub struct FileDto {
     name: String,
     alloc_bytes: String,
     kind: u8,
+    /// Unix seconds, read from the disk now; null when unknown.
+    created: Option<i64>,
+    modified: Option<i64>,
+}
+
+/// When a file or folder was created and last changed, read now (the
+/// scan does not keep dates). Links are not followed.
+pub(crate) fn dates(path: &std::path::Path) -> (Option<i64>, Option<i64>) {
+    let secs = |t: std::io::Result<std::time::SystemTime>| {
+        t.ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64)
+    };
+    match std::fs::symlink_metadata(path) {
+        Ok(m) => (secs(m.created()), secs(m.modified())),
+        Err(_) => (None, None),
+    }
+}
+
+/// The newest change among a folder's own entries (first level, at most a
+/// few thousand looked at): closer to "last used" than the folder's own date.
+fn newest_inside(path: &std::path::Path) -> Option<i64> {
+    let entries = std::fs::read_dir(path).ok()?;
+    entries
+        .flatten()
+        .take(5000)
+        .filter_map(|e| dates(&e.path()).1)
+        .max()
 }
 
 #[derive(Serialize)]
@@ -450,11 +478,14 @@ fn dir_dto(d: DirRow, app_names: &[String]) -> DirDto {
     }
 }
 
-fn file_dto(f: FileRow) -> FileDto {
+fn file_dto(folder: &std::path::Path, f: FileRow) -> FileDto {
+    let (created, modified) = dates(&folder.join(&f.name));
     FileDto {
         name: f.name.to_string_lossy().into_owned(),
         alloc_bytes: f.alloc_bytes.to_string(),
         kind: f.kind as u8,
+        created,
+        modified,
     }
 }
 
@@ -507,7 +538,11 @@ pub fn get_dir(state: State<'_, AppState>, scan_id: i64, dir_id: u32) -> Reply<L
                 }
             })
             .collect(),
-        files: listing.files.into_iter().map(file_dto).collect(),
+        files: listing
+            .files
+            .into_iter()
+            .map(|f| file_dto(&path, f))
+            .collect(),
     })
 }
 
@@ -653,6 +688,8 @@ pub struct LargeFile {
     folder: String,
     alloc_bytes: String,
     kind: u8,
+    created: Option<i64>,
+    modified: Option<i64>,
 }
 
 /// The largest files of a scan, optionally of one kind.
@@ -687,8 +724,11 @@ pub fn largest_files(
                     p
                 }
             };
+            let (created, modified) = dates(&std::path::Path::new(&folder).join(&f.name));
             Ok(LargeFile {
                 dir_id: f.dir_id,
+                created,
+                modified,
                 folder,
                 alloc_bytes: f.alloc_bytes.to_string(),
                 kind: f.kind as u8,
@@ -788,6 +828,13 @@ pub struct SuggestionDto {
     app: Option<String>,
     rebuildable: bool,
     reason: String,
+    /// Windows (or the system) protects it: Strata cannot move it without
+    /// administrator rights, so it is shown but cannot be ticked.
+    needs_admin: bool,
+    created: Option<i64>,
+    /// For a folder, the newest change among its entries.
+    modified: Option<i64>,
+    is_file: bool,
 }
 
 /// What a scan found to clean up, in display order.
@@ -798,15 +845,28 @@ pub fn get_suggestions(state: State<'_, AppState>, scan_id: i64) -> Reply<Vec<Su
         .numbered_suggestions(scan_id)
         .map_err(text)?
         .into_iter()
-        .map(|(number, s)| SuggestionDto {
-            number,
-            group: s.group,
-            contents_only: s.contents_only,
-            path: s.path.to_string_lossy().into_owned(),
-            bytes: s.bytes.to_string(),
-            app: s.app,
-            rebuildable: s.rebuildable,
-            reason: s.reason,
+        .map(|(number, s)| {
+            let (created, own_modified) = dates(&s.path);
+            let is_file = std::fs::symlink_metadata(&s.path).is_ok_and(|m| m.is_file());
+            let modified = if is_file {
+                own_modified
+            } else {
+                newest_inside(&s.path).or(own_modified)
+            };
+            SuggestionDto {
+                number,
+                needs_admin: !strata_safety::can_remove(&s.path, s.contents_only),
+                created,
+                modified,
+                is_file,
+                group: s.group,
+                contents_only: s.contents_only,
+                path: s.path.to_string_lossy().into_owned(),
+                bytes: s.bytes.to_string(),
+                app: s.app,
+                rebuildable: s.rebuildable,
+                reason: s.reason,
+            }
         })
         .collect())
 }
@@ -841,6 +901,21 @@ pub fn clean_up(state: State<'_, AppState>, scan_id: i64, numbers: Vec<u32>) -> 
     let mut store = state.store.lock().map_err(text)?;
     // Group and size of each suggestion, to record what was cleaned.
     let before = store.numbered_suggestions(scan_id).map_err(text)?;
+    // Items this user may not move are not attempted: say why instead.
+    let mut protected = Vec::new();
+    let numbers: Vec<u32> = numbers
+        .into_iter()
+        .filter(|n| match before.iter().find(|(m, _)| m == n) {
+            Some((_, s)) if !strata_safety::can_remove(&s.path, s.contents_only) => {
+                protected.push(Problem {
+                    path: s.path.to_string_lossy().into_owned(),
+                    reason: ADMIN_ONLY.into(),
+                });
+                false
+            }
+            _ => true,
+        })
+        .collect();
     let report =
         strata_pipeline::cleanup::clean_up(&mut store, scan_id, &numbers, &policy).map_err(text)?;
     if !report.done.is_empty() {
@@ -874,12 +949,65 @@ pub fn clean_up(state: State<'_, AppState>, scan_id: i64, numbers: Vec<u32>) -> 
             })
             .collect()
     };
+    let mut refused = protected;
+    refused.extend(problems(report.refused));
     Ok(CleanupDto {
         done: report.done,
         bytes_freed: report.bytes_freed.to_string(),
-        refused: problems(report.refused),
+        refused,
         failed: problems(report.failed),
     })
+}
+
+const ADMIN_ONLY: &str = "Protected by the system: Strata cannot move it without administrator rights. On Windows, use Disk Cleanup (Clean up system files).";
+
+/// A saved suggestion's path, by number. The window never sends paths.
+fn suggestion_path(state: &AppState, scan_id: i64, number: u32) -> Reply<PathBuf> {
+    let store = state.store.lock().map_err(text)?;
+    store
+        .numbered_suggestions(scan_id)
+        .map_err(text)?
+        .into_iter()
+        .find(|(n, _)| *n == number)
+        .map(|(_, s)| s.path)
+        .ok_or_else(|| "that suggestion is gone; scan again".to_string())
+}
+
+/// Show a Clean Up item in Explorer or Finder.
+#[tauri::command]
+pub fn reveal_suggestion(state: State<'_, AppState>, scan_id: i64, number: u32) -> Reply<()> {
+    let path = suggestion_path(&state, scan_id, number)?;
+    if !path.exists() {
+        return Err(format!("{} is no longer there", path.display()));
+    }
+    open_in_file_manager(&path).map_err(|e| format!("could not open the file manager: {e}"))
+}
+
+/// Preview a Clean Up item that is a file.
+#[tauri::command]
+pub fn preview_suggestion(
+    state: State<'_, AppState>,
+    scan_id: i64,
+    number: u32,
+) -> Reply<crate::preview::Preview> {
+    let path = suggestion_path(&state, scan_id, number)?;
+    crate::preview::preview_at(&path)
+}
+
+/// Open Windows Disk Cleanup, which can remove what Windows protects.
+#[tauri::command]
+pub fn open_disk_cleanup() -> Reply<()> {
+    #[cfg(windows)]
+    {
+        std::process::Command::new("cleanmgr.exe")
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("could not open Disk Cleanup: {e}"))
+    }
+    #[cfg(not(windows))]
+    {
+        Err("Disk Cleanup is part of Windows".into())
+    }
 }
 
 /// Open the Recycle Bin or Trash, so the person can empty it (or restore

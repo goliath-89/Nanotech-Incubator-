@@ -344,7 +344,7 @@
             {/if}
           </div>
           <div class="listside">
-            <FolderView listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} kind={selectedKind} unscanned={String(unscannedBytes(phase.listing))} stopped={stoppedEarly()} onreveal={(id) => phase.name === "result" && api.reveal(phase.scanId, id)} onexclude={exclude} />
+            <FolderView scanId={phase.scanId} listing={phase.listing} onopen={open} {hovered} onhover={(id) => (hovered = id)} kind={selectedKind} unscanned={String(unscannedBytes(phase.listing))} stopped={stoppedEarly()} onreveal={(id) => phase.name === "result" && api.reveal(phase.scanId, id)} onexclude={exclude} />
             <button class="link" onclick={() => phase.name === "result" && api.reveal(phase.scanId, phase.listing.dir.id)}>Show this folder in {fileManager}</button>
           </div>
         </section>

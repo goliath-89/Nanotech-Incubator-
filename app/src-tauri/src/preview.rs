@@ -70,7 +70,7 @@ pub fn preview_file(
 }
 
 /// The checks every preview goes through, then the preview itself.
-fn preview_at(path: &Path) -> Result<Preview, String> {
+pub(crate) fn preview_at(path: &Path) -> Result<Preview, String> {
     let meta = std::fs::symlink_metadata(path)
         .map_err(|_| format!("{} is no longer there", path.display()))?;
     if !meta.file_type().is_file() {

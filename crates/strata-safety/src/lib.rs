@@ -10,10 +10,12 @@
 
 #![forbid(unsafe_code)]
 
+mod access;
 mod path;
 mod rules;
 mod trash;
 
+pub use access::can_remove;
 pub use trash::{trash, vet, TrashReport, VetError};
 
 use path::{fold, parse, Parsed};
