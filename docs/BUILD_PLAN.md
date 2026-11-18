@@ -22,7 +22,7 @@ Updated every time a day is done. Half-done days count as half.
 | --- | --- | --- |
 | **Overall (90 days)** | 40 / 90 (44%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
-| **Sprint 2 · MVP** | 8 / 10 (80%) | Days 11–15 and 18–20 done; 16 waits for the MacBook, 17 for your MVP notes; MVP installed and both scan methods work on Windows ARM64 |
+| **Sprint 2 · MVP** | 9 / 10 (90%) | Days 11–15 and 17–20 done; 16 waits for the MacBook; MVP installed and both scan methods work on Windows ARM64 |
 | **Sprint 3 · ring polish** | 9 / 10 (90%) | Days 21–24, 26–30 done; 25 waits for your notes |
 | **Sprint 4 · polish and testing** | 8 / 10 (80%) | Days 31–38 done; 39–40 wait for the test sessions |
 | **Sprint 5 · kinds and app rules (current)** | 5 / 10 (50%) | Days 41–43, 46–47 done; 44–45 wait for the Mac |
