@@ -10,11 +10,13 @@
 //!   separately;
 //! * anything that could not be read is recorded, never silently dropped.
 
+mod installed;
 mod platform;
 pub mod raw;
 mod scan;
 mod tree;
 
+pub use installed::{folder_of_icon, installed_apps, package_family, usable_folder, Installed};
 pub use platform::{volume_usage, volumes, Volume, VolumeKind, VolumeUsage};
 pub use scan::{scan, ScanControl, ScanOptions, TopLevelSoFar};
 pub use tree::{

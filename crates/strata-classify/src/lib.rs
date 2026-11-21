@@ -5,6 +5,7 @@
 mod attribute;
 mod bundle;
 mod context;
+mod discover;
 mod extensions;
 mod rules;
 mod sniff;
@@ -12,6 +13,9 @@ mod sniff;
 pub use attribute::{attribute, find_dirs, AppUsage, Attribution, Env, Owner};
 pub use bundle::{bundle_kind, Bundle};
 pub use context::folder_kind;
+pub use discover::{
+    folder_of_icon, installed_apps, package_family, rules_for, usable_folder, Installed,
+};
 pub use extensions::{kind_of_name, known_extensions};
 pub use rules::{AppRule, Os, Role, RuleSet};
 pub use sniff::{sniff, SNIFF_BYTES};

@@ -20,14 +20,15 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 42 / 90 (47%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 45 / 90 (50%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 9 / 10 (90%) | Days 11–15 and 17–20 done; 16 waits for the MacBook; MVP installed and both scan methods work on Windows ARM64 |
 | **Sprint 3 · ring polish** | 10 / 10 (100%) | Done |
 | **Sprint 4 · polish and testing** | 8 / 10 (80%) | Days 31–38 done; 39–40 wait for the test sessions |
-| **Sprint 5 · kinds and app rules (current)** | 5 / 10 (50%) | Days 41–43, 46–47 done; 44–45 wait for the Mac |
+| **Sprint 5 · kinds and app rules (current)** | 8 / 10 (80%) | Days 41–43, 46–50 done; 44–45 wait for the Mac |
 
 Log (newest first):
+- 21 Nov · Days 48–50 ✅ installed apps found on Windows (registry and Store), attribution review; version 0.8.0. Sprint 5 8/10 (80%), overall 45/90 (50%).
 - 18 Nov · UAT part 2 ✅ file dates everywhere, Clean Up right-click menu, protected-item bug fixed, Day 64 ✅ Duplicates tab brought forward; version 0.7.0. Overall 42/90 (47%).
 - 18 Nov · Day 25 ✅ Cleaned so far page and Clean Up widget (light and dark), version 0.6.0. Sprint 3 10/10 (100%), overall 41/90 (46%).
 - 18 Nov · Day 17 ✅ MVP notes: live fast-scan progress, Last scanned, select-all, traffic-light severity, version and build date, cleanup history, better kinds for your "Other" list. Sprint 2 9/10 (90%), overall 40/90 (44%).
@@ -178,9 +179,9 @@ of introducing them.
 | 45 | Opus | App rules 26–50 for macOS | Scan your Mac; paste the 20 largest "Other" folders. |
 | 46 ✅ | Opus | Windows app rules 22–40 (browsers, chat, cloud drives, phone backups, JetBrains, Android, Gradle, Maven, Rust, Go, Anaconda, Ollama, LM Studio, Cursor, Unity, Blender, DaVinci Resolve, OBS) | — |
 | 47 ✅ | Opus | Windows app rules 41–58 (Battle.net, EA, Ubisoft, GOG, Xbox, Riot, Minecraft, NVIDIA, AMD, VirtualBox, VMware, Hyper-V, Git…): 58 Windows apps in all. New test: all 235 built-in folder rules (both systems) claim their own folders in the right role. Rule loader accepts one specific folder at the top of a drive (C:/XboxGames) but never a system one. Safety: 11 reviewed cache locations added (other browsers, GPU shader caches, JetBrains, Unity, Go) | Scan your PC; paste the 20 largest "Other" folders. |
-| 48 | Opus | Rules for whatever your "Other" lists showed | — |
-| 49 | Opus | Installed-app discovery (LaunchServices, uninstall registry, Store packages) | — |
-| 50 | Fable or Opus | Review of attribution: nothing guessed, every rule has a fixture | — |
+| 48 ✅ | Opus | Rules for your "Other" list (done with the Day 17 fixes, 18 Nov): browser component and model stores, speech packs, npm/Drive caches as Caches; database and VM folders as Developer | — |
+| 49 ✅ | Opus | Installed-app discovery on Windows: the uninstall registry (64-bit, 32-bit, per-user; updates and system parts skipped) and Store packages (data in `AppData/Local/Packages/<family>`). Facts the system records, so not guesses; they name program and data folders only (never caches), built-in rules win, broad folders (`Program Files`, `AppData/Local`…) refused. macOS (LaunchServices) waits for the Mac with Days 44–45 | — |
+| 50 ✅ | Opus | Attribution review: discovered folders pass the same pattern checks as built-in rules; new test that no two built-in apps claim the same folder (Windows and macOS); every built-in rule already has a fixture (235 patterns) | — |
 
 ## Sprint 6 · weeks 11–12 · By App and Map
 

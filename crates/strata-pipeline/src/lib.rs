@@ -151,7 +151,12 @@ pub fn save_everything(
     let Some(env) = Env::current() else {
         return Ok(id);
     };
-    let attribution = attribute(tree, &RuleSet::builtin(Os::current()), &env);
+    // Built-in rules, plus apps the system lists as installed that they
+    // do not know (program and data folders only, never caches).
+    let mut rules = RuleSet::builtin(Os::current());
+    let installed = strata_classify::rules_for(&strata_classify::installed_apps(), &rules);
+    rules.apps.extend(installed.apps);
+    let attribution = attribute(tree, &rules, &env);
     let apps: Vec<AppRow> = attribution
         .apps
         .iter()

@@ -420,7 +420,7 @@ test.describe("UAT feedback (18 Nov)", () => {
   test("the version and build date are under Settings", async ({ page }) => {
     await page.goto("/");
     // Dates follow the system's language (en-US here).
-    await expect(page.getByText(/^Strata 0\.7\.0 · built Nov 18, 2026$/)).toBeVisible();
+    await expect(page.getByText(/^Strata 0\.8\.0 · built Nov 18, 2026$/)).toBeVisible();
   });
 });
 

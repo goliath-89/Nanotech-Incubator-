@@ -136,7 +136,7 @@ impl RuleSet {
     }
 }
 
-fn validate_pattern(pattern: &str) -> Result<(), &'static str> {
+pub(crate) fn validate_pattern(pattern: &str) -> Result<(), &'static str> {
     let parts = pattern_parts(pattern);
     let anchored = pattern.starts_with("~/")
         || pattern.starts_with('/')
