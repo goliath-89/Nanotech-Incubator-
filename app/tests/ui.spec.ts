@@ -932,3 +932,19 @@ test.describe("Duplicates", () => {
     expect(errors).toEqual([]);
   });
 });
+
+test.describe("Apps view filters", () => {
+  test("games, developer tools and a name filter", async ({ page }) => {
+    await scanned(page);
+    await page.getByRole("tab", { name: "Apps" }).click();
+    await page.getByRole("button", { name: /^Games/ }).click();
+    await expect(page.locator(".apps > li")).toHaveCount(1);
+    await expect(page.locator(".apps > li").first()).toContainText("Steam");
+    await page.getByRole("button", { name: /^All/ }).click();
+    await page.getByRole("searchbox", { name: "Filter apps by name" }).fill("phot");
+    await expect(page.locator(".apps > li")).toHaveCount(1);
+    await expect(page.locator(".apps > li").first()).toContainText("Photos");
+    await page.getByRole("searchbox", { name: "Filter apps by name" }).fill("zzz");
+    await expect(page.getByText("Nothing matches.")).toBeVisible();
+  });
+});

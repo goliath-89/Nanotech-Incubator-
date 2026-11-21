@@ -326,7 +326,12 @@ fn locate(
     if written.first() == Some(&"~") {
         parts.extend(home_parts);
         rest = &written[1..];
-    } else if written.first().is_some_and(|p| p.ends_with(':')) {
+    } else if written
+        .first()
+        .is_some_and(|p| p.eq_ignore_ascii_case("C:"))
+    {
+        // `C:` in a rule stands for the drive Windows is on; any other
+        // drive (a game library on `D:`, found on this machine) is literal.
         parts.push(&env.system_drive);
         rest = &written[1..];
     }

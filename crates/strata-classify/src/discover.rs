@@ -55,7 +55,7 @@ pub fn rules_for(installed: &[Installed], builtin: &RuleSet) -> RuleSet {
         out.apps.push(AppRule {
             name: app.name.trim().to_string(),
             id: app.id.clone(),
-            kind: None,
+            kind: app.game.then_some(strata_core::Kind::Games),
             paths,
         });
     }
@@ -82,31 +82,28 @@ app = ["C:/Program Files (x86)/Steam"]
 "#,
         )
         .unwrap();
-        let installed = vec![
+        let installed =
+            vec![
             Installed {
                 name: "Steam".into(),
                 id: "installed:HKLM:Steam".into(),
                 program: Some(r"C:\Program Files (x86)\Steam".into()),
-                data: None,
-            },
+                data: None, game: false },
             Installed {
                 name: "Krita (x64)".into(),
                 id: "installed:HKLM:krita".into(),
                 program: Some(r"C:\Program Files\Krita (x64)".into()),
-                data: None,
-            },
+                data: None, game: false },
             Installed {
                 name: "Krita again".into(),
                 id: "installed:HKLM32:krita".into(),
                 program: Some(r"C:\Program Files\Krita (x64)\".into()),
-                data: None,
-            },
+                data: None, game: false },
             Installed {
                 name: "Broken".into(),
                 id: "installed:HKCU:broken".into(),
                 program: Some(r"C:\Program Files".into()),
-                data: None,
-            },
+                data: None, game: false },
             Installed {
                 name: "Windows Terminal".into(),
                 id: "store:Microsoft.WindowsTerminal_8wekyb3d8bbwe".into(),
@@ -114,8 +111,7 @@ app = ["C:/Program Files (x86)/Steam"]
                 data: Some(
                     r"C:\Users\sam\AppData\Local\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe"
                         .into(),
-                ),
-            },
+                ), game: false },
         ];
         let rules = rules_for(&installed, &builtin);
         let names: Vec<&str> = rules.apps.iter().map(|a| a.name.as_str()).collect();

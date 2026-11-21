@@ -407,3 +407,289 @@ name = "Git"
 id = "Git.Git"
 kind = "Developer"
 app = ["C:/Program Files/Git"]
+
+# --- Day 52: apps 60-100 -------------------------------------------------
+
+[[app]]
+name = "7-Zip"
+id = "7zip.7zip"
+app = ["C:/Program Files/7-Zip", "C:/Program Files (x86)/7-Zip"]
+
+[[app]]
+name = "VLC"
+id = "VideoLAN.VLC"
+app = ["C:/Program Files/VideoLAN/VLC", "C:/Program Files (x86)/VideoLAN/VLC"]
+data = ["~/AppData/Roaming/vlc"]
+
+[[app]]
+name = "Notepad++"
+id = "Notepad++.Notepad++"
+app = ["C:/Program Files/Notepad++", "C:/Program Files (x86)/Notepad++"]
+data = ["~/AppData/Roaming/Notepad++"]
+
+[[app]]
+name = "Audacity"
+id = "Audacity.Audacity"
+app = ["C:/Program Files/Audacity"]
+data = ["~/AppData/Roaming/audacity"]
+
+[[app]]
+name = "GIMP"
+id = "GIMP.GIMP"
+app = ["C:/Program Files/GIMP 2", "C:/Program Files/GIMP 3"]
+data = ["~/AppData/Roaming/GIMP"]
+
+[[app]]
+name = "Inkscape"
+id = "Inkscape.Inkscape"
+app = ["C:/Program Files/Inkscape"]
+data = ["~/AppData/Roaming/inkscape"]
+
+[[app]]
+name = "Krita"
+id = "KDE.Krita"
+app = ["C:/Program Files/Krita (x64)"]
+data = ["~/AppData/Roaming/krita"]
+
+[[app]]
+name = "HandBrake"
+id = "HandBrake.HandBrake"
+app = ["C:/Program Files/HandBrake"]
+data = ["~/AppData/Roaming/HandBrake"]
+
+[[app]]
+name = "Adobe Acrobat"
+id = "Adobe.Acrobat"
+app = ["C:/Program Files/Adobe/Acrobat DC", "C:/Program Files (x86)/Adobe/Acrobat Reader DC"]
+data = ["~/AppData/Roaming/Adobe/Acrobat", "~/AppData/Local/Adobe/Acrobat"]
+
+[[app]]
+name = "Thunderbird"
+id = "Mozilla.Thunderbird"
+app = ["C:/Program Files/Mozilla Thunderbird"]
+data = ["~/AppData/Roaming/Thunderbird", "~/AppData/Local/Thunderbird"]
+
+[[app]]
+name = "LibreOffice"
+id = "TheDocumentFoundation.LibreOffice"
+app = ["C:/Program Files/LibreOffice"]
+data = ["~/AppData/Roaming/LibreOffice"]
+
+[[app]]
+name = "Sublime Text"
+id = "SublimeHQ.SublimeText"
+kind = "Developer"
+app = ["C:/Program Files/Sublime Text"]
+data = ["~/AppData/Roaming/Sublime Text"]
+
+[[app]]
+name = "PowerToys"
+id = "Microsoft.PowerToys"
+app = ["C:/Program Files/PowerToys", "~/AppData/Local/PowerToys"]
+data = ["~/AppData/Local/Microsoft/PowerToys"]
+
+[[app]]
+name = "Everything"
+id = "voidtools.Everything"
+app = ["C:/Program Files/Everything"]
+data = ["~/AppData/Roaming/Everything"]
+
+[[app]]
+name = "WinRAR"
+id = "RARLab.WinRAR"
+app = ["C:/Program Files/WinRAR"]
+data = ["~/AppData/Roaming/WinRAR"]
+
+[[app]]
+name = "PuTTY"
+id = "PuTTY.PuTTY"
+kind = "Developer"
+app = ["C:/Program Files/PuTTY"]
+
+[[app]]
+name = "FileZilla"
+id = "TimKosse.FileZilla.Client"
+app = ["C:/Program Files/FileZilla FTP Client"]
+data = ["~/AppData/Roaming/FileZilla"]
+
+[[app]]
+name = "Wireshark"
+id = "WiresharkFoundation.Wireshark"
+kind = "Developer"
+app = ["C:/Program Files/Wireshark"]
+data = ["~/AppData/Roaming/Wireshark"]
+
+[[app]]
+name = "Postman"
+id = "Postman.Postman"
+kind = "Developer"
+app = ["~/AppData/Local/Postman"]
+data = ["~/AppData/Roaming/Postman"]
+
+[[app]]
+name = "GitHub Desktop"
+id = "GitHub.GitHubDesktop"
+kind = "Developer"
+app = ["~/AppData/Local/GitHubDesktop"]
+data = ["~/AppData/Roaming/GitHub Desktop"]
+
+[[app]]
+name = "Windsurf"
+id = "Codeium.Windsurf"
+kind = "Developer"
+app = ["~/AppData/Local/Programs/Windsurf"]
+data = ["~/AppData/Roaming/Windsurf", "~/.windsurf"]
+
+[[app]]
+name = "RStudio"
+id = "Posit.RStudio"
+kind = "Developer"
+app = ["C:/Program Files/RStudio"]
+data = ["~/AppData/Local/RStudio", "~/AppData/Roaming/RStudio"]
+
+[[app]]
+name = "MATLAB"
+id = "MathWorks.MATLAB"
+kind = "Developer"
+app = ["C:/Program Files/MATLAB"]
+data = ["~/AppData/Roaming/MathWorks"]
+
+[[app]]
+name = "Java"
+id = "Java.JDK"
+kind = "Developer"
+app = ["C:/Program Files/Java", "C:/Program Files/Eclipse Adoptium", "C:/Program Files/Microsoft/jdk*"]
+
+[[app]]
+name = "Eclipse"
+id = "Eclipse.IDE"
+kind = "Developer"
+app = ["~/eclipse"]
+data = ["~/.eclipse", "~/.p2"]
+
+[[app]]
+name = "Arduino IDE"
+id = "Arduino.ArduinoIDE"
+kind = "Developer"
+app = ["~/AppData/Local/Programs/Arduino IDE"]
+data = ["~/AppData/Local/Arduino15"]
+
+[[app]]
+name = "Flutter and Dart"
+id = "Google.Flutter"
+kind = "Developer"
+data = ["~/AppData/Local/Pub/Cache"]
+
+[[app]]
+name = "Yarn"
+id = "Yarn.Yarn"
+kind = "Developer"
+data = ["~/AppData/Local/Yarn"]
+
+[[app]]
+name = "pnpm"
+id = "pnpm.pnpm"
+kind = "Developer"
+data = ["~/AppData/Local/pnpm"]
+
+[[app]]
+name = "PostgreSQL"
+id = "PostgreSQL.PostgreSQL"
+kind = "Developer"
+app = ["C:/Program Files/PostgreSQL"]
+
+[[app]]
+name = "MySQL"
+id = "Oracle.MySQL"
+kind = "Developer"
+app = ["C:/Program Files/MySQL"]
+data = ["C:/ProgramData/MySQL"]
+
+[[app]]
+name = "MongoDB"
+id = "MongoDB.Server"
+kind = "Developer"
+app = ["C:/Program Files/MongoDB"]
+
+[[app]]
+name = "Signal"
+id = "OpenWhisperSystems.Signal"
+app = ["~/AppData/Local/Programs/signal-desktop"]
+data = ["~/AppData/Roaming/Signal"]
+
+[[app]]
+name = "Notion"
+id = "Notion.Notion"
+app = ["~/AppData/Local/Programs/Notion"]
+data = ["~/AppData/Roaming/Notion"]
+
+[[app]]
+name = "Obsidian"
+id = "Obsidian.Obsidian"
+app = ["~/AppData/Local/Programs/Obsidian", "~/AppData/Local/Obsidian"]
+data = ["~/AppData/Roaming/obsidian"]
+
+[[app]]
+name = "Figma"
+id = "Figma.Figma"
+app = ["~/AppData/Local/Figma"]
+data = ["~/AppData/Roaming/Figma"]
+
+[[app]]
+name = "Evernote"
+id = "Evernote.Evernote"
+app = ["~/AppData/Local/Programs/Evernote"]
+data = ["~/AppData/Roaming/Evernote"]
+
+[[app]]
+name = "Bitwarden"
+id = "Bitwarden.Bitwarden"
+app = ["~/AppData/Local/Programs/Bitwarden"]
+data = ["~/AppData/Roaming/Bitwarden"]
+
+[[app]]
+name = "1Password"
+id = "AgileBits.1Password"
+app = ["~/AppData/Local/1Password"]
+
+[[app]]
+name = "Webex"
+id = "Cisco.Webex"
+app = ["~/AppData/Local/CiscoSparkLauncher", "~/AppData/Local/WebEx"]
+data = ["~/AppData/Local/CiscoSpark"]
+
+[[app]]
+name = "Plex"
+id = "Plex.Plex"
+app = ["C:/Program Files/Plex"]
+data = ["~/AppData/Local/Plex Media Server", "~/AppData/Local/Plex"]
+
+[[app]]
+name = "iTunes"
+id = "Apple.iTunes"
+app = ["C:/Program Files/iTunes"]
+data = ["~/AppData/Roaming/Apple Computer/iTunes"]
+
+[[app]]
+name = "Kindle"
+id = "Amazon.Kindle"
+app = ["~/AppData/Local/Amazon/Kindle"]
+data = ["~/Documents/My Kindle Content"]
+
+[[app]]
+name = "Logitech G HUB"
+id = "Logitech.GHUB"
+app = ["C:/Program Files/LGHUB"]
+data = ["~/AppData/Local/LGHUB"]
+
+[[app]]
+name = "Razer Synapse"
+id = "Razer.Synapse"
+app = ["C:/Program Files (x86)/Razer", "C:/Program Files/Razer"]
+data = ["C:/ProgramData/Razer"]
+
+[[app]]
+name = "Corsair iCUE"
+id = "Corsair.iCUE"
+app = ["C:/Program Files/Corsair"]
+data = ["C:/ProgramData/Corsair"]

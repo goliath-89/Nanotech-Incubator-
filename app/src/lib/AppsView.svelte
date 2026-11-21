@@ -20,8 +20,22 @@
     api.getApps(scanId).then((a) => (apps = a), (e) => (error = String(e)));
   });
 
-  const largest = $derived(Math.max(1, ...(apps ?? []).map((a) => Number(a.totalBytes))));
-  const total = $derived((apps ?? []).reduce((t, a) => t + Number(a.totalBytes), 0));
+  // Kind indexes (see kinds.ts): games 6, developer 7.
+  type Filter = "all" | "games" | "developer" | "apps";
+  let filter = $state<Filter>("all");
+  let query = $state("");
+  const matches = (a: AppUsage) =>
+    (filter === "all" || (filter === "games" ? a.kind === 6 : filter === "developer" ? a.kind === 7 : a.kind !== 6 && a.kind !== 7)) &&
+    (query.trim() === "" || a.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const shown = $derived((apps ?? []).filter(matches));
+  const counts = $derived({
+    all: (apps ?? []).length,
+    games: (apps ?? []).filter((a) => a.kind === 6).length,
+    developer: (apps ?? []).filter((a) => a.kind === 7).length,
+    apps: (apps ?? []).filter((a) => a.kind !== 6 && a.kind !== 7).length,
+  });
+  const largest = $derived(Math.max(1, ...shown.map((a) => Number(a.totalBytes))));
+  const total = $derived(shown.reduce((t, a) => t + Number(a.totalBytes), 0));
 
   async function toggle(a: AppUsage) {
     if (open === a.index) {
@@ -43,14 +57,24 @@
 {:else if apps.length === 0}
   <p class="quiet">No apps were found in this scan. Scan the whole drive to see apps.</p>
 {:else}
+  <div class="filters">
+    <div class="chips" role="group" aria-label="Show">
+      {#each [["all", "All"], ["apps", "Apps"], ["games", "Games"], ["developer", "Developer tools"]] as [k, label] (k)}
+        {#if k === "all" || counts[k as Filter] > 0}
+          <button class:on={filter === k} aria-pressed={filter === k} onclick={() => (filter = k as Filter)}>{label} <span class="quiet num">{counts[k as Filter]}</span></button>
+        {/if}
+      {/each}
+    </div>
+    <input type="search" placeholder="Filter by name" aria-label="Filter apps by name" bind:value={query} />
+  </div>
   <div class="key">
     <span><i class="app"></i>The app itself</span>
     <span><i class="data"></i>What it created</span>
     <span><i class="cache"></i>What it rebuilds (safe to clear)</span>
-    <span class="quiet num">{bytes(total)} in {apps.length} apps</span>
+    <span class="quiet num">{bytes(total)} in {shown.length} {shown.length === 1 ? "item" : "items"}</span>
   </div>
   <ul class="apps">
-    {#each apps as a (a.index)}
+    {#each shown as a (a.index)}
       <li>
         <button class="row" aria-expanded={open === a.index} onclick={() => toggle(a)} onkeydown={(e) => listKeys(e, ":scope > li > button.row")}>
           <span class="icon" aria-hidden="true">{a.name.slice(0, 1).toUpperCase()}</span>
@@ -88,11 +112,19 @@
           </ul>
         {/if}
       </li>
+    {:else}
+      <li class="quiet">Nothing matches.</li>
     {/each}
   </ul>
 {/if}
 
 <style>
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { border: 1px solid var(--line); background: transparent; border-radius: var(--radius-pill); padding: 3px 11px; cursor: pointer; }
+  .chips button.on { background: var(--selected); border-color: transparent; }
+  .chips button:focus-visible { outline: 2px solid var(--accent); }
+  input[type="search"] { font: inherit; padding: 5px 10px; border-radius: var(--radius-control); border: 1px solid var(--line); background: var(--surface); color: var(--fg); min-width: 200px; }
   ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
   .key { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-bottom: 12px; color: var(--muted); font-size: 12px; align-items: center; }
   .key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }

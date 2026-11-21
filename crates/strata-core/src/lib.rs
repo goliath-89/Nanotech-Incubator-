@@ -10,6 +10,7 @@
 //!   separately;
 //! * anything that could not be read is recorded, never silently dropped.
 
+mod games;
 mod installed;
 mod platform;
 pub mod raw;

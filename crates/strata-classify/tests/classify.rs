@@ -682,3 +682,34 @@ fn caches_and_databases_seen_on_a_real_drive() {
     assert_eq!(k("/Users/sam/Pictures/photo_cache"), None);
     assert_eq!(k("/Users/sam/Documents/Projects/render-cache"), None);
 }
+
+/// Rules found on this machine can name other drives (a Steam library on
+/// D:); only `C:` stands for the system drive.
+#[test]
+fn rules_on_other_drives_match_that_drive() {
+    let env = Env {
+        os: Os::Windows,
+        home: r"C:\Users\sam".into(),
+        system_drive: "C:".into(),
+    };
+    let rules = RuleSet {
+        apps: vec![strata_classify::AppRule {
+            name: "Hades".into(),
+            id: "steam:1145360".into(),
+            kind: Some(Kind::Games),
+            paths: vec![("D:/SteamLibrary/steamapps/common/Hades".into(), Role::App)],
+        }],
+    };
+    let on_d = tree(r"D:\", &[("SteamLibrary/steamapps/common/Hades", GB)]);
+    let a = attribute(&on_d, &rules, &env);
+    assert_eq!(
+        a.apps
+            .iter()
+            .find(|u| u.id == "steam:1145360")
+            .map(|u| u.app_bytes),
+        Some(GB)
+    );
+    let on_c = tree(r"C:\", &[("SteamLibrary/steamapps/common/Hades", GB)]);
+    let a = attribute(&on_c, &rules, &env);
+    assert!(a.apps.iter().all(|u| u.total_bytes() == 0));
+}

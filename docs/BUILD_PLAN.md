@@ -20,14 +20,16 @@ Updated every time a day is done. Half-done days count as half.
 
 | Scope | Done | Note |
 | --- | --- | --- |
-| **Overall (90 days)** | 45 / 90 (50%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
+| **Overall (90 days)** | 48 / 90 (53%) | Ahead of plan in features: the MVP (planned for weeks 5–8) works on Windows in week 3 |
 | Sprint 1 · engines | 8 / 10 (80%) | Days 3, 6 and 10 wait for real-machine runs (Mac reinstall) |
 | **Sprint 2 · MVP** | 9 / 10 (90%) | Days 11–15 and 17–20 done; 16 waits for the MacBook; MVP installed and both scan methods work on Windows ARM64 |
 | **Sprint 3 · ring polish** | 10 / 10 (100%) | Done |
 | **Sprint 4 · polish and testing** | 8 / 10 (80%) | Days 31–38 done; 39–40 wait for the test sessions |
-| **Sprint 5 · kinds and app rules (current)** | 8 / 10 (80%) | Days 41–43, 46–50 done; 44–45 wait for the Mac |
+| **Sprint 5 · kinds and app rules** | 8 / 10 (80%) | Days 41–43, 46–50 done; 44–45 wait for the Mac |
+| **Sprint 6 · apps, map, search (current)** | 3 / 10 (30%) | Days 52–54 done; 51 (macOS rules) waits for the Mac |
 
 Log (newest first):
+- 21 Nov · Days 52–54 ✅ 105 Windows app rules, games listed one by one (Steam, Epic, Xbox), Apps filters. Sprint 6 3/10 (30%), overall 48/90 (53%).
 - 21 Nov · Days 48–50 ✅ installed apps found on Windows (registry and Store), attribution review; version 0.8.0. Sprint 5 8/10 (80%), overall 45/90 (50%).
 - 18 Nov · UAT part 2 ✅ file dates everywhere, Clean Up right-click menu, protected-item bug fixed, Day 64 ✅ Duplicates tab brought forward; version 0.7.0. Overall 42/90 (47%).
 - 18 Nov · Day 25 ✅ Cleaned so far page and Clean Up widget (light and dark), version 0.6.0. Sprint 3 10/10 (100%), overall 41/90 (46%).
@@ -188,9 +190,9 @@ of introducing them.
 | Day | Model | Claude builds | You |
 | --- | --- | --- | --- |
 | 51 | Opus | App rules 51–100 for macOS | — |
-| 52 | Opus | App rules 51–100 for Windows | — |
-| 53 | Opus | Game libraries: Steam, Epic, GOG, Xbox, Battle.net | — |
-| 54 | Opus | By App view: app / data / cache bars, expand to paths | — |
+| 52 ✅ | Opus | Windows app rules 59 → 105 (7-Zip, VLC, Notepad++, GIMP, Krita, Acrobat, Thunderbird, LibreOffice, PowerToys, Postman, GitHub Desktop, RStudio, MATLAB, Java, databases, Signal, Notion, Obsidian, Figma, Plex, iTunes, Kindle, G HUB, Razer, iCUE…); all fixture-checked; program and data only, no new cleanup targets | — |
+| 53 ✅ | Opus | Game libraries, one entry per game: Steam (every library from `libraryfolders.vdf`, each game from its `appmanifest`), Epic (launcher manifests), Xbox app (`.GamingRoot` on each drive); GOG, Battle.net, EA and Ubisoft games via Windows' installed list. Fixed: rules naming a drive other than `C:` (a library on D:) now match that drive | — |
+| 54 ✅ | Opus | By App view (bars and paths were already in from Day 13): filters for Apps, Games and Developer tools with counts, and a name filter | — |
 | 55 | Opus | Treemap layout and drawing | — |
 | 56 | Opus | Treemap hover, zoom, shared selection with the ring | — |
 | 57 | Opus | Search by name across results | — |

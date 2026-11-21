@@ -12,6 +12,8 @@ pub struct Installed {
     pub program: Option<String>,
     /// Where its data is (Store apps).
     pub data: Option<String>,
+    /// A game from a game library (Steam, Epic, Xbox).
+    pub game: bool,
 }
 
 /// Folder names an install location must never be: shared places that
@@ -122,7 +124,9 @@ fn spaced(name: &str) -> String {
 
 /// What this computer lists as installed. Empty where not supported yet.
 pub fn installed_apps() -> Vec<Installed> {
-    imp::installed_apps()
+    let mut apps = imp::installed_apps();
+    apps.extend(crate::games::installed_games());
+    apps
 }
 
 #[cfg(not(windows))]
@@ -270,6 +274,7 @@ mod imp {
                     id: format!("installed:{label}:{sub}"),
                     program,
                     data: None,
+                    game: false,
                 });
             }
         }
@@ -289,6 +294,7 @@ mod imp {
                     id: format!("store:{family}"),
                     program: text(&key, &full, "PackageRootFolder"),
                     data: Some(format!(r"{local}\Packages\{family}")),
+                    game: false,
                 });
             }
         }
